@@ -7,6 +7,8 @@ export type NavStep = { maneuver: Maneuver; name: string; distance: number; dura
 export type WalkRoute = { geometry: LatLng[]; steps: NavStep[]; distance: number; duration: number; warnings?: string[]; provider?: string }
 
 import {api,auth} from './cloud'
+import {useRuntime} from './runtime'
+import {useStore} from './store'
 
 const COMPASS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest']
 export const compass = (bearing = 0) => COMPASS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]
@@ -47,7 +49,10 @@ export async function fetchWalkingRoute(points: LatLng[], signal?: AbortSignal):
 const keyOf = (pts: LatLng[]) => pts.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join('|')
 
 /** Fetches a walking route through the given points. Pass null to turn it off. */
-export function useWalkingRoute(points: LatLng[] | null) {
+export function useWalkingRoute(points: LatLng[] | null, refresh = '') {
+  const life=useRuntime(),{account}=useStore()
+  const [retry,setRetry]=useState(0)
+  const available=life.active&&life.online
   const [route, setRoute] = useState<WalkRoute | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const abort = useRef<AbortController | null>(null)
@@ -67,21 +72,21 @@ export function useWalkingRoute(points: LatLng[] | null) {
   }, [])
 
   useEffect(() => {
-    if (!points) { setRoute(null); setStatus('idle'); return }
+    if (!points || !available) { abort.current?.abort(); setRoute(null); setStatus('idle'); return }
     load(points)
     return () => abort.current?.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, load])
+  }, [key, load, available, life.epoch, account?.uid, refresh, retry])
 
   /** Ask for a fresh route from a new starting point (e.g. after leaving the route). Limited to once every 8 s. */
   const reroute = useCallback((from: LatLng) => {
     const pts = pointsRef.current
-    if (!pts || Date.now() - last.current < 8000) return false
+    if (!pts || !available || Date.now() - last.current < 8000) return false
     load([from, ...pts.slice(1)])
     return true
-  }, [load])
+  }, [load,available])
 
-  return { route, status, reroute }
+  return { route:available?route:null, status, reroute, retry:()=>setRetry(n=>n+1) }
 }
 
 /** Meters from point to the route line, how far along the route they are, and which step they're on. */

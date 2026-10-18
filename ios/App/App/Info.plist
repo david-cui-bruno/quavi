@@ -26,6 +26,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Quavi uses your location during a detour to show your route and unlock tasks when you arrive at a stop.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Quavi uses your location while you use the app to show your route and confirm arrival at a stop.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos of moments along your detour to add to your story.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

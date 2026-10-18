@@ -1,3 +1,4 @@
+import {runtime} from './runtime'
 import {scrubGoogleContent} from './google-retention.mjs'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AvatarSpec } from './brand/Persona'
@@ -113,6 +114,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         initial: { ...structuredClone(DEFAULT_STATE), user: { ...DEFAULT_STATE.user, name: 'Explorer', authed: true } },
         request: (method, body) => api(user, '/state', method, scrubGoogleContent(body)),
         sanitize: scrubGoogleContent,
+        available:()=>runtime.get().active&&runtime.get().online,
         prepare: photoUploader(user),
         onState: (state) => { if (ticket === generation) { stateRef.current = state; setS(state) } },
         onStatus: (status) => { if (ticket === generation) {
@@ -121,15 +123,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         } },
       })
       engine.current = next
-      void next.open().finally(() => {
-        if (ticket !== generation) return
-        setBusy(false); setStack([{ name: 'home' }])
-      })
+      stateRef.current=next.cache.state;setS(next.cache.state)
+      setBusy(false);setStack([{name:'home'}])
+      void next.open()
     })
     const retry = () => { void engine.current?.flush() }
-    window.addEventListener('online', retry)
+    const stopRuntime=runtime.subscribe(()=>{if(runtime.get().active&&runtime.get().online)void engine.current?.resume()})
     const interval = window.setInterval(retry, 30000)
-    return () => { generation++; unsubscribe(); engine.current?.close(); window.removeEventListener('online', retry); window.clearInterval(interval) }
+    return () => { generation++; unsubscribe(); engine.current?.close(); stopRuntime(); window.clearInterval(interval) }
   }, [])
 
   const update = useCallback((fn: (s: AppState) => AppState) => {

@@ -1,4 +1,5 @@
 import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
+import {useRuntime} from '../runtime'
 import { CityPicker } from '../CityPicker'
 import { useTracking } from '../tracking'
 import { useEffect, useState } from 'react'
@@ -58,7 +59,8 @@ export function SaveSheet({ story, onClose }: { story: Story; onClose: () => voi
 }
 
 export function Home() {
-  const { s, go, update, say } = useStore()
+  const life=useRuntime()
+  const { s, go, update, say, syncStatus } = useStore()
   const [ending, setEnding] = useState(false)
   const live = s.story?.status === 'active' ? s.story : undefined
   const at = live ? Math.min(s.chapter, live.chapters.length - 1) : 0
@@ -72,6 +74,8 @@ export function Home() {
         <div style={{ flex: 1 }} />
         <span className="pill">📍 {s.user.neighborhood}</span>
       </div>
+      {syncStatus==='storage-full'&&<p role="alert" className="small" style={{marginBottom:12}}>Device storage is full. Keep Quavi open and free up space before leaving; your latest changes may not be saved.</p>}
+      {!life.online&&syncStatus!=='storage-full'&&<p role="status" className="small" style={{marginBottom:12}}>You’re offline. Saved plans, notes and progress stay on this device. Changes sync when you reconnect.</p>}
       <div className="kicker" style={{ marginTop: 12 }}>Good evening, {s.user.name}</div>
       <h1 className="h1 h-l" style={{ marginTop: 6 }}>Plans fell through?</h1>
       <p className="it" style={{ fontSize: 20, margin: '6px 0 4px' }}>Good. Let’s find your plot twist.</p>
