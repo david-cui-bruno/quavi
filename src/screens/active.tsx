@@ -45,7 +45,7 @@ export function Active() {
   const loc = nav.route ? locateOnRoute(tr.pos, nav.route) : null
   useEffect(() => { if (loc && loc.off > 40 && !arrived) nav.reroute(tr.pos) }, [loc?.off, arrived]) // eslint-disable-line react-hooks/exhaustive-deps
   // hand the street route to the demo walker once per route (not on every step it takes)
-  useEffect(() => { tr.setPath(nav.route ? nav.route.geometry.slice(1) : null) }, [nav.route]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { tr.setPath(nav.route ? nav.route.geometry.slice(1) : null); if(story.source&&!nav.route)tr.setWalking(false) }, [nav.route,story.source]) // eslint-disable-line react-hooks/exhaustive-deps
   const [voice, setVoice] = useState(false)
 
   // what the banner says right now
@@ -69,7 +69,7 @@ export function Active() {
     } else if (nav.status === 'loading' || nav.status === 'idle') {
       banner = { kind: 'loading', big: 'Finding your route', text: `Walking to ${c.place}` }
     } else {
-      banner = { kind: 'head', big: fmtMeters(dist), text: `Head ${compass(bearingTo(tr.pos, target))} toward ${c.place}`, sub: 'Street directions aren’t available right now' }
+      banner = story.source ? { kind: 'head', big: 'Directions unavailable', text: 'Pause and check your route', sub: 'Reconnect or open walking directions in your maps app', link: `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=walking` } : { kind: 'head', big: fmtMeters(dist), text: `Head ${compass(bearingTo(tr.pos, target))} toward ${c.place}`, sub: 'Street directions aren’t available right now' }
     }
   }
 
@@ -163,20 +163,20 @@ export function Active() {
 
   const route = useMemo(() => [story.origin ?? START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas, story.origin])
   const reached = i + (arrived ? 1 : 0)
-  // the street route to this stop, then straight lines to the stops after it
-  const legRoute = useMemo(() => [...(nav.route ? nav.route.geometry : [tr.pos, target]), ...metas.slice(i + 1).map((m) => ({ lat: m.lat, lng: m.lng }))], [nav.route, i, metas]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Live outings draw only the fetched path; later stops are pins rather than invented connecting lines.
+  const legRoute = useMemo(() => story.source ? (nav.route?.geometry ?? []) : [...(nav.route ? nav.route.geometry : [tr.pos, target]), ...metas.slice(i + 1).map((m) => ({ lat: m.lat, lng: m.lng }))], [nav.route, i, metas]) // eslint-disable-line react-hooks/exhaustive-deps
   const pins: RealPin[] = metas.map((m, k) => {
     const state = k < i || (k === i && allDone) ? 'done' : k === i ? 'current' : 'locked'
     return { id: String(k), ll: { lat: m.lat, lng: m.lng }, kind: state as RealPin['kind'], label: state === 'current' ? story.chapters[k].place : undefined, selected: false }
   })
   const coins = useMemo(() => coinsFor(route, s.game.collected[story.id] ?? []), [route, s.game.collected, story.id])
   const next = story.chapters[i + 1]
-  useCoinCollect(tr.pos, coins, collect)
+  useCoinCollect(tr.pos, story.source?[]:coins, collect)
 
   return (
     <Screen$ bg="paper" flush>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 292 }}>
-        <RealMap pins={pins} route={legRoute} doneRoute={route.slice(0, reached + 1)} coins={coins} you={tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={17} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+        <RealMap pins={pins} route={legRoute} doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={17} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
       </div>
       <div className="row" style={{ position: 'absolute', left: 24, right: 24, top: 54, zIndex: 8, gap: 10 }}>
         <button className="back" onClick={() => { tr.setWalking(false); reset('home') }} aria-label="Back to Home" style={{ background: 'var(--paper)' }}>

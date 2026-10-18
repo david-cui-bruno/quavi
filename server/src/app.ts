@@ -8,6 +8,8 @@ import { readState, writeState } from "./db.js";
 import { MAX_PHOTO_BYTES, type MediaSigner } from "./media.js";
 import { ownerHash, lockAccount, quota } from "./account.js";
 import { detourInput, planDetours, type VenueProvider } from "./detours.js";
+import { checkedDetours } from "./checked-detours.js";
+import { walkingInput, type WalkingProvider } from "./walking.js";
 import { appStateSchema, inspectState } from "./state-schema.js";
 
 declare module "fastify" {
@@ -38,6 +40,7 @@ export async function createApp(options: {
   logger?: boolean;
   now?: () => number;
   detours?: VenueProvider;
+  walking?: WalkingProvider;
 }) {
   const app = Fastify({
     bodyLimit: 2 * 1024 * 1024,
@@ -74,11 +77,15 @@ export async function createApp(options: {
         ? error.statusCode
         : undefined;
     const status =
-      typeof code === "number" && code >= 400 && code < 500 ? code : 500;
+      typeof code === "number" && code >= 400 && code <= 503 ? code : 500;
     if (status === 500) req.log.error({ err: error }, "Request failed");
     return reply.code(status).send({
       error:
-        status === 500 ? "Service temporarily unavailable" : "Invalid request",
+        status >= 500
+          ? "Service temporarily unavailable. Try again shortly."
+          : status === 429
+            ? "Too many lookups. Try again later."
+            : "Invalid request",
     });
   });
   app.get("/healthz", async () => ({ status: "ok" }));
@@ -201,12 +208,10 @@ export async function createApp(options: {
       api.post("/me/detours", async (req, reply) => {
         const input = detourInput.parse(req.body);
         if (!options.detours)
-          return reply
-            .code(503)
-            .send({
-              error:
-                "City-aware detours are not available. Try again later or use the separate demo.",
-            });
+          return reply.code(503).send({
+            error:
+              "City-aware detours are not available. Try again later or use the separate demo.",
+          });
         if (!(await quota(req.db!, ownerHash(req.uid), "detours", 12, 86400)))
           return reply
             .code(429)
@@ -219,6 +224,9 @@ export async function createApp(options: {
           db.release();
         }
         const nearby = await options.detours.nearby(input.origin);
+        const planned = options.walking
+          ? await checkedDetours(nearby, input, options.walking)
+          : planDetours(nearby, input);
         req.db = await options.pool.connect();
         await req.db.query("BEGIN");
         await lockAccount(req.db, req.uid);
@@ -233,7 +241,52 @@ export async function createApp(options: {
           return reply
             .code(410)
             .send({ error: "This account is being deleted." });
-        return planDetours(nearby, input);
+        return planned;
+      });
+      api.post("/me/walking-check", async (req, reply) => {
+        const { points } = walkingInput.parse(req.body);
+        if (!options.walking)
+          return reply
+            .code(503)
+            .send({
+              error: "Walking checks are unavailable. Try again shortly.",
+            });
+        if (
+          !(await quota(req.db!, ownerHash(req.uid), "walking-check", 60, 3600))
+        )
+          return reply
+            .code(429)
+            .send({ error: "Too many walking checks. Try again later." });
+        const db = req.db!;
+        req.db = null;
+        try {
+          await db.query("COMMIT");
+        } finally {
+          db.release();
+        }
+        const route = await options.walking.check(points);
+        req.db = await options.pool.connect();
+        await req.db.query("BEGIN");
+        await lockAccount(req.db, req.uid);
+        if (
+          (
+            await req.db.query(
+              "SELECT 1 FROM account_deletions WHERE owner_hash=$1",
+              [ownerHash(req.uid)],
+            )
+          ).rowCount
+        )
+          return reply
+            .code(410)
+            .send({ error: "This account is being deleted." });
+        if (!route)
+          return reply
+            .code(422)
+            .send({
+              error:
+                "No suitable walking route connects these stops. Choose another detour.",
+            });
+        return route;
       });
       api.get(
         "/me/state",

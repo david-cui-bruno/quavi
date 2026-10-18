@@ -43,6 +43,29 @@ const story = z
   .object({
     origin: ll.optional(),
     estimatedMinutes: z.number().int().min(1).max(1440).optional(),
+    timeBudgetMinutes: z
+      .union([z.literal(30), z.literal(60), z.literal(120)])
+      .optional(),
+    walking: z
+      .object({
+        legs: z
+          .array(
+            z
+              .object({
+                distance: z.number().min(0).max(50000),
+                duration: z.number().min(0).max(86400),
+              })
+              .strict(),
+          )
+          .min(1)
+          .max(12),
+        distance: z.number().min(0).max(50000),
+        duration: z.number().min(0).max(86400),
+        checkedAt: z.iso.datetime(),
+        provider: text,
+      })
+      .strict()
+      .optional(),
     source: z
       .object({
         provider: text,
