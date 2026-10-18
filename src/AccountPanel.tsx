@@ -190,8 +190,9 @@ export function AccountPanel() {
             <p className="small" style={{ margin: "10px 0" }}>
               This permanently removes your account, stories, lists, progress
               and photos. Access stops as soon as the request is accepted.
-              Cleanup usually finishes within 20 minutes. Backups and deleted
-              photo recovery copies expire within 7 days.
+              Cleanup usually finishes within 20 minutes. Late uploads are
+              cleaned within 24 hours. Automated backups and deleted photo
+              recovery copies expire within 7 days.
             </p>
             <div className="field">
               <label htmlFor="delete-password">CONFIRM YOUR PASSWORD</label>

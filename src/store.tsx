@@ -115,7 +115,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         onState: (state) => { if (ticket === generation) { stateRef.current = state; setS(state) } },
         onStatus: (status) => { if (ticket === generation) {
           setSyncStatus(status)
-          if (status === 'deleted') { next.close(); localStorage.removeItem(`quavi.account.v1.${user.uid}`); void signOut(auth) }
+          if (status === 'deleted') { next.close(); localStorage.removeItem(`quavi.account.v1.${user.uid}`); setStack([{name:'welcome'}]); void signOut(auth) }
         } },
       })
       engine.current = next

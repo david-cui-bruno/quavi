@@ -144,9 +144,7 @@ separate from shipped runtime dependencies.
 
 ## Next slice
 
-Implement full account deletion (Auth, SQL, media and retry behavior), verify email
-recovery/verification delivery, improve sync/photo retry UX, enforce production
-payload validation and per-user quotas, clean orphan uploads, add app attestation,
+Verify email recovery/verification delivery, improve sync/photo retry UX, add app attestation,
 and configure deployment CI, alerting/budgets and a backup restore drill. Offline
 account edits are cached, but uncached private photos need a connection. Conflict
 resolution currently offers an explicit cloud-copy replacement; merging divergent
@@ -155,3 +153,40 @@ local edits is not implemented. Initial cloud reads and token refresh need inter
 Friends/circle remain local demo data, recommendation generation is scripted,
 background location is unimplemented, and XP/rewards are client-controlled demo
 values. These are separate roadmap stages, not services supplied by this deploy.
+
+
+## Account deletion and data guards (October 18)
+
+`DELETE /v1/me` requires `{confirm:"DELETE"}` and authentication within five minutes
+(the app reauthenticates with the password). A durable SQL tombstone blocks further
+account access immediately and removes its state. The maintenance job disables
+Firebase sign-in/revokes sessions and purges private photos; after an eleven-minute
+upload-link grace period, it purges again, deletes Auth/media/quota rows and removes
+the plaintext UID. Retries survive worker restarts and storage errors. Repeated
+requests remain idempotent. Per-account PostgreSQL advisory locks serialize deletion
+with saves/uploads so an in-flight request cannot resurrect data.
+
+Cloud Scheduler invokes the private `quavi-maintenance` job every five minutes via
+OAuth as `quavi-scheduler`; this identity can only invoke that job. The separate
+`quavi-maintenance` runtime identity has database DML, private bucket object access
+and a custom Firebase role limited to get/update/delete users. The public API has
+no Firebase user-deletion permission. The worker also removes unreferenced media
+and expired staging objects after 24 hours and sweeps completed deletion prefixes
+for late uploads. Failed/overdue cleanup fails the job for operational visibility.
+Hashed deletion tombstones expire after 30 days. Automated SQL/PITR and GCS soft-delete
+recovery copies retain their configured seven-day windows; administrative snapshots
+must be managed separately.
+
+Uploads now go to private staging keys. `/media/:id/complete` verifies the actual
+size, MIME metadata and PNG/JPEG/WebP signature, then copies to an immutable final
+key using a generation precondition. Reusing an old upload form cannot replace the
+verified photo. Saves accept the bounded application schema, reject inline data
+URLs and require completed, owned media references. Legacy private photos are
+validated on first read. Limits are shared in SQL across instances: 120 API calls
+per account/minute, 40 upload grants/hour and 256 MiB / 1,000 reserved media records.
+Unused reservations are reclaimed by maintenance. Reward values remain demo data,
+not a trusted financial or XP ledger.
+
+When deploying future API versions, also update the maintenance image to the same
+commit so cleanup follows the current schema. Use `gcloud run jobs update
+quavi-maintenance --project=quavi-dev-dc824 --region=us-central1 --image=...`.

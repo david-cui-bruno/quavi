@@ -40,8 +40,16 @@ try {
       db.release();
     }
   }
-  const completed = await pool.query("SELECT owner_hash FROM account_deletions WHERE completed_at IS NOT NULL AND coalesce(last_sweep_at,completed_at)<now()-interval '1 hour' ORDER BY coalesce(last_sweep_at,completed_at) LIMIT 100");
-  for (const job of completed.rows) { await media.removeOwner(job.owner_hash); await pool.query('UPDATE account_deletions SET last_sweep_at=now() WHERE owner_hash=$1',[job.owner_hash]); }
+  const completed = await pool.query(
+    "SELECT owner_hash FROM account_deletions WHERE completed_at IS NOT NULL AND coalesce(last_sweep_at,completed_at)<now()-interval '1 hour' ORDER BY coalesce(last_sweep_at,completed_at) LIMIT 100",
+  );
+  for (const job of completed.rows) {
+    await media.removeOwner(job.owner_hash);
+    await pool.query(
+      "UPDATE account_deletions SET last_sweep_at=now() WHERE owner_hash=$1",
+      [job.owner_hash],
+    );
+  }
   await media.cleanupStaging();
   await pool.query(
     "DELETE FROM request_quotas WHERE window_at<now()-interval '2 days'",

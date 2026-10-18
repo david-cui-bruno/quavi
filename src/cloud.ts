@@ -10,7 +10,7 @@ export class ApiError extends Error {
 export async function api<T>(user: User, path: string, method = 'GET', body?: unknown): Promise<T> {
   const token = await user.getIdToken()
   const response = await fetch(`${config.apiUrl}/v1/me${path}`, {
-    method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    method, headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000),
   })
   const data = await response.json()

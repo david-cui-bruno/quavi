@@ -466,3 +466,9 @@ test("deletion requires a fresh authentication, not just a refreshed ID token", 
     0,
   );
 });
+
+test('the state contract accepts prototype stories, shared samples and preferences',async()=>{
+  const {OPENINGS,FRIEND_STORIES,buildStory}=await import('../../src/data.ts')
+  const {appStateSchema}=await import('../src/state-schema.js')
+  for(const opening of OPENINGS) assert.doesNotThrow(()=>appStateSchema.parse({...state('Maya'),story:buildStory(opening),shelf:FRIEND_STORIES}))
+})
