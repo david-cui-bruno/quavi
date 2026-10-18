@@ -222,7 +222,7 @@ export function Active() {
         {!recovery.ready&&<p className="small" role="status" style={{marginBottom:10}}>{recovery.phase==='offline'?'Saved on this device. Reconnect to refresh directions and hours.':recovery.phase==='location'?tr.locationError||'Waiting for a fresh position. Arrival tasks stay paused.':recovery.message||'Refreshing your outing before continuing.'}</p>}
         <div className="row">
           <div style={{ flex: 1 }}>
-            {!recovery.ready ? <Btn kind="soft" disabled={!life.online||recovery.phase==='checking'} onClick={()=>recovery.phase==='location'?tr.retryLocation():recovery.retry()}>{recovery.phase==='location'?'Retry GPS':recovery.phase==='checking'?'Checking stops…':'Retry checks'}</Btn> : arrived ? <Btn onClick={() => setTasks(true)}>{allDone ? 'See tasks ✓' : 'Open tasks'}</Btn>
+            {!recovery.ready ? <Btn kind="soft" disabled={!life.online||recovery.phase==='checking'} onClick={()=>recovery.phase==='sign-in'?go('login'):recovery.phase==='location'?tr.retryLocation():recovery.retry()}>{recovery.phase==='sign-in'?'Log in':recovery.phase==='location'?'Retry GPS':recovery.phase==='checking'?'Checking stops…':'Retry checks'}</Btn> : story.source&&nav.status==='error'&&!arrived ? <Btn kind="soft" onClick={nav.retry}>Retry directions</Btn> : arrived ? <Btn onClick={() => setTasks(true)}>{allDone ? 'See tasks ✓' : 'Open tasks'}</Btn>
               : tr.mode === 'demo' ? <Btn onClick={() => tr.setWalking(!tr.walking)}>{tr.walking ? 'Pause walking' : 'Walk there ▶'}</Btn>
               : <Btn kind="soft" disabled>Walk to {c.place}</Btn>}
           </div>
