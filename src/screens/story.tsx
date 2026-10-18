@@ -269,7 +269,7 @@ function ShareSheet({ story, caps, onClose }: { story: Story; caps: string[]; on
       <h2 className="h1 h-s" style={{ margin: '4px 0 10px' }}>{story.title}</h2>
       <div className="field" style={{ height: 'auto', padding: '14px 24px', borderRadius: 24, marginBottom: 12 }}>
         <label>A NOTE TO YOUR FRIENDS (OPTIONAL)</label>
-        <textarea aria-label="Intro to your friends" rows={2} value={story.intro ?? ''} placeholder="You will not believe who I met…" onChange={(e) => setStory((s) => ({ ...s, intro: e.target.value }))} style={{ width: '100%', fontWeight: 500, fontSize: 15, resize: 'none' }} />
+        <textarea maxLength={4000} aria-label="Intro to your friends" rows={2} value={story.intro ?? ''} placeholder="You will not believe who I met…" onChange={(e) => setStory((s) => ({ ...s, intro: e.target.value }))} style={{ width: '100%', fontWeight: 500, fontSize: 15, resize: 'none' }} />
       </div>
       <div className="col" style={{ gap: 12, marginBottom: 14 }}>
         {story.chapters.map((c, i) => (
@@ -324,7 +324,7 @@ export function Tell() {
                 </div>
                 <div className="col" style={{ flex: 1 }}>
                   <span className="kicker">Chapter {i + 1} · {c.place}</span>
-                  <textarea aria-label={`Caption for chapter ${i + 1}`} rows={2} value={caps[i] ?? ''} onChange={(e) => setStory((s0) => { const n = [...(s0.captions.length ? s0.captions : caps)]; n[i] = e.target.value; return { ...s0, captions: n } })} className="h1" style={{ fontSize: 16, lineHeight: 1.1, resize: 'none', width: '100%' }} />
+                  <textarea maxLength={4000} aria-label={`Caption for chapter ${i + 1}`} rows={2} value={caps[i] ?? ''} onChange={(e) => setStory((s0) => { const n = [...(s0.captions.length ? s0.captions : caps)]; n[i] = e.target.value; return { ...s0, captions: n } })} className="h1" style={{ fontSize: 16, lineHeight: 1.1, resize: 'none', width: '100%' }} />
                 </div>
               </div>
               {doneTasks.length > 0 && (
@@ -335,7 +335,7 @@ export function Tell() {
                       <div key={t.id} className="quote">
                         <b>{t.text}</b>
                         {isPhotoTask(t) && story.taskPhotos?.[k] && <Photo src={story.taskPhotos[k]} alt={`Photo: ${t.text}`} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 14, margin: '6px 0' }} />}
-                        <textarea aria-label={`Your words for ${t.text}`} rows={2} value={story.taskNotes?.[k] ?? ''} placeholder={notePrompt(t)} onChange={(e) => setStory((s0) => ({ ...s0, taskNotes: { ...(s0.taskNotes ?? {}), [k]: e.target.value } }))} style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, fontWeight: 500 }} />
+                        <textarea maxLength={4000} aria-label={`Your words for ${t.text}`} rows={2} value={story.taskNotes?.[k] ?? ''} placeholder={notePrompt(t)} onChange={(e) => setStory((s0) => ({ ...s0, taskNotes: { ...(s0.taskNotes ?? {}), [k]: e.target.value } }))} style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, fontWeight: 500 }} />
                       </div>
                     )
                   })}

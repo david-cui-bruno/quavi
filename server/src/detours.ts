@@ -76,10 +76,24 @@ export function planDetours(
       return false;
     if (
       input.age21 !== true &&
-      /\b(wine|pub|cocktail|nightclub|casino|speakeasy)\b/i.test(v.name)
+      /\b(wine|bar|pub|cocktail|nightclub|casino|speakeasy)\b/i.test(v.name)
     )
       return false;
     const name = v.name.trim().toLocaleLowerCase();
+    if (
+      [
+        "cafe",
+        "café",
+        "restaurant",
+        "park",
+        "museum",
+        "bookstore",
+        "coffee shop",
+        "bakery",
+        "gallery",
+      ].includes(name)
+    )
+      return false;
     if (ids.has(v.id) || names.has(name)) return false;
     ids.add(v.id);
     names.add(name);
@@ -126,7 +140,9 @@ export function planDetours(
           const interest = kinds[v.kind].interest;
           return (
             meters(prev, v.ll) / 140 +
-            (chosen.some((c) => c.kind === v.kind) ? 4 : 0) -
+            (chosen.some((c) => kinds[c.kind].label === kinds[v.kind].label)
+              ? 12
+              : 0) -
             (interest === theme.interest ? 4 : 0) -
             (input.interests.includes(
               interest as (typeof input.interests)[number],

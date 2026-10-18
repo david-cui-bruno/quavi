@@ -285,7 +285,7 @@ export function Active() {
                         </>
                       )}
                       {!isPhotoTask(t) && <div className="kicker" style={{ marginBottom: 6 }}>In your words · shared with friends</div>}
-                      <textarea
+                      <textarea maxLength={4000}
                         aria-label={`In your own words: ${t.text}`}
                         rows={Math.min(7, Math.max(3, Math.ceil((story.taskNotes?.[nk] ?? '').length / 32)))}
                         value={story.taskNotes?.[nk] ?? ''}

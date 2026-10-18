@@ -84,3 +84,15 @@ test("coordinates, time limits and unexpected request fields are validated", () 
   assert.throws(() => detourInput.parse({ ...input, minutes: 999 }));
   assert.throws(() => detourInput.parse({ ...input, userId: "someone-else" }));
 });
+
+test("a restaurant category does not override an adult venue name for under-21 users", () => {
+  const bar = {
+    ...raw.venues[0],
+    id: "adult-bar",
+    name: "Bar Agricole",
+    kind: "restaurant",
+  };
+  const result = planDetours({ ...raw, venues: [bar, ...raw.venues] }, input);
+  for (const route of result.openings)
+    assert.ok(route.chapters.every((c) => c.placeId !== "adult-bar"));
+});

@@ -230,7 +230,7 @@ function EditStory({ orig, draft, setDraft, onSave, onCancel }: { orig: Story; d
               <div className="kicker">Chapter {i + 1} · {c.place}</div>
               <div className="field" style={{ height: 'auto', padding: '14px 24px', borderRadius: 24, margin: '6px 0 10px' }}>
                 <label htmlFor={`ed-cap-${i}`}>HOW YOU’D TELL IT</label>
-                <textarea id={`ed-cap-${i}`} rows={2} value={draft.captions[i] ?? c.place} onChange={(e) => setCap(i, e.target.value)} style={{ width: '100%', fontWeight: 500, fontSize: 15, resize: 'none' }} />
+                <textarea maxLength={4000} id={`ed-cap-${i}`} rows={2} value={draft.captions[i] ?? c.place} onChange={(e) => setCap(i, e.target.value)} style={{ width: '100%', fontWeight: 500, fontSize: 15, resize: 'none' }} />
               </div>
               {tasks.map((t) => {
                 const k = `${i}:${t.id}`
@@ -251,7 +251,7 @@ function EditStory({ orig, draft, setDraft, onSave, onCancel }: { orig: Story; d
                           : <button className="pill" style={{ background: 'var(--paper)' }} onClick={() => { photoKey.current = k; fileInput.current?.click() }}>＋ Add a photo</button>}
                       </div>
                     )}
-                    <textarea aria-label={`Your words for ${t.text}`} rows={2} value={draft.taskNotes?.[k] ?? ''} placeholder={isPhotoTask(t) ? 'What’s the story behind this photo?' : notePrompt(t)} onChange={(e) => setNote(k, e.target.value)}
+                    <textarea maxLength={4000} aria-label={`Your words for ${t.text}`} rows={2} value={draft.taskNotes?.[k] ?? ''} placeholder={isPhotoTask(t) ? 'What’s the story behind this photo?' : notePrompt(t)} onChange={(e) => setNote(k, e.target.value)}
                       style={{ width: '100%', marginTop: 10, fontSize: 14, lineHeight: 1.4, background: 'var(--paper)', borderRadius: 16, padding: '12px 14px', resize: 'none' }} />
                   </div>
                 )

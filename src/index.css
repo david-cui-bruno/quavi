@@ -411,3 +411,5 @@ button.pill.abs { padding: 0 16px; }
 .navtext { font-size: 14px; font-weight: 500; line-height: 1.25; margin-top: 2px; }
 .navsub { font-size: 12px; color: var(--yellow); font-weight: 500; margin-top: 3px; }
 .navbtn { flex: none; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 22px; background: var(--ink-p); color: var(--paper); display: grid; place-items: center; font-weight: 700; font-size: 14px; text-decoration: none; }
+
+.city-picker input::placeholder { color: var(--ink-p); opacity: .9; }

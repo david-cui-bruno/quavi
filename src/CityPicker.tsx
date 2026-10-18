@@ -87,6 +87,13 @@ export function CityPicker({
       </label>
       <div className="row" style={{ gap: 8 }}>
         <Btn
+          style={{
+            flex: 1,
+            width: 0,
+            minWidth: 0,
+            padding: "0 12px",
+            fontSize: 14,
+          }}
           kind="secondary"
           disabled={busy || query.trim().length < 2}
           onClick={async () => {
@@ -113,6 +120,13 @@ export function CityPicker({
           {busy ? "Finding places…" : "Search area"}
         </Btn>
         <Btn
+          style={{
+            flex: 1,
+            width: 0,
+            minWidth: 0,
+            padding: "0 12px",
+            fontSize: 14,
+          }}
           kind="soft"
           disabled={busy}
           onClick={() => {

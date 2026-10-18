@@ -45,7 +45,7 @@ export function SaveSheet({ story, onClose }: { story: Story; onClose: () => voi
       })}
       {adding ? (
         <div className="field row2" style={{ margin: '8px 0 10px' }}>
-          <div><label htmlFor="list-name">LIST NAME</label><input id="list-name" autoComplete="off" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addList()} placeholder="Rainy days" /></div>
+          <div><label htmlFor="list-name">LIST NAME</label><input id="list-name" maxLength={80} autoComplete="off" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addList()} placeholder="Rainy days" /></div>
           <button style={{ fontWeight: 700, fontSize: 13 }} onClick={addList}>Add</button>
         </div>
       ) : (
