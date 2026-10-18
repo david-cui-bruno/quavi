@@ -1,3 +1,4 @@
+import {awardOuting,rewardsActive} from "./rewards.js";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type pg from "pg";
@@ -263,7 +264,7 @@ export async function applyOutingOperation(
   } else {
     if (!row) throw fail(404, "Outing not found");
     next = outingSchema.parse(
-      scrubGoogleContent(patchOuting(row.document, op.changes)),
+      scrubGoogleContent(patchOuting(row.document, (await rewardsActive(db,uid))?op.changes.filter(c=>c.path[0]!=="tripXp"):op.changes)),
     );
   }
   if (Buffer.byteLength(JSON.stringify(next)) > 128 * 1024)
@@ -286,6 +287,7 @@ export async function applyOutingOperation(
     if (owned.rowCount !== refs.length)
       throw fail(400, "Finish uploading your own photos before saving");
   }
+  if(await rewardsActive(db,uid))next.tripXp=0;
   const {
     rows: [saved],
   } = await db.query(
@@ -293,6 +295,11 @@ export async function applyOutingOperation(
     ON CONFLICT(user_id,id) DO UPDATE SET document=EXCLUDED.document,revision=outings.revision+1,updated_at=now() RETURNING document,revision,updated_at`,
     [uid, op.outingId, next],
   );
+  if(await rewardsActive(db,uid)){
+    next.tripXp=await awardOuting(db,uid,next);
+    await db.query('UPDATE outings SET document=$3 WHERE user_id=$1 AND id=$2',[uid,op.outingId,next]);
+    saved.document=next;
+  }
   await db.query(
     "INSERT INTO outing_operations(user_id,operation_id,outing_id,fingerprint) VALUES($1,$2,$3,$4)",
     [uid, op.operationId, op.outingId, fingerprint],

@@ -48,7 +48,7 @@ location and native notifications are not implemented by this shell.
 | Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
 | Location and arrival tasks | Native iPhone foreground GPS or browser GPS, explicit demo walking, accuracy/freshness gates and resume checks | Outdoor device acceptance; background tracking only if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
-| XP, coins and demo partner rewards | Local XP, fictional offers, locked/unlocked states and persistent simulated redemptions | Server-authoritative reward history and sync; real partners/funding are deferred |
+| XP, coins and demo partner rewards | Signed-in server ledger, confirmed XP, offline commands and one-time fictional offers; anonymous local demo | Stronger participation evidence, real partners and funding are deferred |
 | Operations | Cloud Run dev deployment, Secret Manager, limited runtime DB privileges, Cloud SQL backups/PITR, private bucket | CI, production environment, alerts/budgets, restore drill, release/signing setup |
 
 Product direction: preserve all prototype features on iPhone and support any city.
@@ -62,13 +62,14 @@ Open **You → Browse demo rewards**. Quavi Demo Café and Quavi Demo Bookshop a
 fictional partners, with no actual funding, merchant agreements or discounts.
 Every offer and redemption screen is labeled demo-only and non-redeemable.
 
-- The welcome coffee sample can be tried immediately, once per demo, without XP.
-- Every 1,000 lifetime XP unlocks one earned reward. Café and bookshop offers each
-  use one earned reward and can each be tried once per demo.
-- Using a demo reward does not deduct lifetime XP, levels, coins or badges.
-- Redemption history is saved on the device and syncs when signed in. Restarting
-  the separate local demo clears its history. The server does not yet validate awards
-  or redemption eligibility; these values remain demo data.
+- Signed-in accounts receive XP and coins from a server ledger. Each 1,000
+  confirmed XP unlocks one earned demo reward; café and bookshop each spend one.
+- Welcome is free once per account; each other offer can be tried once per account.
+  All partners and receipts remain fictional and cannot be redeemed with merchants.
+- Old demo XP stays visible in your level, but does not create spendable credit.
+- Offline task changes and redemptions queue on the device. Pending actions never
+  become confirmed XP or spent rewards until the server acknowledges them.
+- Anonymous demo mode retains local balances and resets separately.
 - There are no valid vouchers, cash balances, payments or real merchant redemption.
 
 Run the reward eligibility and redemption tests with `npm test` (Node.js 22.18+).
@@ -89,10 +90,10 @@ See **You** for the installed version/build number.
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
 name is necessary because Apple reported that “Quavi” is already in use.
-**1.0 (9)** is verified **Testing** in Quavi Development on October 18, 2026.
+**1.0 (10)** is verified **Testing** in Quavi Development on October 18, 2026.
 Open TestFlight on the accepted tester's iPhone, tap **Update**, and confirm
-**1.0 (9)** in You. Update every device using a migrated account: old builds'
-whole-document writes cannot replace independent outing records. Earlier builds
+**1.0 (10)** in You. Update every device using a migrated account: old builds'
+whole-document writes cannot replace independent outing records or server-owned rewards. Earlier builds
 remain listed as release history, not a safe persistence rollback. App Store
 publication and external tester review remain separate release steps.
 
@@ -143,8 +144,7 @@ iPhone SE through onboarding, mood, openings, starting the story and demo arriva
 dependency audits report no known vulnerabilities for client or server. The saved
 flow is `.maestro/onboarding-small-phone.yaml` and must run on a disposable simulator.
 Outdoor GPS/arrival, physical lock/resume and airplane-mode photo recovery still
-need physical-device acceptance. Friends and authoritative reward services remain
-roadmap work; this pass does not make those prototype features server-backed.
+need physical-device acceptance. Friends remain roadmap work. Authoritative demo rewards are implemented in build 10 below.
 
 ## Agreed system design and implementation order
 
@@ -157,9 +157,10 @@ prototype design, and keep Quavi on GCP. Improve the implementation in this orde
    journal checkpoints pending changes and retries them with stable operation IDs.
    Separate fields merge; same-field conflicts retain local edits and require a
    choice in You → account saves. Profile edits no longer carry outing content.
-2. **Server-owned rewards.** Replace client XP/spending with idempotent server
-   commands and an append-only ledger; define accepted arrival/task evidence.
-   Keep partner offers simulated until actual partners/funding are secured.
+2. **Server-owned rewards (implemented).** Idempotent server commands and an
+   append-only ledger own signed-in awards and demo spending. Arrival/task
+   participation remains self-reported demo evidence, not proof of a visit or
+   purchase. Real partner verification and funding remain later work.
 3. **Social access.** Server-side friendships, visibility and blocking, with
    authorization on feed and shared-media reads.
 4. **Physical acceptance and mobile improvements.** Test real outings, gestures,
@@ -196,8 +197,7 @@ remain until the next new-client profile save; they are not the outing authority
 Deleting an account immediately removes outings and operation receipts, and photo
 cleanup checks both profile and outing references.
 
-XP, coins and demo redemptions are still client-controlled demo values; this phase
-separates outing progress but does not implement authoritative reward accounting.
+That outing-only phase retained client demo rewards; build 10 below adds server-owned accounting.
 Verification: 28 client tests and 53 backend tests pass, both TypeScript builds
 pass, and the 25-command native iPhone SE flow reaches demo arrival. A separate
 signed-in native check restores a migrated outing after stop/relaunch and shows
@@ -210,7 +210,7 @@ photo/lock/relaunch acceptance remains a release check.
 Keep all prototype features and its visual identity; target iPhone first and
 support any city. Demo partners stay in the initial release. This is the build
 order. The account/save backend and first live detour checks are deployed; social and
-trusted reward services and the reliability stages below still need implementation.
+production partner verification and the reliability stages below still need implementation.
 
 | Order | Work | Completion check |
 | --- | --- | --- |
@@ -223,10 +223,11 @@ trusted reward services and the reliability stages below still need implementati
 | Next: detour reliability | Validate entry/access; strengthen venue identity/category matching and multilingual coverage; replace scripted captions with grounded generation | Complete real outings in multiple regions, including closed stops, missing hours, sparse coverage and interrupted sessions |
 | Done: foreground outing recovery foundation | Native while-in-use GPS, accuracy/freshness gates, explicit denied-location recovery, lock/background pause, transient checks after resume/reconnect and every five minutes, cached account startup and read-before-retry sync | Unit tests cover stale/inaccurate fixes, watch cancellation, session invalidation, autosave stability, offline replay and sync conflicts; simulator GPS, screen lock/resume and permission-denied flows pass |
 | Done: independent outing records and offline journal | Private per-outing records/revisions, lifecycle, one-time legacy migration, IndexedDB retry journal, field-level conflicts, idempotent operation receipts, photo-reference retention and deletion | API/PostgreSQL tests exercise cold offline replay, lost acknowledgement, concurrent fields, conflicts, account isolation and deletion; physical-device acceptance remains below |
-| Next: physical outing acceptance | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
+| Deferred by user: physical outing acceptance before wider beta | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
 | Planned: active-outing background tracking | Track only during an explicitly started outing, with a clear stop control; implement permission, battery, privacy and notification behavior | Current build remains foreground-only and explains that policy before using GPS |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
-| Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |
+| Done: server-owned demo rewards | Deterministic task plans, append-only ledger, one-time redemptions, offline commands and legacy display-only XP | 63 backend and 30 client tests cover duplicate awards, concurrent spending, inflated balances and lost acknowledgements; partners remain fictional |
+| Done: explicit Explore location selection | Address-bearing search suggestions, keyboard selection and stale-response cancellation | Searching never silently chooses the first hit; the selected result coordinates drive the route |
 | Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) verified Testing in Quavi Development |
 | Done: first internal TestFlight beta | App Store Connect record, explicit app identifier, signed 1.0 (4), real-use onboarding, visible build label and beta instructions | Apple shows Testing in Quavi Development; owner is an accepted tester; installation on the physical phone is the next user step |
 | Beta and launch | CI, monitoring, backups, provider limits/budget, privacy disclosures, final app icon/splash, accessibility and small/large iPhone QA, TestFlight and App Store submission | Beta testers complete the full flow; no blocking failures remain; release metadata matches actual behavior |
@@ -370,3 +371,33 @@ acceptance. Do not reset a personal device or account to run the disposable test
 Provider references: [Geolocation](https://capacitorjs.com/docs/apis/geolocation),
 [app lifecycle](https://capacitorjs.com/docs/apis/app),
 [network changes](https://capacitorjs.com/docs/apis/network).
+
+### Server rewards and Explore search — build 10
+
+Migration `006_rewards.sql` snapshots pre-existing demo totals for display only.
+Signed-in clients cannot overwrite XP, coins, badges or redemption history. A
+server-frozen task plan limits XP to 25 per outing and 100 per UTC day; confirmed
+map/chapter coins are capped at 100 per day. Rechecking tasks, retrying a lost
+response and simultaneous spending on two devices cannot duplicate value.
+Account deletion purges the private ledger, task plans and redemption receipts.
+
+Reward activation is per account. Once activated, older clients must update before
+writing saves. A client-only rollback is insufficient for an activated account.
+Participation still relies on reported arrival and task completion: this supports
+fictional demo rewards, not funded rewards or merchant verification.
+
+Explore now offers named places with addresses before selecting a destination.
+The selected result's coordinates are retained. Search uses the existing
+[Photon provider](https://github.com/komoot/photon), with 500 ms debounce,
+cancellation, explicit empty/error states and keyboard navigation. Production
+search availability, provider budgets and a managed/self-hosted option remain
+operations work. Outdoor offline/lock/resume acceptance remains user-deferred.
+
+Live development verification passed against `quavi-api-00013-sbf` (source
+`197a5bd`): deterministic task XP, duplicate replay, one-time welcome sample,
+insufficient funds and forged profile totals. A fresh signed-in UI session showed
+the confirmed 12 XP and synced demo receipt. The disposable account was then
+blocked for deletion and its temporary credentials removed. Native iPhone SE
+verification confirms address suggestions fit above the keyboard and selecting
+Springfield Park opens the New York destination. Signed archive/upload 1.0 (10)
+succeeded; **1.0 (10)** is verified **Testing** in Quavi Development.

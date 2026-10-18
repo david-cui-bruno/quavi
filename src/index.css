@@ -454,3 +454,8 @@ button.pill.abs { padding: 0 16px; }
   .qcard .active-stop-summary { display: none; }
   .active-stop-stats > div { padding: 6px 0 !important; margin-bottom: 6px !important; }
 }
+
+/* Give destination choices the keyboard-visible map area without competing panels. */
+.screen:has(.place-search input:focus) > [data-map-obstruction],
+.phone:has(.place-search input:focus) .tabbar { visibility: hidden; }
+.screen:has(.place-search input:focus) .explore-map { bottom: 0 !important; }

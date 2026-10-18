@@ -21,6 +21,8 @@ export class OutingSync {
     onStatus?: (status: OutingStatus) => void;
     uuid?: () => string;
   });
+  cache:any;
+  redeem(offerId:string):void;
   loaded: boolean;
   status: OutingStatus;
   open(legacy: AppState, dirty?: boolean): Promise<void>;
