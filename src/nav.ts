@@ -2,12 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LatLng } from './geo'
 
 /** One instruction on a walking route, e.g. "Turn left onto Bleecker St". */
-export type Maneuver = { type: string; modifier?: string; bearingAfter?: number }
+export type Maneuver = { type: string; modifier?: string; bearingAfter?: number; instruction?: string }
 export type NavStep = { maneuver: Maneuver; name: string; distance: number; duration: number; /** index into the route line where this step begins */ start: number }
-export type WalkRoute = { geometry: LatLng[]; steps: NavStep[]; distance: number; duration: number }
+export type WalkRoute = { geometry: LatLng[]; steps: NavStep[]; distance: number; duration: number; warnings?: string[]; provider?: string }
 
-// Free walking-route service built on OpenStreetMap (no key). A real launch should use a paid directions API.
-const BASE = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/'
+import {api,auth} from './cloud'
 
 const COMPASS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest']
 export const compass = (bearing = 0) => COMPASS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8]
@@ -24,6 +23,7 @@ const TURN: Record<string, string> = {
 
 /** Plain-language instruction for one maneuver. */
 export function stepText(m: Maneuver, name: string, dest?: string): string {
+  if(m.instruction)return m.instruction
   const onto = name ? ` onto ${name}` : ''
   const turn = TURN[m.modifier ?? 'straight'] ?? 'Continue'
   switch (m.type) {
@@ -39,24 +39,9 @@ export function stepText(m: Maneuver, name: string, dest?: string): string {
 }
 
 export async function fetchWalkingRoute(points: LatLng[], signal?: AbortSignal): Promise<WalkRoute> {
-  const coords = points.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';')
-  const res = await fetch(`${BASE}${coords}?steps=true&geometries=geojson&overview=full&radiuses=${points.map(() => 100).join(';')}`, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000) })
-  if (!res.ok) throw new Error(`Directions failed (${res.status})`)
-  const data = await res.json()
-  if (data.code !== 'Ok' || !data.routes?.[0] || data.waypoints?.length !== points.length || data.waypoints.some((w: {distance:number})=>!Number.isFinite(w.distance)||w.distance>100)) throw new Error('No walking route found')
-  const r = data.routes[0]
-  const geometry: LatLng[] = []
-  const steps: NavStep[] = []
-  for (const leg of r.legs) {
-    for (const st of leg.steps) {
-      const start = geometry.length ? geometry.length - 1 : 0
-      ;(st.geometry.coordinates as [number, number][]).forEach((c, k) => { if (k === 0 && geometry.length) return; geometry.push({ lat: c[1], lng: c[0] }) })
-      const maneuver: Maneuver = { type: st.maneuver.type, modifier: st.maneuver.modifier, bearingAfter: st.maneuver.bearing_after }
-      steps.push({ maneuver, name: st.name ?? '', distance: st.distance, duration: st.duration, start })
-    }
-  }
-  if(geometry.length<2||!steps.length||!Number.isFinite(r.distance)||!Number.isFinite(r.duration)||geometry.some(p=>!Number.isFinite(p.lat)||!Number.isFinite(p.lng)))throw new Error('Invalid walking directions')
-  return { geometry, steps, distance: r.distance, duration: r.duration }
+  const user=auth.currentUser
+  if(!user)throw new Error('Sign in for live walking directions')
+  return await api<WalkRoute>(user,'/walking-route','POST',{points},signal)
 }
 
 const keyOf = (pts: LatLng[]) => pts.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join('|')

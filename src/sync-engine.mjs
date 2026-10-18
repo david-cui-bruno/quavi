@@ -1,13 +1,13 @@
 /** Account-isolated offline cache and optimistic concurrency. Transport is injected for testing. */
 export class SyncEngine {
-  constructor({ uid, storage, request, prepare, onState, onStatus, initial }) {
-    Object.assign(this, { storage, request, prepare, onState, onStatus })
+  constructor({ uid, storage, request, prepare, onState, onStatus, initial, sanitize = (value) => value }) {
+    Object.assign(this, { storage, request, prepare, onState, onStatus, sanitize })
     this.key = `quavi.account.v1.${uid}`
     this.closed = false; this.running = false; this.conflict = false; this.ready = false
     try { this.cache = JSON.parse(storage.getItem(this.key) || 'null') } catch { /* damaged cache */ }
     if (!this.cache || typeof this.cache.state !== 'object' || !this.cache.state || !Number.isInteger(this.cache.revision) || this.cache.revision < 0 || typeof this.cache.dirty !== 'boolean') this.cache = { state: initial, revision: 0, dirty: false }
   }
-  persist() { this.storage.setItem(this.key, JSON.stringify(this.cache)) }
+  persist() { this.storage.setItem(this.key, JSON.stringify({ ...this.cache, state: this.sanitize(this.cache.state) })) }
   status(value) { if (!this.closed) this.onStatus(value) }
   async open() {
     try {
@@ -42,7 +42,7 @@ export class SyncEngine {
         const snapshot = this.cache.state
         const prepared = await this.prepare(snapshot)
         if (this.closed) return
-        const saved = await this.request('PUT', { state: prepared, revision: this.cache.revision })
+        const saved = await this.request('PUT', { state: this.sanitize(prepared), revision: this.cache.revision })
         if (this.closed) return
         const unchanged = snapshot === this.cache.state
         this.cache = { state: unchanged ? prepared : this.cache.state, revision: saved.revision, dirty: !unchanged }
@@ -61,7 +61,7 @@ export class SyncEngine {
     if (this.closed) return
     if (!remote.state) throw new Error('No cloud save to load yet.')
     const next = { state: remote.state, revision: remote.revision, dirty: false }
-    this.storage.setItem(this.key, JSON.stringify(next))
+    this.storage.setItem(this.key, JSON.stringify({...next,state:this.sanitize(next.state)}))
     this.cache = next
     this.conflict = false; this.needsRead = false; this.persist(); this.onState(remote.state); this.status('saved')
   }

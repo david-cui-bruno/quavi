@@ -87,14 +87,14 @@ services below still need implementation.
 | Done: account deletion and data guards | Recent-password confirmation, durable deletion requests, immediate access blocking, scheduled Auth/SQL/photo cleanup, immutable verified photos, validated saves and shared account quotas | Emulator/PostgreSQL tests cover deletion retries and races. Live checks verify private uploads and immediate deletion blocking; final scheduled cleanup is tested with disposable accounts |
 | Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
 | Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
-| In progress: detour reliability | Pedestrian network checks at generation and Start; bounded entrance snapping, actual leg times, time-budget rejection and explicit directions failures. Next: live venue/hours/admission validation, strengthen category quality, replace scripted captions with grounded generation, and test more regions, languages and sparse areas | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
+| In progress: detour reliability | Google Maps on iPhone/web; Google walking checks and reported hours for expected arrival/full stay at generation and Start; unknown hours stay explicit, closed matches are excluded and Google responses stay out of durable saves. Next: entry/access validation and pause/resume rechecks, strengthen category quality, replace scripted captions with grounded generation, and test more regions, languages and sparse areas | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
 | Native outing experience | Validate foreground GPS, camera, native sharing, resume and permission-denied behavior; decide active-detour background location and arrival notifications; recover safely from offline/interrupted sessions | Complete a real outing on iPhone, including locking/resuming the phone under the selected tracking policy |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
 | Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |
 | Beta and launch | CI, monitoring, backups, provider limits/budget, privacy disclosures, final app icon/splash, accessibility and small/large iPhone QA, TestFlight and App Store submission | Beta testers complete the full flow; no blocking failures remain; release metadata matches actual behavior |
 | Later: real partners | Partner agreements, funding model, eligibility/expiry, merchant validation, redemption disputes and abuse prevention | Real offers launch only after participating merchants and funding are secured |
 
-Open decisions: place/AI service budget and provider choice; foreground-only
+Open decisions: Google Maps budget/credit eligibility and AI provider; foreground-only
 versus active-detour background tracking; initial age policy and story visibility.
 Any-city support is a target, with explicit no-result fallbacks where coverage is poor.
 
@@ -176,3 +176,22 @@ existing walking directions service is used during navigation. Any-city coverage
 is a goal, with honest sparse/no-result states rather than fictional substitutions.
 Explore shows a signed-in account’s real recent detour stops; anonymous demo pins
 are labeled. Destination-search failures do not substitute a sample city for accounts.
+
+
+### Google Maps development setup
+
+Install with `npm ci` so the pinned native map-ready listener patch is applied.
+Google Maps provides the base map, signed-in walking directions and transient venue
+hours checks. Overture remains the independently saveable venue catalog; area and
+additional destination searches still use Photon/Nominatim. Missing or ambiguous
+hours are not treated as confirmed open. Planned visits are rechecked before Start.
+Saved outings do not retain Google hours or route responses; they need a new check
+when reopened. Admission, entrances, accessibility and current conditions remain
+unverified. Friends, demo rewards, captions and other roadmap items retain their
+existing implementation status.
+
+The backend uses its attached GCP service account for Google requests. Public SDK
+keys are restricted by bundle/origin and API; backend development caps are 500
+Places requests and 500 Routes requests per calendar month, and browser map loads
+are capped at 100/day. General GCP credits have not been confirmed to cover Maps.
+See [server operations and provider notes](server/README.md#google-maps-reported-hours-and-walking-directions).

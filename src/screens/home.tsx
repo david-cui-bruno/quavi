@@ -1,3 +1,4 @@
+import {useLiveHoursClock,GoogleAttribution} from '../GoogleAttribution'
 import { CityPicker } from '../CityPicker'
 import { useTracking } from '../tracking'
 import { useEffect, useState } from 'react'
@@ -142,6 +143,7 @@ export function Home() {
 const MOOD_TO_OPENING: Record<string, string> = { bailed: 'cozy', closed: 'lucky', mood: 'lucky', weather: 'cozy', late: 'bold' }
 
 export function Openings() {
+  useLiveHoursClock()
   const { s, update, go, account } = useStore()
   const tracking = useTracking()
   const [choices,setChoices] = useState<Opening[]>(account ? [] : OPENINGS)
@@ -173,7 +175,7 @@ export function Openings() {
           return (
             <button key={o.id} onClick={() => setSel(oi)} className="tile fade-in" style={{ background: BG[bg], minHeight: 132, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
               <div className="h1" style={{ fontSize: 25 }}>{o.title}</div>
-              <div className="small" style={{ fontWeight: 500 }}>{o.tags}</div>
+              <div className="small" style={{ fontWeight: 500 }}>{o.walking?.provider==='Google Maps'?`Nearby · approx. ${o.estimatedMinutes} min · reported hours checked`:o.tags}</div>{o.walking?.provider==='Google Maps'&&<GoogleAttribution dark={dark} hours={o.chapters.map(c=>c.hours)}/>}
               <div className="small" style={{ fontWeight: 700, maxWidth:o.source?'calc(100% - 72px)':undefined, overflowWrap:'anywhere', color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
               <div className="pcs" style={{ right: 14, bottom: o.source?4:-26 }}><Persona spec={flock(o.persona, o.color)} size={o.source?60:96} /></div>
               {on && <span className="tick" style={{ left: 'auto', right: 14, top: 14, bottom: 'auto' }}><Check /></span>}
@@ -204,7 +206,7 @@ export function Writing() {
     return () => [a, b, c, d].forEach(window.clearTimeout)
   }, [go])
   const lines = [
-    s.story?.source ? `Found ${s.story.chapters.length} nearby places · hours unverified` : 'Previewing three demo stops · hours not checked',
+    s.story?.source ? `Found ${s.story.chapters.length} nearby places · checking your route` : 'Previewing three demo stops · hours not checked',
     `Checked your mood: “${(MOODS.find((m) => m.id === s.mood)?.label ?? 'dressed up').toLowerCase()}”`,
     'Picking the twist…',
   ]

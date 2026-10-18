@@ -27,6 +27,10 @@ name: iPhone navigation and destination regression checks
 - assertVisible: "Edit your Quavi"
 - tapOn: "Explore"
 - assertVisible: "Surprise me with a detour"
+- extendedWaitUntil:
+    visible: "Google Maps, ready"
+    timeout: 15000
+- assertNotVisible: "Map unavailable.*"
 - tapOn: "Where to?"
 - inputText: "Washington Square Park"
 - pressKey: Enter

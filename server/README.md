@@ -258,11 +258,76 @@ directions shows a pause/check message and an external walking-directions link.
 The active map's straight-line coin trail is hidden for live outings; authoritative
 on-route rewards remain a separate roadmap item.
 
-Live venue hours remain unverified pending the provider choice. Do not turn the
-Overture operating-status field into an open-now claim. Google Places would require
-Google Maps for mapped results and suitable retention/attribution controls; keeping
-the current map requires a compatible venue provider.
-
 Sources: [FOSSGIS service and usage policy](https://routing.openstreetmap.de/about.html),
 [OSRM route and waypoint API](https://project-osrm.org/docs/v5.24.0/api/),
 [Google Places policies](https://developers.google.com/maps/documentation/places/web-service/policies).
+
+## Google Maps, reported hours and walking directions
+
+New clients send `X-Quavi-Maps: google`. With `GOOGLE_MAPS_ENABLED=true`, city
+outings use Google Routes' `WALK` graph and Google Places (New) to check each
+selected venue for its expected arrival **and full stay**, including earlier stops.
+Reported closed or temporarily/permanently closed matches reject the candidate.
+An exact normalized name plus an 80 m coordinate match is required; ambiguous,
+unmatched, missing, truncated or DST-ambiguous schedules are explicitly unknown.
+Dated current-opening periods include provider exceptions; current open-now alone
+is insufficient. No admission, accessibility, sidewalk or safety guarantee is made.
+
+`POST /v1/me/detour-check` refreshes hours and the route before Start. Its `stops`
+(name, independently sourced coordinates, stay minutes, optional Google place ID)
+must match its bounded `points`. `POST /v1/me/walking-route` returns ephemeral
+Google geometry, instructions and warnings for signed-in navigation. Both enforce
+identity, shared quotas and a deletion recheck after external work. Anonymous demos
+show their separate sample plans and do not call paid Google navigation endpoints.
+Existing clients keep the original FOSSGIS path until updated; do not serve Google
+geometry on the old OpenStreetMap client.
+
+The catalog and its saved names/coordinates remain independently sourced Overture
+data. Google identity matches and hours are a transient verification layer. Only
+permitted Google place IDs are retained. Google hours, walking metrics, route
+geometry/instructions and derived open-status labels are excluded from persistent
+client caches and cloud saves. Hours expire from displayed claims after five minutes
+and recheck on Start; resuming a saved plan shows hours as not checked. User notes,
+photos and independently sourced catalog data remain saveable. The native map SDK
+manages its own map rendering/cache under its terms. Provider request bodies are
+not logged by the API.
+
+Cloud Run authenticates Places and Routes through its attached service account
+with `roles/serviceusage.serviceUsageConsumer` and explicit project quota headers;
+there is no server Maps API key or service-account key file. SDK keys in
+`src/maps-config.json` are public client identifiers: iOS is restricted to
+`com.quavi.app` and the iOS map SDK; browser access is restricted to local port 5199
+origins and Maps JavaScript. Android is not configured. Browser Maps quota is capped
+at 100 loads/day. Backend Places and Routes requests each have a shared **500 per
+calendar month** development cap, counting failures; per-account checks are capped
+at 60/hour and existing detour-generation limits remain. Monthly provider counters
+survive the ordinary two-day quota sweep and expire after their month ends. No
+provider content is kept in the provider clock/counter records.
+
+Google Maps billing and free allowances are separate from general GCP credits and
+may aggregate across projects sharing billing. Credit eligibility is **not confirmed**;
+the caps bound development usage and are not a promise of a zero bill. Confirm Maps
+billing coverage/allowances before increasing them or launching publicly. Monitoring,
+budget alerts and a production provider-cap policy remain on the roadmap.
+
+The native Google map keeps the app's branded pins and overlays. A small pinned
+8.0.1 plugin patch registers `onMapReady` before native creation: the original
+ordering missed the event and could lead to a native nil-view crash. `npm ci`
+applies `scripts/patch-google-maps.mjs`; unexpected source changes fail the patch.
+Creation waits for screen-entry animations to finish before measuring the native
+container. The iOS smoke test asserts actual map readiness, rather than only the
+surrounding screen. Map areas reserve space for bottom panels so SDK attribution
+remains visible. Official attribution assets are kept unmodified, and third-party
+attributions returned with hours are displayed. Native pin PNGs are reproducible
+with `npm run maps:icons` after installing server development tools.
+
+Public development notices are available at `/legal/privacy` and `/legal/terms`,
+linked from You → Your account. They describe provider/location sharing, deletion,
+Google's additional terms and the separate demo reward behavior.
+
+Sources: [Places policies](https://developers.google.com/maps/documentation/places/web-service/policies),
+[Routes policies](https://developers.google.com/maps/documentation/routes/policies),
+[Places data fields](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places),
+[Routes response fields](https://developers.google.com/maps/documentation/routes/reference/rest/v2/TopLevel/computeRoutes),
+[Google pricing](https://developers.google.com/maps/billing-and-pricing/pricing),
+[Capacitor map plugin](https://capacitorjs.com/docs/apis/google-maps).

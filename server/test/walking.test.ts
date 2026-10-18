@@ -111,7 +111,7 @@ test("openings use network times and reject excessive walking or disconnected ro
   assert.equal(bad.openings.length, 0);
   const missing = await checkedDetours(raw, input, { check: async () => null });
   assert.equal(missing.openings.length, 0);
-  assert.match(missing.notes[0], /No three-stop walking route/);
+  assert.match(missing.notes[0], /No three-stop outing/);
 });
 test("provider outages never become a straight-line route", async () => {
   await assert.rejects(

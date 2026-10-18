@@ -1,155 +1,397 @@
-import { useEffect, useRef, useState } from 'react'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { BODY_PLAIN, Persona, type AvatarSpec } from './brand/Persona'
-import { distance, type LatLng } from './geo'
-
-/** Map pins are plain silhouettes (like a map pin, not a character): colour says what they are. */
-export type PinKind = 'quest' | 'dest' | 'start' | 'current' | 'done' | 'locked'
-
+import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { GoogleMap, LatLngBounds, type Marker } from "@capacitor/google-maps";
+import type { AvatarSpec } from "./brand/Persona";
+import { distance, type LatLng } from "./geo";
+import mapsConfig from "./maps-config.json";
+export type PinKind =
+  | "quest"
+  | "dest"
+  | "start"
+  | "current"
+  | "done"
+  | "locked";
 export type RealPin = {
-  id: string
-  ll: LatLng
-  kind: PinKind
-  label?: string
-  sub?: string
-  selected?: boolean
-  /** side-quest pins hide their name until you zoom in, so a busy route stays readable */
-  quest?: boolean
-  onClick?: () => void
-}
-
-export type MapCoin = { id: number; ll: LatLng; got: boolean }
-
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)
-
-const SIZE: Record<PinKind, number> = { quest: 22, dest: 30, start: 0, current: 32, done: 26, locked: 22 }
-
-function pinHtml(p: RealPin) {
-  if (p.kind === 'start') return `<div class="mpin mpin-start"><span class="dot"></span>${p.label ? `<span class="rlbl">${esc(p.label)}</span>` : ''}</div>`
-  const w = Math.round(SIZE[p.kind] * (p.selected ? 1.3 : 1))
-  const check = p.kind === 'done' ? '<path d="M50 104 L68 122 L100 84" fill="none" stroke="#F9CB2F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>' : ''
-  const svg = `<svg viewBox="0 24 144 205" width="${w}" height="${Math.round(w * 1.42)}" aria-hidden="true"><path d="${BODY_PLAIN}"/>${check}</svg>`
-  const ring = p.kind === 'current' ? '<span class="ring"></span>' : ''
-  const label = p.label ? `<span class="rlbl${p.quest && !p.selected ? ' q' : ''}">${esc(p.label)}${p.sub ? ` <em>${esc(p.sub)}</em>` : ''}</span>` : ''
-  return `<div class="mpin mpin-${p.kind}${p.selected ? ' sel' : ''}">${ring}${svg}${label}</div>`
-}
-
-/**
- * A real OpenStreetMap map: drag, pinch or scroll to zoom. With `you` it works like a navigation map:
- * it follows you as you move, stops following when you drag away, and a locate button brings it back.
- */
-export function RealMap({ pins, route, doneRoute, coins, fit, inset = { top: 180, bottom: 340 }, you, youAvatar, follow = false, zoomOnYou = 16, controlsTop = 176 }: {
-  pins: RealPin[]
-  route?: LatLng[]
-  /** the part of the route you've already walked, drawn solid */
-  doneRoute?: LatLng[]
-  coins?: MapCoin[]
-  /** frame these points once (no automatic reframing while you explore) */
-  fit?: LatLng[]
-  inset?: { top: number; bottom: number }
-  you?: LatLng
-  youAvatar?: AvatarSpec
-  /** start out following `you` */
-  follow?: boolean
-  zoomOnYou?: number
-  /** where the zoom and locate buttons start from the top, so they clear the overlays */
-  controlsTop?: number
+  id: string;
+  ll: LatLng;
+  kind: PinKind;
+  label?: string;
+  sub?: string;
+  selected?: boolean;
+  quest?: boolean;
+  onClick?: () => void;
+};
+export type MapCoin = { id: number; ll: LatLng; got: boolean };
+// Native map creation/destruction is serialized so React's development remount cannot race SDK views.
+let lifecycle: Promise<unknown> = Promise.resolve();
+export function RealMap({
+  pins,
+  route,
+  doneRoute,
+  coins,
+  fit,
+  inset = { top: 180, bottom: 340 },
+  you,
+  youAvatar: _youAvatar,
+  follow = false,
+  zoomOnYou = 16,
+  controlsTop = 176,
+}: {
+  pins: RealPin[];
+  route?: LatLng[];
+  doneRoute?: LatLng[];
+  coins?: MapCoin[];
+  fit?: LatLng[];
+  inset?: { top: number; bottom: number };
+  you?: LatLng;
+  youAvatar?: AvatarSpec;
+  follow?: boolean;
+  zoomOnYou?: number;
+  controlsTop?: number;
 }) {
-  const el = useRef<HTMLDivElement>(null)
-  const map = useRef<L.Map | null>(null)
-  const layer = useRef<L.LayerGroup | null>(null)
-  const youMarker = useRef<L.Marker | null>(null)
-  const pinsRef = useRef(pins)
-  pinsRef.current = pins
-  const following = useRef(follow)
-  const [isFollowing, setIsFollowing] = useState(follow)
-  const setFollow = (v: boolean) => { following.current = v; setIsFollowing(v) }
-  // keep "you" in the open part of the map, clear of the search bar / sheet that cover the edges
-  const centerFor = (m: L.Map, ll: LatLng, z: number): L.LatLng => m.unproject(m.project([ll.lat, ll.lng], z).add([0, (inset.bottom - inset.top) / 2]), z)
-  const fitKey = (fit ?? []).map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join('|')
-
+  const element = useRef<HTMLElement>(null),
+    id = useId().replace(/[^a-z0-9]/gi, ""),
+    latest = useRef({ pins, you, fit, inset, zoomOnYou });
+  latest.current = { pins, you, fit, inset, zoomOnYou };
+  const [cover, setCover] = useState(0);
+  useLayoutEffect(() => {
+    const el = element.current;
+    if (!el) return;
+    const panels = [
+      ...(el
+        .closest("main")
+        ?.querySelectorAll<HTMLElement>("[data-map-obstruction]") ?? []),
+    ];
+    const measure = () => {
+      const r = el.parentElement!.getBoundingClientRect();
+      const tops = panels
+        .map((p) => p.getBoundingClientRect())
+        .filter(
+          (p) =>
+            p.width > r.width * 0.5 &&
+            p.bottom >= r.bottom - 4 &&
+            p.top < r.bottom &&
+            p.top > r.top,
+        );
+      setCover(
+        tops.length
+          ? Math.max(
+              0,
+              Math.min(
+                r.height - 120,
+                r.bottom - Math.min(...tops.map((p) => p.top)),
+              ),
+            )
+          : 0,
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(el.parentElement!);
+    panels.forEach((p) => observer.observe(p));
+    measure();
+    return () => observer.disconnect();
+  }, []);
+  const [map, setMap] = useState<GoogleMap | null>(null),
+    [error, setError] = useState(""),
+    [following, setFollowing] = useState(follow);
+  const followRef = useRef(follow),
+    zoom = useRef(zoomOnYou),
+    clicks = useRef(new Map<string, string>());
+  const setFollow = (v: boolean) => {
+    followRef.current = v;
+    setFollowing(v);
+  };
+  const mutations = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
-    if (!el.current) return
-    const m = L.map(el.current, { zoomControl: false, attributionControl: false, minZoom: 10, maxZoom: 19, zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 90 })
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Routes: <a href="https://routing.openstreetmap.de/about.html">FOSSGIS</a> · <a href="https://www.openstreetmap.org/fixthemap">Fix the map</a>'  }).addTo(m)
-    L.control.zoom({ position: 'topright' }).addTo(m)
-    L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(m)
-    m.setView([40.7329, -74.0031], 15)
-    const far = () => m.getContainer().classList.toggle('rmap--far', m.getZoom() < 16.25)
-    m.on('zoomend', far)
-    far()
-    // dragging the map yourself ends "follow me"
-    m.on('dragstart', () => { if (following.current) setFollow(false) })
-    layer.current = L.layerGroup().addTo(m)
-    map.current = m
-    const ro = new ResizeObserver(() => m.invalidateSize())
-    ro.observe(el.current)
-    return () => { ro.disconnect(); m.remove(); map.current = null; layer.current = null; youMarker.current = null }
-  }, [])
-
+    let canceled = false,
+      created: GoogleMap | undefined;
+    setMap(null);
+    setError("");
+    lifecycle = lifecycle
+      .catch(() => {})
+      .then(async () => {
+        if (canceled || !element.current) return;
+        await Promise.allSettled(
+          (element.current.closest("main")?.getAnimations() ?? []).map(
+            (animation) => animation.finished,
+          ),
+        );
+        if (canceled || !element.current) return;
+        const p = latest.current;
+        let resolveReady!: () => void;
+        const ready = new Promise<void>((resolve) => {
+          resolveReady = resolve;
+        });
+        const m = await GoogleMap.create(
+          {
+            id: "quavi-" + id,
+            element: element.current,
+            apiKey: Capacitor.isNativePlatform()
+              ? mapsConfig.iosKey
+              : mapsConfig.webKey,
+            config: {
+              center: p.you ?? p.fit?.[0] ?? { lat: 40.7329, lng: -74.0031 },
+              zoom: p.zoomOnYou,
+              minZoom: 3,
+              maxZoom: 20,
+              disableDefaultUI: true,
+              clickableIcons: false,
+              gestureHandling: "greedy",
+              backgroundColor: "#F7F4EC",
+            },
+          },
+          () => resolveReady(),
+        );
+        created = m;
+        if (canceled) {
+          await m.destroy();
+          created = undefined;
+          return;
+        }
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            ready,
+            new Promise((_, reject) => {
+              timeout = setTimeout(
+                () => reject(new Error("Map readiness timed out")),
+                10000,
+              );
+            }),
+          ]);
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (canceled) {
+          await m.destroy();
+          created = undefined;
+          return;
+        }
+        await m.setOnCameraMoveStartedListener((e) => {
+          if (e.isGesture) setFollow(false);
+        });
+        await m.setOnCameraIdleListener((e) => {
+          zoom.current = e.zoom;
+        });
+        await m.setOnMarkerClickListener((e) => {
+          const pin = latest.current.pins.find(
+            (p) => p.id === clicks.current.get(e.markerId),
+          );
+          pin?.onClick?.();
+        });
+        await m.enableAccessibilityElements(false); // Plugin passes this flag to accessibilityElementsHidden.
+        if (!canceled) {
+          markers.current = [];
+          lines.current = [];
+          setMap(m);
+        }
+      })
+      .catch(() => {
+        if (!canceled)
+          setError(
+            "Map unavailable. Check your connection and reopen this screen.",
+          );
+      });
+    return () => {
+      canceled = true;
+      lifecycle = lifecycle
+        .catch(() => {})
+        .then(async () => {
+          await mutations.current.catch(() => {});
+          if (created) await created.destroy();
+        });
+    };
+  }, [id, cover]);
   useEffect(() => {
-    const m = map.current
-    if (!m || !fit?.length) return
-    m.fitBounds(L.latLngBounds(fit.map((p) => [p.lat, p.lng] as [number, number])), { paddingTopLeft: [56, inset.top], paddingBottomRight: [76, inset.bottom], maxZoom: 17, animate: false })
+    if (!map) return;
+    const h = element.current?.clientHeight ?? 600;
+    const available = Math.max(0, h - 160),
+      top = Math.min(inset.top, available * 0.6),
+      bottom = Math.min(
+        cover ? 60 : Math.max(70, inset.bottom),
+        available - top,
+      );
+    void map.setPadding({ top, bottom, left: 24, right: 24 }).catch(() => {});
+  }, [map, inset.top, inset.bottom, cover]);
+  const fitKey = (fit ?? []).map((p) => p.lat + "," + p.lng).join("|");
+  useEffect(() => {
+    if (!map || !fit?.length) return;
+    const sw = {
+        lat: Math.min(...fit.map((p) => p.lat)),
+        lng: Math.min(...fit.map((p) => p.lng)),
+      },
+      ne = {
+        lat: Math.max(...fit.map((p) => p.lat)),
+        lng: Math.max(...fit.map((p) => p.lng)),
+      };
+    const bounds = new LatLngBounds({
+      southwest: sw,
+      northeast: ne,
+      center: { lat: (sw.lat + ne.lat) / 2, lng: (sw.lng + ne.lng) / 2 },
+    });
+    void map.fitBounds(bounds, 48).catch(() => {});
+    // Geometry controls framing; array identity changes while walking do not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey])
-
-  // your position: a marker that moves, and the map follows while "follow me" is on
+  }, [map, fitKey]);
+  const markers = useRef<string[]>([]),
+    lines = useRef<string[]>([]);
   useEffect(() => {
-    const m = map.current
-    if (!m || !you) return
-    if (!youMarker.current) {
-      const svg = renderToStaticMarkup(<Persona spec={youAvatar ?? { color: 'Yellow' }} size={40} />)
-      youMarker.current = L.marker([you.lat, you.lng], { icon: L.divIcon({ className: 'rpin-wrap', iconSize: [0, 0], html: `<div class="mpin-you"><span class="pulse"></span>${svg}<span class="rlbl you">You</span></div>` }), interactive: false, keyboard: false, zIndexOffset: 2000 }).addTo(m)
-      if (follow) m.setView(centerFor(m, you, zoomOnYou), zoomOnYou, { animate: false })
-    } else youMarker.current.setLatLng([you.lat, you.lng])
-    if (following.current) m.panTo(centerFor(m, you, m.getZoom()), { animate: true, duration: 0.25, easeLinearity: 1, noMoveStart: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [you?.lat, you?.lng])
-
+    if (!map) return;
+    let canceled = false;
+    mutations.current = mutations.current
+      .catch(() => {})
+      .then(async () => {
+        if (canceled) return;
+        if (markers.current.length) await map.removeMarkers(markers.current);
+        if (lines.current.length) await map.removePolylines(lines.current);
+        markers.current = [];
+        lines.current = [];
+        clicks.current.clear();
+        const list: Marker[] = pins.map((p) => ({
+          coordinate: p.ll,
+          title: p.label ?? "",
+          snippet: p.sub ?? "",
+          iconUrl: `map-icons/${p.kind}.png`,
+          iconSize: {
+            width: p.selected ? 38 : 28,
+            height: p.selected ? 52 : 39,
+          },
+          iconAnchor: { x: 0.5, y: 1 },
+          opacity: p.kind === "locked" ? 0.6 : 1,
+          zIndex: p.selected ? 10 : p.kind === "current" ? 8 : 2,
+        }));
+        if (you)
+          list.push({
+            coordinate: you,
+            title: "You",
+            iconUrl: "map-icons/you.png",
+            iconSize: { width: 38, height: 52 },
+            iconAnchor: { x: 0.5, y: 1 },
+            zIndex: 20,
+          });
+        for (const coin of coins ?? [])
+          if (!coin.got)
+            list.push({
+              coordinate: coin.ll,
+              title: "Demo coin",
+              iconUrl: "map-icons/current.png",
+              iconSize: { width: 16, height: 22 },
+              opacity: 0.75,
+            });
+        const ids = list.length ? await map.addMarkers(list) : [];
+        markers.current = ids;
+        pins.forEach((p, i) => clicks.current.set(ids[i], p.id));
+        const paths = [];
+        if (route && route.length > 1)
+          paths.push({
+            path: route,
+            strokeColor: "#1E1B16",
+            strokeWeight: 5,
+            strokeOpacity: 0.65,
+          });
+        if (doneRoute && doneRoute.length > 1)
+          paths.push({
+            path: doneRoute,
+            strokeColor: "#EE6A2C",
+            strokeWeight: 7,
+            strokeOpacity: 1,
+          });
+        if (paths.length) lines.current = await map.addPolylines(paths);
+      })
+      .catch(() => {
+        if (!canceled)
+          setError("Couldn’t update the map. Reopen this screen to retry.");
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [map, pins, route, doneRoute, coins, you?.lat, you?.lng]);
   useEffect(() => {
-    const g = layer.current
-    if (!g) return
-    g.clearLayers()
-    if (route && route.length > 1) L.polyline(route.map((p) => [p.lat, p.lng] as [number, number]), { color: '#1E1B16', weight: 5, opacity: 0.35, lineCap: 'round', lineJoin: 'round', dashArray: '1 11' }).addTo(g)
-    if (doneRoute && doneRoute.length > 1) L.polyline(doneRoute.map((p) => [p.lat, p.lng] as [number, number]), { color: '#EE6A2C', weight: 7, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }).addTo(g)
-    for (const c of coins ?? []) {
-      if (c.got) continue
-      L.marker([c.ll.lat, c.ll.lng], { icon: L.divIcon({ className: 'rpin-wrap', iconSize: [0, 0], html: '<div class="rcoin"></div>' }), interactive: false, keyboard: false, zIndexOffset: -100 }).addTo(g)
-    }
-    for (const p of pins) {
-      const icon = L.divIcon({ className: 'rpin-wrap', iconSize: [0, 0], html: pinHtml(p) })
-      const mk = L.marker([p.ll.lat, p.ll.lng], { icon, title: p.label ?? '', keyboard: !!p.onClick, zIndexOffset: p.selected ? 1000 : p.kind === 'dest' || p.kind === 'current' ? 500 : 0 })
-      mk.on('click', () => pinsRef.current.find((x) => x.id === p.id)?.onClick?.())
-      mk.addTo(g)
-    }
-  }, [pins, route, doneRoute, coins])
-
+    if (map && you && followRef.current)
+      void map
+        .setCamera({ coordinate: you, zoom: zoom.current, animate: true })
+        .catch(() => {});
+  }, [map, you?.lat, you?.lng]);
   const recenter = () => {
-    const m = map.current
-    if (!m || !you) return
-    setFollow(true)
-    const z = Math.max(m.getZoom(), zoomOnYou)
-    m.setView(centerFor(m, you, z), z, { animate: true })
-  }
-
+    if (!map || !you) return;
+    setFollow(true);
+    void map
+      .setCamera({
+        coordinate: you,
+        zoom: Math.max(zoom.current, zoomOnYou),
+        animate: true,
+      })
+      .catch(() => {});
+  };
   return (
-    <div className="rmap-wrap" style={{ ['--ctl-top' as string]: `${controlsTop}px` }}>
-      <div className="rmap" ref={el} />
+    <div
+      className="rmap-wrap"
+      style={{ ["--ctl-top" as string]: `${controlsTop}px` }}
+    >
+      <capacitor-google-map
+        ref={element}
+        style={{
+          display: "block",
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: cover,
+          width: "100%",
+          height: `calc(100% - ${cover}px)`,
+        }}
+        aria-label={map ? "Google Maps, ready" : "Google Maps, loading"}
+      />
+      {error && (
+        <p
+          role="alert"
+          className="card small"
+          style={{
+            position: "absolute",
+            left: 24,
+            right: 24,
+            top: controlsTop,
+            padding: 16,
+            zIndex: 5,
+          }}
+        >
+          {error}
+        </p>
+      )}
       {you && (
-        <button className={`rmap-locate${isFollowing ? ' on' : ''}`} onClick={recenter} aria-label={isFollowing ? 'Following your location' : 'Center on my location'} aria-pressed={isFollowing}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="currentColor" /><circle cx="12" cy="12" r="7.5" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+        <button
+          className={`rmap-locate${following ? " on" : ""}`}
+          onClick={recenter}
+          aria-label={
+            following ? "Following your location" : "Center on my location"
+          }
+          aria-pressed={following}
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="3.2" fill="currentColor" />
+            <circle cx="12" cy="12" r="7.5" />
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+          </svg>
         </button>
       )}
     </div>
-  )
+  );
 }
-
-/** Walking over a coin picks it up (same 26 m reach as the old game map). */
-export function useCoinCollect(pos: LatLng, coins: MapCoin[], onCollect: (id: number) => void) {
+export function useCoinCollect(
+  pos: LatLng,
+  coins: MapCoin[],
+  onCollect: (id: number) => void,
+) {
   useEffect(() => {
-    for (const c of coins) if (!c.got && distance(pos, c.ll) < 26) onCollect(c.id)
-  }, [pos, coins, onCollect])
+    for (const c of coins)
+      if (!c.got && distance(pos, c.ll) < 26) onCollect(c.id);
+  }, [pos, coins, onCollect]);
 }

@@ -1,3 +1,4 @@
+import {scrubGoogleContent} from './google-retention.mjs'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AvatarSpec } from './brand/Persona'
 import { DEFAULT_LISTS, type Story } from './data'
@@ -110,7 +111,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next = new SyncEngine({
         uid: user.uid, storage: localStorage,
         initial: { ...structuredClone(DEFAULT_STATE), user: { ...DEFAULT_STATE.user, name: 'Explorer', authed: true } },
-        request: (method, body) => api(user, '/state', method, body),
+        request: (method, body) => api(user, '/state', method, scrubGoogleContent(body)),
+        sanitize: scrubGoogleContent,
         prepare: photoUploader(user),
         onState: (state) => { if (ticket === generation) { stateRef.current = state; setS(state) } },
         onStatus: (status) => { if (ticket === generation) {
@@ -135,7 +137,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     stateRef.current = next; setS(next)
     if (engine.current) engine.current.edit(next)
     else {
-      try { localStorage.setItem(KEY, JSON.stringify(next)) }
+      try { localStorage.setItem(KEY, JSON.stringify(scrubGoogleContent(next))) }
       catch { setSyncStatus('storage-full') }
     }
   }, [])

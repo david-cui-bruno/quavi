@@ -1,3 +1,4 @@
+import { legalPage } from "./legal.js";
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
@@ -10,6 +11,9 @@ import { ownerHash, lockAccount, quota } from "./account.js";
 import { detourInput, planDetours, type VenueProvider } from "./detours.js";
 import { checkedDetours } from "./checked-detours.js";
 import { walkingInput, type WalkingProvider } from "./walking.js";
+import { liveCheckInput, checkHours } from "./live-detours.js";
+import type { LiveGeo } from "./google-geo.js";
+import { scrubGoogleContent } from "./google-retention.js";
 import { appStateSchema, inspectState } from "./state-schema.js";
 
 declare module "fastify" {
@@ -41,6 +45,7 @@ export async function createApp(options: {
   now?: () => number;
   detours?: VenueProvider;
   walking?: WalkingProvider;
+  liveGeo?: LiveGeo;
 }) {
   const app = Fastify({
     bodyLimit: 2 * 1024 * 1024,
@@ -60,7 +65,7 @@ export async function createApp(options: {
   await app.register(cors, {
     origin: options.origins,
     methods: ["GET", "PUT", "POST", "DELETE"],
-    allowedHeaders: ["Authorization", "Content-Type"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Quavi-Maps"],
   });
   app.addHook("onSend", async (_req, reply) => {
     reply.header("Cache-Control", "no-store");
@@ -88,6 +93,10 @@ export async function createApp(options: {
             : "Invalid request",
     });
   });
+  for (const kind of ["privacy", "terms"] as const)
+    app.get("/legal/" + kind, async (_req, reply) =>
+      reply.type("text/html").send(legalPage(kind)),
+    );
   app.get("/healthz", async () => ({ status: "ok" }));
   app.get("/readyz", async (_req, reply) => {
     try {
@@ -224,8 +233,13 @@ export async function createApp(options: {
           db.release();
         }
         const nearby = await options.detours.nearby(input.origin);
-        const planned = options.walking
-          ? await checkedDetours(nearby, input, options.walking)
+        const live =
+          req.headers["x-quavi-maps"] === "google"
+            ? options.liveGeo
+            : undefined;
+        const walking = live ?? options.walking;
+        const planned = walking
+          ? await checkedDetours(nearby, input, walking, live)
           : planDetours(nearby, input);
         req.db = await options.pool.connect();
         await req.db.query("BEGIN");
@@ -246,11 +260,9 @@ export async function createApp(options: {
       api.post("/me/walking-check", async (req, reply) => {
         const { points } = walkingInput.parse(req.body);
         if (!options.walking)
-          return reply
-            .code(503)
-            .send({
-              error: "Walking checks are unavailable. Try again shortly.",
-            });
+          return reply.code(503).send({
+            error: "Walking checks are unavailable. Try again shortly.",
+          });
         if (
           !(await quota(req.db!, ownerHash(req.uid), "walking-check", 60, 3600))
         )
@@ -280,14 +292,89 @@ export async function createApp(options: {
             .code(410)
             .send({ error: "This account is being deleted." });
         if (!route)
-          return reply
-            .code(422)
-            .send({
-              error:
-                "No suitable walking route connects these stops. Choose another detour.",
-            });
+          return reply.code(422).send({
+            error:
+              "No suitable walking route connects these stops. Choose another detour.",
+          });
         return route;
       });
+      for (const kind of ["walking-route", "detour-check"] as const)
+        api.post("/me/" + kind, async (req, reply) => {
+          if (!options.liveGeo)
+            return reply
+              .code(503)
+              .send({
+                error: "Google Maps checks are unavailable. Try again shortly.",
+              });
+          const input =
+            kind === "walking-route"
+              ? { ...walkingInput.parse(req.body), stops: undefined }
+              : liveCheckInput.parse(req.body);
+          if (
+            !(await quota(
+              req.db!,
+              ownerHash(req.uid),
+              "google-check",
+              60,
+              3600,
+            ))
+          )
+            return reply
+              .code(429)
+              .send({ error: "Too many map checks. Try again later." });
+          const db = req.db!;
+          req.db = null;
+          try {
+            await db.query("COMMIT");
+          } finally {
+            db.release();
+          }
+          const walking = await options.liveGeo.navigate(input.points);
+          const hours =
+            walking && input.stops
+              ? await checkHours(options.liveGeo, input.stops, walking)
+              : undefined;
+          req.db = await options.pool.connect();
+          await req.db.query("BEGIN");
+          await lockAccount(req.db, req.uid);
+          if (
+            (
+              await req.db.query(
+                "SELECT 1 FROM account_deletions WHERE owner_hash=$1",
+                [ownerHash(req.uid)],
+              )
+            ).rowCount
+          )
+            return reply
+              .code(410)
+              .send({ error: "This account is being deleted." });
+          if (!walking)
+            return reply
+              .code(422)
+              .send({
+                error:
+                  "No suitable walking route connects these stops. Choose another detour.",
+              });
+          if (hours?.some((h) => h.status === "closed"))
+            return reply
+              .code(422)
+              .send({
+                error:
+                  "A stop is reported closed during your planned visit. Choose another detour.",
+              });
+          if (kind === "walking-route") return walking;
+          const { legs, distance, duration, provider, checkedAt, warnings } =
+            walking;
+          return {
+            legs,
+            distance,
+            duration,
+            provider,
+            checkedAt,
+            warnings,
+            hours,
+          };
+        });
       api.get(
         "/me/state",
         async (req) =>
@@ -298,7 +385,9 @@ export async function createApp(options: {
           },
       );
       api.put("/me/state", async (req, reply) => {
-        const { state, revision } = stateInput.parse(req.body),
+        const { state, revision } = stateInput.parse(
+            scrubGoogleContent(req.body),
+          ),
           refs = inspectState(state);
         if (refs.length) {
           const owned = await req.db!.query(
@@ -310,7 +399,12 @@ export async function createApp(options: {
               error: "Finish uploading your own photos before saving.",
             });
         }
-        const saved = await writeState(req.db!, req.uid, state, revision);
+        const saved = await writeState(
+          req.db!,
+          req.uid,
+          scrubGoogleContent(state),
+          revision,
+        );
         if (!saved)
           return reply.code(409).send({
             error:

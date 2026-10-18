@@ -1,3 +1,4 @@
+import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
 import { Photo } from '../CloudPhoto'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BODY_PLAIN, Persona, flock } from '../brand/Persona'
@@ -13,6 +14,7 @@ import { Arrow, BackBtn, Btn, Check, Round, Screen$, Sheet, StatRow } from '../u
 import { MomentSheet, useStory } from './story'
 
 export function Active() {
+  useLiveHoursClock()
   const { s, update, go, reset, say } = useStore()
   const tr = useTracking()
   const [story, setStory] = useStory()
@@ -234,6 +236,7 @@ export function Active() {
             <div className="wiggle"><Persona spec={flock(c.persona, 'Orange')} size={70} /></div>
           </div>
           <p className="body" style={{ margin: '14px 0 12px' }}>{placeInfo(c.place, c.desc).about}</p>
+          {story.source&&<><p className="small">{hoursLabel(c.hours)}{c.hours?.mapsURL&&<> · <a href={c.hours.mapsURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Check venue</a></>}</p><GoogleAttribution hours={[c.hours]}/>{[...new Set([...(story.walking?.warnings??[]),...(nav.route?.warnings??[])])].map(w=><p key={w} className="small" style={{marginBottom:8}}>{w}</p>)}</>}
           <p className="small" style={{ margin: '-4px 0 12px', fontWeight: 500 }}>Earn XP toward demo partner rewards in You. Demo offers have no cash value.</p>
           <div className="kicker" style={{ marginBottom: 8 }}>Sidequests here · earn “{meta.badge}”</div>
           <div className="col" style={{ gap: 8, marginBottom: 16 }}>

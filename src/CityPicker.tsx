@@ -53,7 +53,7 @@ export function CityPicker({
   return (
     <section className="city-picker" aria-label="Find nearby detours" style={{ margin: "8px 0 16px" }}>
       <p className="small" style={{ marginBottom: 10 }}>
-        Choose where to start. We’ll check the walking route before you go. Opening hours and prices still need checking.
+        Choose where to start. We’ll check reported hours for your arrival and the walking route. Prices and entry requirements still need checking.
       </p>
       <div className="field">
         <label htmlFor="detour-city">CITY OR NEIGHBORHOOD</label>

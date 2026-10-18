@@ -100,3 +100,8 @@ export async function processDeletions(
     }
   }
 }
+
+/** Provider caps span a calendar month; ordinary account counters only need two days. */
+export async function cleanupQuotas(pool:pg.Pool){
+ await pool.query("DELETE FROM request_quotas WHERE (category NOT IN ('google-places','google-routes') AND window_at<now()-interval '2 days') OR (category IN ('google-places','google-routes') AND window_at<date_trunc('month',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')");
+}

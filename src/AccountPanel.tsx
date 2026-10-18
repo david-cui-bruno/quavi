@@ -1,3 +1,4 @@
+import config from './cloud-config.json';
 import { useState } from "react";
 import { useStore } from "./store";
 import { Btn } from "./ui";
@@ -49,7 +50,7 @@ export function AccountPanel() {
       }}
       aria-label="Account and cloud saves"
     >
-      <h2 className="h1 h-xs">Your account.</h2>
+      <h2 className="h1 h-xs">Your account.</h2><p className="small" style={{marginTop:10}}><a href={`${config.apiUrl}/legal/privacy`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Privacy</a> · <a href={`${config.apiUrl}/legal/terms`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Terms</a></p>
       <p className="small" style={{ margin: "8px 0" }}>
         {account?.email || "You’re exploring the demo."}
       </p>
