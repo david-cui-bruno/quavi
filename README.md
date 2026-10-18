@@ -40,8 +40,8 @@ location and native notifications are not implemented by this shell.
 
 | Feature | Current implementation | Needed for a real release |
 | --- | --- | --- |
-| Accounts | Email/password format checks and a local flag | Authentication, recovery, account deletion |
-| Stories, lists, profiles, photos | React state persisted in localStorage | Database, media storage, access rules, synchronization |
+| Accounts | App has demo login; new API verifies Firebase tokens locally | Connect real account UI, recovery, verification and complete deletion |
+| Stories, lists, profiles, photos | App uses localStorage; API has private PostgreSQL state and owner-scoped media grants | Cloud deployment, app synchronization, private media upload and account-specific caches |
 | Friends and circle | Locally added names and bundled example stories | User lookup, friendship requests, shared feed, privacy controls |
 | Mood-based plans and captions | Preset openings, rules and text templates | City-aware recommendations and server-side generation |
 | Explore | Live Photon search, Nominatim detours, OSM map tiles and walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
@@ -80,7 +80,7 @@ order, not a claim that the backend already exists.
 | Order | Work | Completion check |
 | --- | --- | --- |
 | Done | iOS shell, safe areas, keyboard behavior, navigation fixes and demo partner rewards | App opens on the user's iPhone; simulator flows and reward tests pass |
-| **Next: backend foundation** | Select hosting/auth/database/media services; create development and production environments; implement real sign-up, sign-in, recovery, account deletion, private profiles, stories/lists/photos and reward history | Two test accounts keep their own data across devices; neither can read or change the other's private records; media survives restart/reinstall |
+| **In progress: backend foundation** | GCP selected: Firebase Auth + Cloud Run TypeScript API + Cloud SQL PostgreSQL + private Cloud Storage. Local API supports verified identity, isolated state, revision conflicts and private media grants. Next: choose the Quavi GCP project/billing account, deploy, and connect sign-up/sign-in/recovery, private media, account-specific caches, sync and full deletion | API tests pass for two-account isolation and durability. Stage completes only when real accounts keep private data across devices and photo uploads work in the deployed app |
 | City-aware detour engine | Replace fixed West Village plans and quest pins with nearby venues; validate opening hours, destination identity, travel time, preferences and age exclusions; generate grounded tasks/captions server-side; handle sparse/no results | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
 | Native outing experience | Validate foreground GPS, camera, native sharing, resume and permission-denied behavior; decide active-detour background location and arrival notifications; recover safely from offline/interrupted sessions | Complete a real outing on iPhone, including locking/resuming the phone under the selected tracking policy |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
@@ -91,6 +91,18 @@ order, not a claim that the backend already exists.
 Open decisions: place/AI service budget and provider choice; foreground-only
 versus active-detour background tracking; initial age policy and story visibility.
 Any-city support is a target, with explicit no-result fallbacks where coverage is poor.
+
+### Selected backend stack
+
+Use GCP as the primary cloud, given the available credits and no existing cloud
+preference. Keep React/TypeScript/Capacitor on iPhone; use Firebase Authentication,
+a TypeScript API on Cloud Run, Cloud SQL PostgreSQL and private Cloud Storage.
+AWS is not part of the initial deployment. Provider-specific map/AI eligibility
+still needs checking against the actual credits.
+
+The locally tested API and deployment requirements are in [server/README.md](server/README.md).
+No GCP resources have been provisioned, and the mobile app is still in local demo
+mode. The active CLI project is not assumed to belong to Quavi.
 
 ### Mobile verification
 
@@ -106,7 +118,7 @@ simulator** after installing a build (it resets that simulator's Quavi demo data
 maestro test .maestro/ios-smoke.yaml
 ```
 
-- **Stack:** Vite + React + TypeScript. No backend; state is saved in `localStorage` (Profile → "Log out & restart demo" resets it).
+- **Stack:** Vite + React + TypeScript with a Capacitor iPhone shell. The app still saves demo state in `localStorage` (Profile → "Log out & restart demo" resets it). The separate API foundation in `server/` is not yet connected to the app.
 - **Brand:** colors, ABC Areal + Fraunces Soft, flat buttons with the brand's hover/pressed behavior (`src/index.css`).
 - **Characters:** the Persona Kit ducklings, rendered as SVG from the brand file's vector data (`src/brand/partsData.ts`, `Persona.tsx`). Colorway rules keep accessories from matching the body.
 - **Flow:** Splash → Welcome → (Log in | Interests → Make your Quavi) → Home → Mood → Openings → Writing → Story details → Active story (add moments, swap chapters) → Complete → Tell your story → Story shelf. Also Explore (map, destination route, stop preview), Friend's story + save to lists, Profile.
