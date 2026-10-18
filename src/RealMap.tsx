@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { GoogleMap, LatLngBounds, type Marker } from "@capacitor/google-maps";
 import type { AvatarSpec } from "./brand/Persona";
 import { distance, type LatLng } from "./geo";
+import {useRuntime} from './runtime'
 import mapsConfig from "./maps-config.json";
 export type PinKind =
   | "quest"
@@ -49,6 +50,7 @@ export function RealMap({
   zoomOnYou?: number;
   controlsTop?: number;
 }) {
+  const life=useRuntime()
   const element = useRef<HTMLElement>(null),
     id = useId().replace(/[^a-z0-9]/gi, ""),
     latest = useRef({ pins, you, fit, inset, zoomOnYou });
@@ -104,6 +106,8 @@ export function RealMap({
       created: GoogleMap | undefined;
     setMap(null);
     setError("");
+    if(!life.active)return
+    if(!life.online){setError('You’re offline. Reconnect to load the map.');return}
     lifecycle = lifecycle
       .catch(() => {})
       .then(async () => {
@@ -198,7 +202,7 @@ export function RealMap({
           if (created) await created.destroy();
         });
     };
-  }, [id, cover]);
+  }, [id, cover, life.epoch, life.active, life.online]);
   useEffect(() => {
     if (!map) return;
     const h = element.current?.clientHeight ?? 600;

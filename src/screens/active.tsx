@@ -7,16 +7,20 @@ import { distance, fmtDist, fmtWalk } from '../geo'
 import { GameHUD, coinsFor } from '../GameMap'
 import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
 import { photoFromFile } from '../photo'
-import { askNotifications, START, useTracking } from '../tracking'
+import { START, useTracking } from '../tracking'
 import { bearingTo, compass, fmtMeters, locateOnRoute, stepText, useWalkingRoute } from '../nav'
 import { useStore } from '../store'
 import { Arrow, BackBtn, Btn, Check, Round, Screen$, Sheet, StatRow } from '../ui'
+import { canArrive } from '../location-session.mjs'
+import { useRuntime } from '../runtime'
+import { useOutingCheck } from '../use-outing-check'
 import { MomentSheet, useStory } from './story'
 
 export function Active() {
   useLiveHoursClock()
-  const { s, update, go, reset, say } = useStore()
+  const { s, update, go, reset, say, syncStatus } = useStore()
   const tr = useTracking()
+  const life = useRuntime()
   const [story, setStory] = useStory()
   const [moment, setMoment] = useState(false)
   const [tasks, setTasks] = useState(false)
@@ -29,7 +33,8 @@ export function Active() {
   const meta = metas[i]
   const target = useMemo(() => ({ lat: meta.lat, lng: meta.lng }), [meta.lat, meta.lng])
   const dist = distance(tr.pos, target)
-  const arrived = dist < ARRIVE_RADIUS
+  const recovery=useOutingCheck(story,i)
+  const arrived = recovery.ready && (tr.mode==='demo' ? dist < ARRIVE_RADIUS : canArrive(dist,tr.fix))
   // far stops on a transit plan are a subway ride, not a walk
   const getThere = (m: number) => (story.prefs?.move === 'Transit' && m > 1500 ? `${Math.max(1, Math.round(m / 250))} min by subway` : fmtWalk(m))
   const key = `${story.id}:${i}`
@@ -40,10 +45,10 @@ export function Active() {
 
   // ---- turn-by-turn: a real walking route to this stop, with the next instruction ----
   const farTransit = story.prefs?.move === 'Transit' && dist > 1500
-  const skipRoute = arrived || farTransit
+  const skipRoute = arrived || farTransit || !recovery.ready
   // the route starts where you are when the stop (or its eligibility) changes; leaving the route asks for a new one
   const points = useMemo(() => (skipRoute ? null : [tr.pos, target]), [skipRoute, target.lat, target.lng]) // eslint-disable-line react-hooks/exhaustive-deps
-  const nav = useWalkingRoute(points)
+  const nav = useWalkingRoute(points,recovery.token)
   const loc = nav.route ? locateOnRoute(tr.pos, nav.route) : null
   useEffect(() => { if (loc && loc.off > 40 && !arrived) nav.reroute(tr.pos) }, [loc?.off, arrived]) // eslint-disable-line react-hooks/exhaustive-deps
   // hand the street route to the demo walker once per route (not on every step it takes)
@@ -53,7 +58,9 @@ export function Active() {
   // what the banner says right now
   type Banner = { kind: string; modifier?: string; big: string; text: string; sub?: string; link?: string }
   let banner: Banner | null = null
-  if (!arrived) {
+  if (!recovery.ready) {
+    banner={kind:'head',big:recovery.phase==='offline'?'You’re offline':recovery.phase==='location'?'Waiting for GPS':recovery.phase==='error'?'Check your detour':recovery.phase==='sign-in'?'Sign in to continue':'Checking your detour',text:recovery.phase==='offline'?'Directions and arrival checks are paused.':recovery.phase==='location'?(tr.perm==='denied'?'Allow location in Settings, then retry GPS.':'Waiting for a fresh, precise position.'):recovery.phase==='error'?'Review the message below, then retry.':'Refreshing the walk and reported hours.',sub:'Your plan, notes and progress stay on this device.'}
+  } else if (!arrived) {
     if (farTransit) {
       const mins = Math.max(5, Math.round(dist / 250))
       banner = { kind: 'transit', big: 'Take transit', text: `to ${c.place}`, sub: `About ${mins} min · ${fmtMeters(dist)} away`, link: `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=transit` }
@@ -79,7 +86,7 @@ export function Active() {
   const spoken = useRef('')
   const stepKey = loc ? `${key}:${loc.upcomingIndex}` : ''
   useEffect(() => {
-    if (!voice || !banner || !stepKey || !('speechSynthesis' in window)) return
+    if (!recovery.ready || !life.active || !voice || !banner || !stepKey || !('speechSynthesis' in window)) return
     const close = loc ? loc.toUpcoming < 45 : false
     const tag = `${stepKey}:${close ? 'near' : 'far'}`
     if (spoken.current === tag) return
@@ -89,13 +96,13 @@ export function Active() {
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(u)
   }, [voice, stepKey, loc?.toUpcoming && loc.toUpcoming < 45]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!voice && 'speechSynthesis' in window) window.speechSynthesis.cancel() }, [voice])
+  useEffect(() => { if ((!voice || !recovery.ready || !life.active) && 'speechSynthesis' in window) window.speechSynthesis.cancel(); return()=>{window.speechSynthesis?.cancel()} }, [voice,recovery.ready,life.active])
 
-  // aim the demo walker + ask for notifications once
+  // Aim the explicitly selected demo walker.
   useEffect(() => { tr.setTarget(target) }, [tr, target])
-  useEffect(() => { askNotifications() }, [])
 
-  // geofence: first time we get close to this chapter, open the tasks
+
+  // Open tasks only after a current, accurate foreground arrival.
   const seen = useRef<Record<string, boolean>>({})
   useEffect(() => {
     if (arrived && !seen.current[key]) {
@@ -118,6 +125,7 @@ export function Active() {
   }, [s.game.xp, s.game.tripXp, story.id, update, say])
 
   const complete = (id: string, xp: number) => {
+    if (!recovery.ready || !arrived) return
     if (done.includes(id)) {
       // tapping a finished task again unchecks it (XP you already earned stays, and the trip cap still applies)
       update((st) => ({ ...st, game: { ...st.game, done: { ...st.game.done, [key]: (st.game.done[key] ?? []).filter((x) => x !== id) } } }))
@@ -178,7 +186,7 @@ export function Active() {
   return (
     <Screen$ bg="paper" flush>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 292 }}>
-        <RealMap pins={pins} route={legRoute} doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={17} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+        <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}  doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={17} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
       </div>
       <div className="row" style={{ position: 'absolute', left: 24, right: 24, top: 54, zIndex: 8, gap: 10 }}>
         <button className="back" onClick={() => { tr.setWalking(false); reset('home') }} aria-label="Back to Home" style={{ background: 'var(--paper)' }}>
@@ -199,20 +207,22 @@ export function Active() {
             : <button className="navbtn" onClick={() => setVoice((v) => !v)} aria-pressed={voice} aria-label={voice ? 'Turn off spoken directions' : 'Turn on spoken directions'}>{voice ? '🔊' : '🔇'}</button>}
         </div>
       )}
-      <button className="status-pill" style={{ top: banner ? 232 : 112 }} onClick={() => setGps(true)}><span className="dotlive" />{tr.mode === 'live' ? 'Tracking · My GPS' : 'Tracking · Demo walk'}</button>
+      <button className="status-pill" style={{ top: banner ? 232 : 112 }} onClick={() => setGps(true)}><span className="dotlive" />{tr.mode === 'live' ? (tr.ready?'Tracking · My GPS':'GPS · Waiting for location') : 'Tracking · Demo walk'}</button>
       {float && <div className="xpfloat">{float}</div>}
 
       <div data-map-obstruction className="qcard fade-in" key={i}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className="kicker">Chapter {i + 1} of {story.chapters.length}</span>
-          <span className="pill" style={{ background: arrived ? 'var(--yellow)' : 'var(--soft)' }}>{arrived ? '✦ You’re here' : `${fmtDist(dist)} · ${getThere(dist)}`}</span>
+          <span className="pill" style={{ background: arrived ? 'var(--yellow)' : 'var(--soft)' }}>{tr.mode==='live'&&!tr.ready?'Location needed':!recovery.ready?'Walking checks paused':arrived?'✦ You’re here':nav.route?`${fmtMeters(nav.route.distance)} · ${Math.ceil(nav.route.duration/60)} min walk`:story.source?'Route not checked':`${fmtDist(dist)} · ${getThere(dist)}`} </span>
         </div>
         <h1 className="h1" style={{ fontSize: 28, margin: '4px 0 8px' }}>{c.title}</h1>
         <p className="small muted" style={{ marginBottom: 10 }}>{c.place} · {c.desc}</p>
         <StatRow style={{ marginBottom: 12 }} size={18} stats={[[`${done.length}/${meta.tasks.length}`, 'Tasks'], [`${tripEarned}/${TRIP_XP_CAP}`, 'Trip XP'], [`${c.mins} min`, 'Here']]} />
+        {syncStatus==='storage-full'&&<p role="alert" className="small" style={{marginBottom:10}}>Device storage is full. Keep Quavi open and free up space; your latest changes may not be saved.</p>}
+        {!recovery.ready&&<p className="small" role="status" style={{marginBottom:10}}>{recovery.phase==='offline'?'Saved on this device. Reconnect to refresh directions and hours.':recovery.phase==='location'?tr.locationError||'Waiting for a fresh position. Arrival tasks stay paused.':recovery.message||'Refreshing your outing before continuing.'}</p>}
         <div className="row">
           <div style={{ flex: 1 }}>
-            {arrived ? <Btn onClick={() => setTasks(true)}>{allDone ? 'See tasks ✓' : 'Open tasks'}</Btn>
+            {!recovery.ready ? <Btn kind="soft" disabled={!life.online||recovery.phase==='checking'} onClick={()=>recovery.phase==='location'?tr.retryLocation():recovery.retry()}>{recovery.phase==='location'?'Retry GPS':recovery.phase==='checking'?'Checking stops…':'Retry checks'}</Btn> : arrived ? <Btn onClick={() => setTasks(true)}>{allDone ? 'See tasks ✓' : 'Open tasks'}</Btn>
               : tr.mode === 'demo' ? <Btn onClick={() => tr.setWalking(!tr.walking)}>{tr.walking ? 'Pause walking' : 'Walk there ▶'}</Btn>
               : <Btn kind="soft" disabled>Walk to {c.place}</Btn>}
           </div>
@@ -225,7 +235,7 @@ export function Active() {
         </div>
       </div>
 
-      {preview && !arrived && !tasks && (
+      {preview && recovery.ready && !arrived && !tasks && (
         <Sheet label={`About ${c.place}`} onClose={() => setPreview(false)}>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: 1 }}>
@@ -268,7 +278,7 @@ export function Active() {
               const nk = `${i}:${t.id}`
               return (
                 <div key={t.id} className={`task-wrap${on ? ' on' : ''}`}>
-                  <button className={`task${on ? ' on' : ''}`} aria-pressed={on} onClick={() => complete(t.id, taskXp(story, t))}>
+                  <button disabled={!arrived||!recovery.ready} className={`task${on ? ' on' : ''}`} aria-pressed={on} onClick={() => complete(t.id, taskXp(story, t))}>
                     <span className="box">{on && <Check size={15} />}</span>
                     <span className="col" style={{ flex: 1, gap: 2 }}><b style={{ fontSize: 14, lineHeight: 1.25 }}>{t.text}</b><span className="small muted">{t.hint}</span></span>
                     <span className="xp">+{taskXp(story, t)}</span>
@@ -315,10 +325,11 @@ export function Active() {
           <div className="kicker">Location</div>
           <h2 className="h1 h-s" style={{ margin: '4px 0 8px' }}>How should Quavi find you?</h2>
           <div className="col" style={{ gap: 10, marginBottom: 12 }}>
-            <button className={`task${tr.mode === 'demo' ? ' on' : ''}`} onClick={() => tr.setMode('demo')}><span className="box">{tr.mode === 'demo' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>Demo walk</b><span className="small muted">Fast-forwards a walker along your route. Great for demos.</span></span></button>
-            <button className={`task${tr.mode === 'live' ? ' on' : ''}`} onClick={() => tr.setMode('live')}><span className="box">{tr.mode === 'live' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>My location</b><span className="small muted">Uses your phone’s GPS. Tasks unlock within {ARRIVE_RADIUS} m of a stop.{tr.perm === 'denied' ? ' (Permission denied, using demo.)' : ''}</span></span></button>
+            <button className={`task${tr.mode === 'demo' ? ' on' : ''}`} onClick={() => tr.setMode('demo')}><span className="box">{tr.mode === 'demo' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>Demo walk</b><span className="small muted">Fast-forwards a walker along your route. Great for demos. Choose this explicitly to simulate movement.</span></span></button>
+            <button className={`task${tr.mode === 'live' ? ' on' : ''}`} onClick={() => tr.setMode('live')}><span className="box">{tr.mode === 'live' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>My location</b><span className="small muted">Uses your phone’s GPS. Tasks unlock within {ARRIVE_RADIUS} m of a stop.</span></span></button>
           </div>
-          <p className="small muted" style={{ marginBottom: 12 }}>This web prototype tracks while the app is open. The native app will use background geofencing so arrival tasks pop up even when Quavi is closed.</p>
+          <p className="small muted" style={{ marginBottom: 12 }}>GPS runs while Quavi is open. Locking your phone or leaving the app pauses tracking and spoken directions. Return to refresh your position, walking route and reported hours. No background arrival notifications are sent.</p>
+          {tr.mode==='live'&&<><p role="status" className="small" style={{marginBottom:12}}>{tr.ready?`GPS accuracy: about ${Math.round(tr.accuracy??0)} m.`:tr.locationError||'Waiting for a fresh, precise location.'}</p><Btn kind="soft" onClick={tr.retryLocation}>Retry GPS</Btn></>}
           {tr.mode === 'demo' && <Btn kind="soft" onClick={() => { tr.teleport({ lat: meta.lat + 0.0002, lng: meta.lng }); setGps(false) }}>Teleport next to {c.place}</Btn>}
         </Sheet>
       )}

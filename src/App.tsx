@@ -7,6 +7,7 @@ import { TrackingProvider } from './tracking'
 import { Explore, RouteScreen, Stop } from './screens/explore'
 import { Friends, Lists, Profile, Read, Shelf } from './screens/you'
 import { useEffect, useRef, type ComponentType } from 'react'
+import { observeRuntime } from './runtime'
 import { OPENINGS, buildStory } from './data'
 
 const SCREENS: Record<Screen, ComponentType> = {
@@ -49,6 +50,7 @@ function Shell() {
 }
 
 export default function App() {
+  useEffect(observeRuntime, [])
   return (
     <StoreProvider>
       <TrackingProvider>

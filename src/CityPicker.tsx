@@ -130,29 +130,16 @@ export function CityPicker({
           }}
           kind="soft"
           disabled={busy}
-          onClick={() => {
-            if (!navigator.geolocation) {
-              setError("Location isn’t available. Search for an area instead.");
-              return;
-            }
+          onClick={async () => {
             setBusy(true);
             setError("");
-            navigator.geolocation.getCurrentPosition(
-              (p) => {
-                void find(
-                  { lat: p.coords.latitude, lng: p.coords.longitude },
-                  "your location",
-                  true,
-                );
-              },
-              () => {
-                setBusy(false);
-                setError(
-                  "Couldn’t get your location. Allow access or search for an area.",
-                );
-              },
-              { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
-            );
+            try {
+              const point = await tracking.locate();
+              await find(point, "your location", true);
+            } catch (e) {
+              setBusy(false);
+              setError(e instanceof Error ? e.message : "Couldn’t get your location. Check Location Services or search for an area.");
+            }
           }}
         >
           Use my location

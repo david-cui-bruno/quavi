@@ -46,7 +46,7 @@ location and native notifications are not implemented by this shell.
 | Friends and circle | Locally added names and bundled example stories | User lookup, friendship requests, shared feed, privacy controls |
 | Mood-based plans and captions | Signed-in nearby openings use worldwide Overture venues through the server; anonymous openings and captions keep scripted demo behavior | Admission/access validation, grounded captions and stronger venue quality controls |
 | Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
-| Location and arrival tasks | Browser foreground GPS or demo walking | Native device validation; background tracking if selected |
+| Location and arrival tasks | Native iPhone foreground GPS or browser GPS, explicit demo walking, accuracy/freshness gates and resume checks | Outdoor device acceptance; background tracking only if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
 | XP, coins and demo partner rewards | Local XP, fictional offers, locked/unlocked states and persistent simulated redemptions | Server-authoritative reward history and sync; real partners/funding are deferred |
 | Operations | Cloud Run dev deployment, Secret Manager, limited runtime DB privileges, Cloud SQL backups/PITR, private bucket | CI, production environment, alerts/budgets, restore drill, release/signing setup |
@@ -88,15 +88,16 @@ trusted reward services and the reliability stages below still need implementati
 | Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
 | Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
 | Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
-| Next: detour reliability | Recheck after pause/resume and long delays; validate entry/access; strengthen venue identity/category matching and multilingual coverage; replace scripted captions with grounded generation | Complete real outings in multiple regions, including closed stops, missing hours, sparse coverage and interrupted sessions |
-| Native outing experience | Validate foreground GPS, camera, native sharing, resume and permission-denied behavior; decide active-detour background location and arrival notifications; recover safely from offline/interrupted sessions | Complete a real outing on iPhone, including locking/resuming the phone under the selected tracking policy |
+| Next: detour reliability | Validate entry/access; strengthen venue identity/category matching and multilingual coverage; replace scripted captions with grounded generation | Complete real outings in multiple regions, including closed stops, missing hours, sparse coverage and interrupted sessions |
+| Done: foreground outing recovery foundation | Native while-in-use GPS, accuracy/freshness gates, explicit denied-location recovery, lock/background pause, transient checks after resume/reconnect and every five minutes, cached account startup and read-before-retry sync | Unit tests cover stale/inaccurate fixes, watch cancellation, session invalidation, autosave stability, offline replay and sync conflicts; simulator GPS, screen lock/resume and permission-denied flows pass |
+| Next: physical outing acceptance | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
+| Optional background tracking | Decide whether active outings should track while locked and send arrival notifications; implement permission, battery and privacy behavior only if selected | Current build remains foreground-only and explains that policy before using GPS |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
 | Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |
 | Beta and launch | CI, monitoring, backups, provider limits/budget, privacy disclosures, final app icon/splash, accessibility and small/large iPhone QA, TestFlight and App Store submission | Beta testers complete the full flow; no blocking failures remain; release metadata matches actual behavior |
 | Later: real partners | Partner agreements, funding model, eligibility/expiry, merchant validation, redemption disputes and abuse prevention | Real offers launch only after participating merchants and funding are secured |
 
-Open decisions: Google Maps budget/credit eligibility and AI provider; foreground-only
-versus active-detour background tracking; initial age policy and story visibility.
+Open decisions: Google Maps budget/credit eligibility and AI provider; whether to extend the current foreground-only policy to active-detour background tracking; initial age policy and story visibility.
 Any-city support is a target, with explicit no-result fallbacks where coverage is poor.
 
 ### Selected backend stack
@@ -155,7 +156,7 @@ maestro test .maestro/ios-smoke.yaml
 ## Arrival tasks, tracking & the game map
 
 - **Arrival tasks:** every stop has 3 tasks with XP (e.g. at Corner Coffee: order a pastry you've never tried, ask the barista what they'd order). They unlock automatically when you're within 70 m of the stop (`ARRIVE_RADIUS` in `src/data.ts`). Clearing all three earns a bonus, coins and a place badge.
-- **Tracking:** `src/tracking.tsx`. *Demo walk* fast-forwards a walker along the route; *My location* uses `navigator.geolocation.watchPosition`. **Limit:** a web page can't track in the background or when closed. That needs a native app (iOS "Always" location + region monitoring, Android foreground service + geofencing), e.g. by wrapping this UI in Capacitor and moving `tracking.tsx` to a background-geolocation plugin.
+- **Tracking:** `src/tracking.tsx`. *Demo walk* fast-forwards a walker along the route; *My location* uses Capacitor Geolocation on iPhone and browser GPS on web. **Foreground policy:** iPhone uses native Capacitor GPS; web uses browser geolocation. Locking/leaving Quavi stops the watch and pauses demo walking and spoken directions. Returning requires a fresh position and reported-hours/walking checks for remaining stops. No background tracking or arrival notifications are enabled. GPS denial never selects the demo walker automatically.
 - **Game map:** `src/GameMap.tsx`: XP/level HUD, your Quavi walking the trail, pulsing quest pins, collectible coins, ✓ stamps on cleared stops. Used on Active story and Explore.
 
 
@@ -197,3 +198,40 @@ keys are restricted by bundle/origin and API; backend development caps are 500
 Places requests and 500 Routes requests per calendar month, and browser map loads
 are capped at 100/day. General GCP credits have not been confirmed to cover Maps.
 See [server operations and provider notes](server/README.md#google-maps-reported-hours-and-walking-directions).
+
+
+### GPS, lock/resume and offline recovery
+
+Use **Tracking → My location** during an outing. Choose **While Using the App**
+in iOS; Quavi never asks for Always access. The SDK requires an Always description
+in Info.plist, but the app does not enable a background location mode. GPS needs a
+fix no older than 20 seconds and accuracy within 50 m. Arrival unlocks only when
+the distance plus reported uncertainty fits inside the 70 m arrival radius.
+Missing permission, stale GPS and approximate location pause arrival checks;
+**Retry GPS** explains the recovery. Demo walk remains an explicit choice.
+
+A screen lock or app switch cancels current checks and spoken directions, stops
+the GPS watch and pauses simulated walking. On return, a fresh fix, route and
+reported-hours checks are required for the remaining stops. Checks also expire
+after five minutes. Auto-saving the same outing does not trigger more map calls.
+Unknown hours remain explicit; closures/provider failures pause guidance and offer
+a retry or a different plan. This is not offline turn-by-turn navigation.
+
+Signed-in cached plans open before a cloud read completes. Notes and progress are
+cached on edit and retry when connected/foregrounded. Interrupted writes require a
+remote revision read; differing cloud revisions stop writes and preserve the local
+copy until the user resolves the conflict. Cached Google hours/directions remain
+excluded. Map loading and live guidance require a connection. Private cloud photos
+may require a new download; storage-full warnings mean the latest content is not
+guaranteed to survive closing the app.
+
+Verification: `npm test` includes injected offline/reconnect and delayed-response
+cases plus a React regression against repeated paid checks after autosaves. Native
+simulator checks use a disposable account and simulated London GPS, including
+screen lock/unlock, revoked location permission and cold reopening. Outdoor GPS,
+actual airplane-mode transfers and battery behavior still require physical-device
+acceptance. Do not reset a personal device or account to run the disposable tests.
+
+Provider references: [Geolocation](https://capacitorjs.com/docs/apis/geolocation),
+[app lifecycle](https://capacitorjs.com/docs/apis/app),
+[network changes](https://capacitorjs.com/docs/apis/network).

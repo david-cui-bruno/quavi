@@ -105,6 +105,7 @@ export function Details() {
       <div className="row">
         <div style={{ flex: 1 }}><Btn disabled={checking} onClick={async () => {
           if(!story.source){setStory(st=>({...st,status:'active'}));go('active');return}
+          if(tracking.mode==='live'&&!tracking.ready){setCheckError('Wait for a fresh, precise GPS position before starting. Check Location Services and try again.');return}
           if(!account||!story.origin||story.chapters.some(c=>!c.ll)){setCheckError('Sign in and choose a nearby detour to check its route.');return}
           setChecking(true);setCheckError('');
           try{

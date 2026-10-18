@@ -56,3 +56,33 @@ test('signing out during a request cannot publish another account’s save into 
   const opening = a.engine.open(); a.engine.close(); release(); await opening
   assert.equal(a.displayed, undefined)
 })
+
+test('notes typed during a slow reconnect read survive the returned older snapshot',async()=>{
+ let release
+ const gate=new Promise(r=>{release=r})
+ const a=setup({request:async(method,body)=>{if(method==='GET'){await gate;return{state:{name:'Cloud'},revision:0}}return{state:body.state,revision:1}}})
+ const opening=a.engine.open();a.engine.edit({name:'New note while reconnecting'});release();await opening
+ assert.equal(a.displayed.name,'New note while reconnecting');assert.equal(a.engine.cache.dirty,false);a.engine.close()
+})
+test('an interrupted write reads remote before retry and retains conflicting local notes',async()=>{
+ const calls=[];let remote={state:{name:'Original'},revision:1}
+ const a=setup({request:async(method,body)=>{calls.push(method);if(method==='GET')return structuredClone(remote);remote={state:body.state,revision:2};throw new Error('connection lost after server accepted') }})
+ await a.engine.open();a.engine.edit({name:'First offline note'});await a.engine.flush()
+ a.engine.edit({name:'Additional local note'});await a.engine.flush()
+ assert.deepEqual(calls,['GET','PUT','GET']);assert.equal(a.status,'conflict');assert.equal(a.displayed.name,'Additional local note');assert.equal(remote.state.name,'First offline note');a.engine.close()
+})
+test('offline startup makes no network calls, restores cached progress and reconnects with a read first',async()=>{
+ const disk=storage();disk.setItem('quavi.account.v1.alice',JSON.stringify({state:{name:'Cached plan'},revision:4,dirty:true}))
+ let available=false;const calls=[]
+ const a=setup({storage:disk,available:()=>available,request:async(method,body)=>{calls.push(method);return{state:body?.state??{name:'Cloud'},revision:method==='GET'?4:5}}})
+ await a.engine.open();assert.equal(a.displayed.name,'Cached plan');assert.deepEqual(calls,[])
+ a.engine.edit({name:'Offline note'});await a.engine.flush();assert.deepEqual(calls,[])
+ available=true;await a.engine.resume();assert.deepEqual(calls,['GET','PUT']);assert.equal(a.displayed.name,'Offline note');a.engine.close()
+})
+
+test('storage-full warnings survive offline retries so unsaved content is not described as safely cached',async()=>{
+ let online=true,full=false
+ const disk=storage();const a=setup({storage:{getItem:disk.getItem,setItem:(k,v)=>{if(full)throw new Error('quota exceeded');disk.setItem(k,v)}},available:()=>online})
+ await a.engine.open();full=true;online=false;a.engine.edit({name:'Not cached'});assert.equal(a.status,'storage-full')
+ await a.engine.flush();assert.equal(a.status,'storage-full');assert.equal(a.engine.cache.state.name,'Not cached');a.engine.close()
+})
