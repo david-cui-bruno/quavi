@@ -11,7 +11,7 @@ export function useOutingCheck(story:Story, chapter:number) {
   const {account,update}=useStore(),tracking=useTracking(),life=useRuntime()
   const [attempt,retry]=useState(0)
   const remaining=story.chapters.slice(chapter)
-  const stopsKey=JSON.stringify(remaining.map(c=>[c.place,c.ll,c.mins]))
+  const stopsKey=JSON.stringify(remaining.map(c=>[c.place,c.ll,c.mins,c.kind,c.aliases]))
   const key=[account?.uid,story.id,chapter,stopsKey,life.epoch,tracking.mode,attempt].join(':')
   const enabled=Boolean(story.source&&account&&life.active&&life.online&&tracking.ready)
   useEffect(()=>{tracking.setWalking(false)},[key,enabled]) // stop simulation on interruptions; do not auto-resume it
