@@ -1,3 +1,4 @@
+import * as delivery from './social-delivery.js';
 import * as social from './social.js';
 import {ensureRewards,rewardsActive,rewardState,redeem} from "./rewards.js";
 import { ensureOutings, listOutings, applyOutingOperation } from "./outings.js";
@@ -22,6 +23,7 @@ import { appStateSchema, inspectState } from "./state-schema.js";
 declare module "fastify" {
   interface FastifyRequest {
     uid: string;
+    moderator: boolean;
     authTime: number;
     db: pg.PoolClient | null;
   }
@@ -63,6 +65,7 @@ export async function createApp(options: {
       : false,
   });
   app.decorateRequest("uid", "");
+  app.decorateRequest("moderator",false);
   app.decorateRequest("authTime", 0);
   app.decorateRequest("db", null);
   await app.register(cors, {
@@ -124,6 +127,7 @@ export async function createApp(options: {
             false,
           );
           req.uid = token.uid;
+          req.moderator=token.quaviModerator===true;
           req.authTime = token.auth_time;
         } catch {
           return reply
@@ -500,11 +504,22 @@ export async function createApp(options: {
         );
         return { id, status: "uploaded" };
       });
-      api.get('/me/social',async req=>social.socialState(req.db!,req.uid));
+      api.get('/me/social',async req=>({...await social.socialState(req.db!,req.uid),canModerate:req.moderator}));
+      api.get('/me/social/feed',async req=>social.feedPage(req.db!,req.uid,(req.query as any).cursor));
+      api.get('/me/social/notifications',async req=>delivery.inbox(req.db!,req.uid,(req.query as any).cursor));
+      api.post('/me/social/notifications/read',async req=>delivery.markRead(req.db!,req.uid,req.body));
+      api.put('/me/social/devices',async req=>delivery.registerDevice(req.db!,req.uid,req.body));
+      api.delete('/me/social/devices',async req=>delivery.removeDevice(req.db!,req.uid,req.body));
+      api.get('/me/social/push-status',async()=>({configured:process.env.APNS_PUSH_ENABLED==='true'}));
+      const staff=(req:any)=>{if(!req.moderator)throw new social.SocialError(403,'Moderator access required.');};
+      api.get('/me/social/moderation',async req=>{staff(req);return delivery.moderationQueue(req.db!,(req.query as any).cursor)});
+      api.get('/me/social/moderation/:id',async req=>{staff(req);return delivery.moderationEvidence(req.db!,(req.params as any).id)});
+      api.get('/me/social/moderation/:id/media/:mediaId',async(req,reply)=>{staff(req);const p=req.params as any;const key=await delivery.moderationMedia(req.db!,p.id,p.mediaId);if(!options.media)return reply.code(503).send({error:'Photo storage unavailable'});return {url:await options.media.read(key),expiresInSeconds:300}});
+      api.post('/me/social/moderation',async req=>{staff(req);return delivery.moderate(req.db!,req.uid,req.body)});
       api.put('/me/social/profile',async req=>social.setHandle(req.db!,req.uid,req.body));
       api.post('/me/social/lookup',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-lookup',30,3600))return reply.code(429).send({error:'Too many searches. Try again later.'});return social.lookup(req.db!,req.uid,req.body)});
       api.post('/me/social/relationships',async(req,reply)=>{if((req.body as any)?.action==='request'&&!await quota(req.db!,ownerHash(req.uid),'social-request',30,3600))return reply.code(429).send({error:'Too many friend requests. Try again later.'});return social.relationship(req.db!,req.uid,req.body)});
-      api.post('/me/social/posts',async req=>social.publish(req.db!,req.uid,req.body));
+      api.post('/me/social/posts',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-publish',20,86400))return reply.code(429).send({error:'Sharing limit reached. Try again tomorrow.'});return social.publish(req.db!,req.uid,req.body)});
       api.get('/me/social/posts/:id',async req=>social.readPost(req.db!,req.uid,(req.params as any).id));
       api.delete('/me/social/posts/:id',async req=>social.unpublish(req.db!,req.uid,(req.params as any).id));
       api.post('/me/social/reports',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-report',10,86400))return reply.code(429).send({error:'Report limit reached. You can still block this person.'});return social.report(req.db!,req.uid,req.body)});

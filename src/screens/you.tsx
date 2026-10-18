@@ -72,6 +72,8 @@ export function Profile() {
   const [confirm, setConfirm] = useState(false)
   const { stage: stageName, disc: discName } = safePair(user.avatar)
   const rows: [string, string, () => void][] = [
+    ...(account ? [['Notifications', 'Updates from your circle', () => go('notifications')]] as [string,string,()=>void][] : []),
+    ...(social.data?.canModerate ? [['Moderation', 'Review private reports', () => go('moderation')]] as [string,string,()=>void][] : []),
     ['Your lists', Object.keys(s.lists).join(' · '), () => go('lists')],
     ['Story shelf', 'Stories you’ve told', () => go('shelf')],
     ['Friends', friendCount ? `${friendCount} friend${friendCount > 1 ? 's' : ''}` : 'Add your first friend', () => go('friends')],

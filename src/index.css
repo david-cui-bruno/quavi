@@ -477,3 +477,7 @@ button.pill.abs { padding: 0 16px; }
 
 .circle-form .field > span { font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--ink-p); }
 .circle-identity > .chip { margin-top:10px; }
+
+.notice-row { display:flex; align-items:flex-start; gap:14px; width:100%; text-align:left; padding:18px 0; border-bottom:1px solid rgba(30,27,22,.14); min-height:64px; overflow-wrap:anywhere; }
+.notice-dot { width:10px; height:10px; margin-top:6px; flex:none; border-radius:50%; background:var(--orange); }
+.notice-dot.read { background:transparent; border:1px solid var(--ink); }

@@ -229,7 +229,8 @@ production partner verification and the reliability stages below still need impl
 | Deferred by user: physical outing acceptance before wider beta | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
 | Planned: active-outing background tracking | Track only during an explicitly started outing, with a clear stop control; implement permission, battery, privacy and notification behavior | Current build remains foreground-only and explains that policy before using GPS |
 | Done: private circle foundation | Exact handle discovery, requests/acceptance/cancel/decline/remove, friends-only completed stories, stop sharing, private story/photo reads, block/unblock and private reports | API tests verify A→accepted B access and C denial, pending requests, races, removal/unshare/block and deletion; notification delivery and moderation operations remain below |
-| Next: social delivery and moderation operations | Push/in-app notifications, report-review workflow/tooling, stronger abuse controls and feed pagination | Request/share notices reach authorized recipients; reports can be triaged and resolved privately; access revocation remains enforced |
+| Done: social inbox and moderation implementation | Transactional request/accept/share notices, unread/read controls, keyset pagination, staff-only report evidence/review, audited story removal and seven-day social restrictions | 90 backend and 37 client tests cover recipient isolation, duplicate suppression, revocation, timestamp ties, role enforcement, hidden-story republish prevention, restrictions and push retries |
+| Remaining: push and moderation acceptance | Production-only Quavi APNs key, least-privilege worker, native permission/registration/tap flow and selected moderator account | Verify signed TestFlight delivery on a real phone, off/logout/account switching, permission denial and report handling; setup and live results are recorded below |
 | Done: server-owned demo rewards | Deterministic task plans, append-only ledger, one-time redemptions, offline commands and legacy display-only XP | 63 backend and 30 client tests cover duplicate awards, concurrent spending, inflated balances and lost acknowledgements; partners remain fictional |
 | Done: explicit Explore location selection | Address-bearing search suggestions, keyboard selection and stale-response cancellation | Searching never silently chooses the first hit; the selected result coordinates drive the route |
 | Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) verified Testing in Quavi Development |
@@ -515,3 +516,36 @@ Signed **1.0 (13)** is verified **Testing** in Quavi Development on October 18,
 TestFlight → Update and confirm 1.0 (13) in You. The disposable QA account was
 blocked for deletion, private credential files removed, and native cold launch
 verified return to the welcome screen.
+
+### Social delivery and moderation — build 14
+
+The in-app inbox records friend requests, acceptances, new shared stories and
+private report-review updates in the same transaction as the social action.
+Retries do not create duplicate entries. Reads/counts recheck current friendship,
+block, sharing, moderation and deletion state. Notices contain references, not
+copied story text or GPS. Read controls affect only the signed-in recipient.
+The feed and inbox use bounded keyset pages with timestamp/ID tie handling.
+
+Staff review requires the server-verified `quaviModerator` Firebase claim; ordinary
+accounts cannot list reports or read reported story/photo evidence. Reviewers
+cannot adjudicate reports involving themselves. Decisions require a private note
+and an audit record. Removing a shared story retains its private outing and
+prevents unpublish/republish bypass. Seven-day restrictions pause requests and
+sharing while preserving private outings, blocking and reporting. Report details,
+reporter identity and staff notes never enter ordinary notifications. Reports and
+notices expire after 90 days; device registrations expire after 60 inactive days.
+
+Native push uses an optional permission action, account-bound APNs registrations,
+generic lock-screen copy and an authenticated inbox on tap. The durable delivery
+worker retries transient failures, removes invalid tokens and rechecks eligibility
+before sending. Push is at-least-once; the inbox is deduplicated. The worker alone
+receives the Quavi-only production APNs signing key from Secret Manager. Debug
+sandbox push requires a separate sandbox key/configuration; production key scope
+is deliberately not widened. Physical TestFlight push acceptance remains separate
+from deterministic delivery tests.
+
+The selected existing `davidcui824@gmail.com` account has the moderator claim;
+sign out/in to refresh it. No other real accounts are assigned staff access.
+90 backend / 37 client tests and both TypeScript builds pass. Native iPhone 17/SE
+builds pass. Live deployment, native acceptance and TestFlight availability are
+recorded after verification. Physical outing/offline checks remain deferred.

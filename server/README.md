@@ -480,3 +480,43 @@ Details/entry links and Start also pass. No physical admission is claimed.
 Production entry validation and physical multi-region acceptance remain
 separate work. Reference: [Google Place resource](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places)
 and [Overture Places](https://docs.overturemaps.org/guides/places/).
+
+## Social delivery and moderation
+
+Migration 008 adds an account-cascading inbox, per-request identity, staff audit,
+restriction and hidden-outing records, APNs devices and a bounded delivery journal.
+GET `/v1/me/social/notifications` and `/social/feed` accept opaque keyset cursors;
+POST `/social/notifications/read` accepts up to 100 owned notice IDs. The social
+summary includes unread count. Stale/blocked/unshared/deleting content is filtered
+on every page. Writes enqueue notices transactionally; event keys deduplicate.
+
+`/social/moderation` list/decide and reported-content/photo reads require a
+verified Firebase `quaviModerator: true` claim. No ordinary-client route can set
+it. Staff cannot decide reports involving their own account. Decisions require
+private notes and audit; hide_story adds an outing tombstone to prevent republish;
+restrict_user lasts seven days and excludes social content while keeping safety
+and private outing controls. Duplicate open reports are coalesced, publication is
+bounded to 20 requests/day, and existing request/search/report quotas remain.
+
+PUT/DELETE `/social/devices` binds/detaches a bounded APNs token. Rebinding removes
+old pending sends, limits an account to five devices and pushes only events newer
+than registration. The worker rechecks account/content access and recipient/token
+ownership, locks deliveries, retries at most five attempts and prunes invalid
+tokens. A crash after Apple's acknowledgement can duplicate an alert; collapse IDs
+reduce this, and the inbox stays deduplicated. No names, content or locations go
+into APNs alert payloads. Run `node dist/push-worker.js` as a private Cloud Run job.
+
+`configure-push-dev.sh` configures the approved production key, a one-minute job
+scheduler, a dedicated quavi-push identity and a non-secret API availability flag.
+Its prerequisites grant that identity only Cloud SQL client plus access to the
+runtime database and APNs secrets; the public API never receives the signing key.
+Subsequent deploys preserve the flag and update the worker image after migrations.
+Monitor job failures; APNs auth/configuration failures never mark delivery sent.
+
+90 backend and 37 client tests pass, including real PostgreSQL/API authorization,
+timestamp-tie pages, revocation, restrictions, replay and push failure adapters.
+Tests used a fresh isolated localhost database because the older development test
+DB had a pre-existing migration-007 checksum mismatch; applied migrations were not
+rewritten or bypassed. Real-device push and operations review remain acceptance
+work until verified. Provider references: [Capacitor push](https://capacitorjs.com/docs/apis/push-notifications)
+and [Apple APNs](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).

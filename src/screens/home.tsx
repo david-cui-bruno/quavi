@@ -76,6 +76,7 @@ export function Home() {
         <Badge size={40} />
         <span className="wordmark" style={{ fontSize: 24 }}>Quavi</span>
         <div style={{ flex: 1 }} />
+        {account&&<button className="chip" aria-label={`Notifications${social.data?.notificationsUnread?`, ${social.data.notificationsUnread} unread`:''}`} onClick={()=>go('notifications')} style={{position:'relative',width:44,padding:0,justifyContent:'center'}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 8H3c0-1 3-1 3-8Z"/><path d="M10 21h4"/></svg>{!!social.data?.notificationsUnread&&<span style={{position:'absolute',right:3,top:2,width:8,height:8,borderRadius:'50%',background:'var(--orange)'}}/>}</button>}
         <span className="pill">📍 {s.user.neighborhood}</span>
       </div>
       {syncStatus==='storage-full'&&<p role="alert" className="small" style={{marginBottom:12}}>Device storage is full. Keep Quavi open and free up space before leaving; your latest changes may not be saved.</p>}
@@ -301,7 +302,7 @@ export function Friend() {
 }
 
 export function Circle() {
-  const { s, go, account } = useStore()
+  const { s, go, account, say } = useStore()
   const social=useSocial()
   const mine = s.shelf.filter((x) => x.shared).map((x) => ({ ...x, author: 'You' }))
   const all = account ? social.data?.feed??[] : [...mine, ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))]
@@ -311,7 +312,7 @@ export function Circle() {
       <div className="kicker" style={{ marginTop: 14 }}>Your circle</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Stories from<br />your circle.</h1>
       {account&&<CircleStatus/>}
-      {account&&<p className="small muted">Friends only · latest 50 shared stories. Refreshing checks your current access.</p>}
+      {account&&<p className="small muted">Friends only. Refreshing checks your current access.</p>}
       {all.length === 0 && (
         <div className="col" style={{ gap: 12 }}>
           <div className="card" style={{ background: 'var(--soft)', padding: '20px 24px', borderRadius: 24 }}>
@@ -337,6 +338,7 @@ export function Circle() {
           )
         })}
       </div>
+      {account&&social.data?.feedCursor&&<button className="btn soft" onClick={()=>void social.loadMore().catch(()=>say('Could not load older stories. Try again.'))}>Load older stories</button>}
     </Screen$>
   )
 }

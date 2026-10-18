@@ -77,8 +77,8 @@ export function ReportSheet({
         <>
           <p className="body">
             Your report was recorded. You can also block this person to remove
-            access between you. Reports are reviewed manually; there are no
-            instant moderation notifications yet.
+            access between you. Reports are reviewed manually. We’ll put an update in your
+            notifications when the review is complete.
           </p>
           <Btn onClick={onClose}>Done</Btn>
         </>

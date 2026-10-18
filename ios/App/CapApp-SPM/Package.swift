@@ -16,7 +16,8 @@ let package = Package(
         .package(name: "CapacitorGeolocation", path: "../../../node_modules/@capacitor/geolocation"),
         .package(name: "CapacitorGoogleMaps", path: "../../../node_modules/@capacitor/google-maps"),
         .package(name: "CapacitorKeyboard", path: "../../../node_modules/@capacitor/keyboard"),
-        .package(name: "CapacitorNetwork", path: "../../../node_modules/@capacitor/network")
+        .package(name: "CapacitorNetwork", path: "../../../node_modules/@capacitor/network"),
+        .package(name: "CapacitorPushNotifications", path: "../../../node_modules/@capacitor/push-notifications")
     ],
     targets: [
         .target(
@@ -28,7 +29,8 @@ let package = Package(
                 .product(name: "CapacitorGeolocation", package: "CapacitorGeolocation"),
                 .product(name: "CapacitorGoogleMaps", package: "CapacitorGoogleMaps"),
                 .product(name: "CapacitorKeyboard", package: "CapacitorKeyboard"),
-                .product(name: "CapacitorNetwork", package: "CapacitorNetwork")
+                .product(name: "CapacitorNetwork", package: "CapacitorNetwork"),
+                .product(name: "CapacitorPushNotifications", package: "CapacitorPushNotifications")
             ]
         )
     ]

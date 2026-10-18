@@ -1,3 +1,4 @@
+import {notify,assertSocialAllowed,readCursor,nextCursor,unreadNotifications} from './social-delivery.js';
 import type pg from "pg";
 import { randomUUID, randomBytes } from "node:crypto";
 import { z } from "zod";
@@ -65,7 +66,7 @@ async function pair(db: pg.PoolClient, a: string, b: string) {
   return ids;
 }
 const visible = `(p.user_id=$1 OR (EXISTS(SELECT 1 FROM social_relationships r WHERE r.low_id=least(p.user_id COLLATE "C",$1) AND r.high_id=greatest(p.user_id COLLATE "C",$1) AND r.state='accepted') AND NOT EXISTS(SELECT 1 FROM social_blocks b WHERE (b.user_id=$1 AND b.target_id=p.user_id) OR (b.user_id=p.user_id AND b.target_id=$1))))`;
-const postsSql = `SELECT p.*,s.public_id,s.handle,s.name,o.document FROM social_posts p JOIN social_profiles s ON s.user_id=p.user_id JOIN outings o ON o.user_id=p.user_id AND o.id=p.outing_id WHERE o.document->>'status'='completed' AND o.document->>'inShelf'='true' AND ${visible}`;
+const postsSql = `SELECT p.*,s.public_id,s.handle,s.name,o.document FROM social_posts p JOIN social_profiles s ON s.user_id=p.user_id JOIN outings o ON o.user_id=p.user_id AND o.id=p.outing_id WHERE o.document->>'status'='completed' AND o.document->>'inShelf'='true' AND p.hidden_at IS NULL AND NOT EXISTS(SELECT 1 FROM social_restrictions sr WHERE sr.user_id=p.user_id AND sr.until_at>now()) AND NOT EXISTS(SELECT 1 FROM account_deletions d WHERE d.user_id=p.user_id) AND ${visible}`;
 export async function socialState(db: pg.PoolClient, uid: string) {
   const me = await ensureSocial(db, uid);
   const relations = await db.query(
@@ -76,16 +77,14 @@ export async function socialState(db: pg.PoolClient, uid: string) {
     "SELECT s.* FROM social_blocks b JOIN social_profiles s ON s.user_id=b.target_id WHERE b.user_id=$1",
     [uid],
   );
-  const posts = await db.query(
-    postsSql + " ORDER BY p.created_at DESC,p.id LIMIT 50",
-    [uid],
-  );
+  const page = await feedPage(db,uid);
   const mine = await db.query(
     "SELECT id,outing_id FROM social_posts WHERE user_id=$1",
     [uid],
   );
   return {
     me: person(me),
+    notificationsUnread:await unreadNotifications(db,uid),
     friends: relations.rows.filter((r) => r.state === "accepted").map(person),
     incoming: relations.rows
       .filter((r) => r.state === "pending" && r.requester !== uid)
@@ -95,17 +94,15 @@ export async function socialState(db: pg.PoolClient, uid: string) {
       .map(person),
     blocked: blocks.rows.map(person),
     myPosts: mine.rows.map((r) => ({ id: r.id, outingId: r.outing_id })),
-    feed: posts.rows.map((p) => ({
-      id: p.id,
-      title: p.document.story.title,
-      date: p.document.story.date,
-      chapters: p.document.story.chapters.map((c: any) => ({ place: c.place })),
-      author: p.user_id === uid ? "You" : p.name,
-      ownerId: p.public_id,
-      handle: p.handle,
-      outingId: p.user_id === uid ? p.outing_id : undefined,
-    })),
+    feed: page.feed,
+    feedCursor: page.nextCursor,
   };
+}
+export async function feedPage(db:pg.PoolClient,uid:string,input?:unknown){
+ const c=readCursor(input);
+ const rows=(await db.query(postsSql.replace('SELECT p.*,','SELECT p.*,p.created_at::text AS cursor_time,')+(c?' AND (p.created_at,p.id)<($2::timestamptz,$3::uuid)':'')+' ORDER BY p.created_at DESC,p.id DESC LIMIT 21',c?[uid,c.at,c.id]:[uid])).rows;
+ const page=rows.slice(0,20);
+ return {feed:page.map(p=>({id:p.id,title:p.document.story.title,date:p.document.story.date,chapters:p.document.story.chapters.map((c:any)=>({place:c.place})),author:p.user_id===uid?'You':p.name,ownerId:p.public_id,handle:p.handle,outingId:p.user_id===uid?p.outing_id:undefined})),nextCursor:rows.length>20?nextCursor(page.at(-1)):null};
 }
 export async function setHandle(
   db: pg.PoolClient,
@@ -193,24 +190,29 @@ export async function relationship(
     )
   ).rows[0];
   if (op.action === "request") {
+    await assertSocialAllowed(db,uid);
     const count = await db.query(
       "SELECT count(*)::integer AS n FROM social_relationships WHERE (low_id=$1 OR high_id=$1)",
       [uid],
     );
     if (count.rows[0].n >= 500 && !existing)
       throw fail(422, "Your circle is full. Remove a request or friend first.");
-    if (!existing)
-      await db.query(
-        "INSERT INTO social_relationships(low_id,high_id,requester,state) VALUES($1,$2,$3,'pending')",
+    if (!existing) {
+      const inserted=await db.query(
+        "INSERT INTO social_relationships(low_id,high_id,requester,state) VALUES($1,$2,$3,'pending') RETURNING request_id",
         [low, high, uid],
       );
+      await notify(db,p.user_id,uid,'friend_request',inserted.rows[0].request_id);
+    }
   } else if (op.action === "accept") {
+    await assertSocialAllowed(db,uid);
     if (!existing || existing.requester === uid)
       throw fail(409, "Only the recipient can accept this request.");
     await db.query(
       "UPDATE social_relationships SET state='accepted' WHERE low_id=$1 AND high_id=$2",
       [low, high],
     );
+    await notify(db,p.user_id,uid,'friend_accepted',existing.request_id);
   } else if (existing) {
     if (
       op.action === "decline" &&
@@ -234,6 +236,7 @@ export async function publish(db: pg.PoolClient, uid: string, input: unknown) {
     .object({ outingId: z.string().min(1).max(200) })
     .strict()
     .parse(input);
+  await assertSocialAllowed(db,uid);
   await ensureOutings(db, uid);
   await ensureSocial(db, uid);
   const r = (
@@ -244,10 +247,15 @@ export async function publish(db: pg.PoolClient, uid: string, input: unknown) {
   ).rows[0]?.document as Outing | undefined;
   if (!r || r.status !== "completed" || !r.inShelf)
     throw fail(422, "Finish and save this outing before sharing.");
-  await db.query(
-    "INSERT INTO social_posts(id,user_id,outing_id) VALUES($1,$2,$3) ON CONFLICT(user_id,outing_id) DO NOTHING",
+  if((await db.query('SELECT 1 FROM social_hidden_outings WHERE user_id=$1 AND outing_id=$2',[uid,op.outingId])).rowCount)throw fail(403,'This story was removed from sharing by moderation.');
+  const inserted=await db.query(
+    "INSERT INTO social_posts(id,user_id,outing_id) VALUES($1,$2,$3) ON CONFLICT(user_id,outing_id) DO NOTHING RETURNING id",
     [randomUUID(), uid, op.outingId],
   );
+  if(inserted.rowCount){
+   const friends=(await db.query(`SELECT CASE WHEN low_id=$1 THEN high_id ELSE low_id END AS uid FROM social_relationships WHERE (low_id=$1 OR high_id=$1) AND state='accepted'`,[uid])).rows;
+   for(const f of friends)if(!await blocked(db,uid,f.uid))await notify(db,f.uid,uid,'story_shared',inserted.rows[0].id,inserted.rows[0].id);
+  }
   return socialState(db, uid);
 }
 export async function unpublish(db: pg.PoolClient, uid: string, id: unknown) {
@@ -258,7 +266,7 @@ export async function unpublish(db: pg.PoolClient, uid: string, id: unknown) {
   return socialState(db, uid);
 }
 /** Only previewed story content leaves the owner record. No origin, GPS, prefs, arrival, task flags or provider facts. */
-function sharedStory(p: any) {
+export function sharedStory(p: any) {
   const s = p.document.story,
     plan = rewardPlan(s as RuleStory);
   const notes: any[] = [],
@@ -362,6 +370,8 @@ export async function report(db: pg.PoolClient, uid: string, input: unknown) {
     const post = await readPost(db, uid, op.postId);
     if (post.owner.id !== p.public_id) throw fail(404, "Story unavailable");
   }
+  const duplicate=await db.query(`SELECT id FROM social_reports WHERE reporter=$1 AND target_id=$2 AND post_id IS NOT DISTINCT FROM $3::uuid AND status='open'`,[uid,p.user_id,op.postId??null]);
+  if(duplicate.rowCount)return {received:true};
   await db.query(
     "INSERT INTO social_reports(id,reporter,target_id,post_id,reason,details) VALUES($1,$2,$3,$4,$5,$6)",
     [randomUUID(), uid, p.user_id, op.postId ?? null, op.reason, op.details],
@@ -370,6 +380,8 @@ export async function report(db: pg.PoolClient, uid: string, input: unknown) {
 }
 
 export async function cleanupSocialReports(db: pg.Pool | pg.PoolClient) {
+  await db.query("DELETE FROM social_notifications WHERE created_at<now()-interval '90 days'");
+  await db.query("DELETE FROM push_devices WHERE updated_at<now()-interval '60 days'");
   await db.query(
     "DELETE FROM social_reports WHERE created_at<now()-interval '90 days'",
   );

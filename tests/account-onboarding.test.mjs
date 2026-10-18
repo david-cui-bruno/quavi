@@ -13,6 +13,7 @@ async function loadStore(){
  const input=await readFile(new URL('../src/store.tsx',import.meta.url),'utf8')
  let code=ts.transpileModule(input,{compilerOptions:{target:ts.ScriptTarget.ESNext,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText
  const adapters={
+  './push':moduleURL('export const detachPush=async()=>{}'),
   'firebase/auth':moduleURL(`export const onAuthStateChanged=(_auth,callback)=>{globalThis.__accountProbe.auth=callback;return()=>{}};export const signOut=async()=>{}`),
   './cloud':moduleURL(`export const auth={};export const clearPhotoCache=()=>{};export const photoUploader=()=>async s=>s;export const api=async(_user,path)=>{if(globalThis.__accountProbe.fail)throw new Error("offline");return path==='/outings'?{outings:[]}:globalThis.__accountProbe.remote};`),
   './runtime':moduleURL(`export const runtime={get:()=>({active:true,online:globalThis.__accountProbe.online!==false}),subscribe:()=>()=>{}}`),

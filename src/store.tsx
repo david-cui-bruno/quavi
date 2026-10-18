@@ -1,3 +1,4 @@
+import {detachPush} from './push'
 import {OutingSync,outingStorage,profileOnly,type OutingStatus} from './outing-sync.mjs'
 import {runtime} from './runtime'
 import {scrubGoogleContent} from './google-retention.mjs'
@@ -12,7 +13,7 @@ import { SyncEngine, type SyncStatus } from './sync-engine.mjs'
 export type Screen =
   | 'splash' | 'welcome' | 'login' | 'interests' | 'customize' | 'mood'
   | 'home' | 'openings' | 'writing' | 'details' | 'active' | 'swap' | 'complete' | 'tell'
-  | 'friend' | 'explore' | 'route' | 'stop' | 'shelf' | 'profile' | 'lists' | 'read' | 'circle' | 'about' | 'friends'
+  | 'notifications' | 'moderation' | 'friend' | 'explore' | 'route' | 'stop' | 'shelf' | 'profile' | 'lists' | 'read' | 'circle' | 'about' | 'friends'
 
 export type Route = { name: Screen; params?: Record<string, unknown> }
 
@@ -204,7 +205,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await signOut(auth)
     setStack([{ name: 'welcome' }])
   }, [disk])
-  const logout = useCallback(async () => { await signOut(auth); setStack([{ name: 'welcome' }]) }, [])
+  const logout = useCallback(async () => { try{await detachPush()}catch{ /* Local sign-out must remain available offline. */ } await signOut(auth); setStack([{ name: 'welcome' }]) }, [])
 
   const go = useCallback((name: Screen, params?: Record<string, unknown>) => {
     setDir('fwd')
