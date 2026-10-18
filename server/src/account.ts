@@ -73,6 +73,8 @@ export async function processDeletions(
         } catch (e) {
           if (!missingUser(e)) throw e;
         }
+        await db.query("DELETE FROM outings WHERE user_id=$1", [item.user_id]);
+        await db.query("DELETE FROM outing_accounts WHERE user_id=$1", [item.user_id]);
         await db.query("DELETE FROM user_state WHERE user_id=$1", [
           item.user_id,
         ]);

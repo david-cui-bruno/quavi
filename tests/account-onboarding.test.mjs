@@ -14,9 +14,10 @@ async function loadStore(){
  let code=ts.transpileModule(input,{compilerOptions:{target:ts.ScriptTarget.ESNext,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}}).outputText
  const adapters={
   'firebase/auth':moduleURL(`export const onAuthStateChanged=(_auth,callback)=>{globalThis.__accountProbe.auth=callback;return()=>{}};export const signOut=async()=>{}`),
-  './cloud':moduleURL(`export const auth={};export const clearPhotoCache=()=>{};export const photoUploader=()=>async s=>s;export const api=async()=>{if(globalThis.__accountProbe.fail)throw new Error("offline");return globalThis.__accountProbe.remote};`),
+  './cloud':moduleURL(`export const auth={};export const clearPhotoCache=()=>{};export const photoUploader=()=>async s=>s;export const api=async(_user,path)=>{if(globalThis.__accountProbe.fail)throw new Error("offline");return path==='/outings'?{outings:[]}:globalThis.__accountProbe.remote};`),
   './runtime':moduleURL(`export const runtime={get:()=>({active:true,online:globalThis.__accountProbe.online!==false}),subscribe:()=>()=>{}}`),
   './data':moduleURL(`export const DEFAULT_LISTS=[]`),
+  './outing-sync.mjs':moduleURL(`export {OutingSync,profileOnly} from ${JSON.stringify(new URL('../src/outing-sync.mjs',import.meta.url).href)};export const outingStorage=()=>{const disk=new Map();return {read:async k=>disk.get(k),write:async(k,v)=>disk.set(k,structuredClone(v)),remove:async k=>disk.delete(k)}}`),
   './sync-engine.mjs':new URL('../src/sync-engine.mjs',import.meta.url).href,
   './google-retention.mjs':new URL('../src/google-retention.mjs',import.meta.url).href,
   'react':pathToFileURL(require.resolve('react')).href,

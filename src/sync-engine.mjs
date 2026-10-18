@@ -1,7 +1,7 @@
 /** Account-isolated offline cache and optimistic concurrency. Transport is injected for testing. */
 export class SyncEngine {
-  constructor({ uid, storage, request, prepare, onState, onStatus, initial, sanitize = (value) => value, available = () => true }) {
-    Object.assign(this, { storage, request, prepare, onState, onStatus, sanitize, available })
+  constructor({ uid, storage, request, prepare, onState, onStatus, initial, sanitize = (value) => value, available = () => true, writable = () => true }) {
+    Object.assign(this, { storage, request, prepare, onState, onStatus, sanitize, available, writable })
     this.key = `quavi.account.v1.${uid}`
     this.closed = false; this.running = false; this.conflict = false; this.ready = false
     try { this.cache = JSON.parse(storage.getItem(this.key) || 'null') } catch { /* damaged cache */ }
@@ -48,7 +48,7 @@ export class SyncEngine {
     if (this.closed || this.running || !this.ready || this.reading || this.conflict) return
     if (!this.available()) { if(this.cache.dirty)this.status('offline'); return }
     if (this.needsRead) { await this.open(); return }
-    if (!this.cache.dirty) return
+    if (!this.cache.dirty || !this.writable()) return
     this.running = true; this.status('saving')
     try {
       while (this.cache.dirty && !this.closed && this.available()) {

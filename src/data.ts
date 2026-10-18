@@ -201,6 +201,8 @@ export type Story = {
   /** the "Adjust the plan" choices this story was built with */
   prefs?: Prefs
   /** 'active' once you tap Start, 'done' when you reach the end or end it early */
+  outingPhase?: 'planned' | 'active' | 'paused' | 'completed' | 'abandoned'
+  arrivedStops?: number[]
   status?: 'active' | 'done'
   author?: string
   /** the user's own words about what happened on a task, keyed `${chapter}:${taskId}` */
@@ -220,7 +222,7 @@ export const TITLES: Record<string, string> = {
 
 export function buildStory(o: Opening): Story {
   return {
-    id: `${o.id}-${Date.now()}`,
+    id: crypto.randomUUID(),
     title: TITLES[o.id] ?? o.title,
     openingId: o.id,
     origin: o.origin, source: o.source, estimatedMinutes: o.estimatedMinutes, walking:o.walking, timeBudgetMinutes:o.timeBudgetMinutes,

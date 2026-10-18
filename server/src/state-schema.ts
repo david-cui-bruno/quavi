@@ -39,7 +39,7 @@ const chapter = z
       .max(20),
   })
   .passthrough();
-const story = z
+export const storySchema = z
   .object({
     origin: ll.optional(),
     estimatedMinutes: z.number().int().min(1).max(1440).optional(),
@@ -118,11 +118,11 @@ export const appStateSchema = z
       .array(z.object({ offerId: text, redeemedAt: text }).strict())
       .max(100),
     mood: text.optional(),
-    story: story.optional(),
+    story: storySchema.optional(),
     chapter: z.number().int().min(0).max(12),
-    shelf: z.array(story).max(200),
+    shelf: z.array(storySchema).max(200),
     lists: record(strings),
-    library: record(story),
+    library: record(storySchema),
     game: z
       .object({
         xp: z.number().int().min(0).max(10000000),

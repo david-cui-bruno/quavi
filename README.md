@@ -147,32 +147,59 @@ Outdoor GPS/arrival, physical lock/resume and airplane-mode photo recovery still
 need physical-device acceptance. Friends and authoritative reward services remain
 roadmap work; this pass does not make those prototype features server-backed.
 
-## System design discussion after the bug pass
+## Agreed system design and implementation order
 
-Current implementation: React/TypeScript runs in the Capacitor iPhone shell;
-Google Maps artwork and GPS use native integrations. Firebase Authentication
-identifies accounts. A Fastify API on Cloud Run stores revisioned private account
-snapshots in Cloud SQL and photos in private Cloud Storage. Overture supplies the
-venue catalog; Google supplies transient reported hours and walking geometry.
+Keep the React/Capacitor UI and native Google Maps/GPS for the beta, preserve the
+prototype design, and keep Quavi on GCP. Improve the implementation in this order:
 
-Recommended discussion order, before adding more prototype features:
+1. **Independent outings and offline actions (implemented in this branch).** Each
+   outing has a stable ID, lifecycle, chapter, task/coin progress, notes/photos,
+   shelf membership and its own server revision. An account-scoped IndexedDB
+   journal checkpoints pending changes and retries them with stable operation IDs.
+   Separate fields merge; same-field conflicts retain local edits and require a
+   choice in You → account saves. Profile edits no longer carry outing content.
+2. **Server-owned rewards.** Replace client XP/spending with idempotent server
+   commands and an append-only ledger; define accepted arrival/task evidence.
+   Keep partner offers simulated until actual partners/funding are secured.
+3. **Social access.** Server-side friendships, visibility and blocking, with
+   authorization on feed and shared-media reads.
+4. **Physical acceptance and mobile improvements.** Test real outings, gestures,
+   accessibility, battery and lifecycle behavior; use those results to decide any
+   additional native UI migration. Add background tracking only during an explicitly
+   started outing, with a visible stop control, in a later implementation phase.
+5. **Operations.** Separate staging/production from dev, automate deploys, monitor
+   failed saves/provider calls, exercise restore and configure provider budgets.
 
-1. **Outing state and offline sync.** Split profile/preferences, outing progress and
-   media metadata into separately versioned records. Define the conflict rule for
-   two devices, offline completion and deletion; retain a durable retry queue.
-2. **Server-owned rewards.** Award XP and spend demo rewards through idempotent
-   server commands and an append-only ledger. Decide which arrival/task evidence
-   is sufficient, and keep merchant rewards explicitly simulated.
-3. **Social access.** Model accepted friendships, story visibility and blocking on
-   the server, with authorization checks on every feed/media request.
-4. **Mobile boundary.** Keep the existing hybrid UI for the first beta while
-   measuring gesture, accessibility and lifecycle problems. Decide any further
-   native migration from those results, preserving the original design.
-5. **Operations.** Separate dev/staging/production, automate deployment, monitor
-   failed sync/provider calls, exercise database restore, and set provider budgets.
+### Independent outings and offline recovery
 
-These are proposed next decisions, not services already implemented. Physical
-outing acceptance should happen alongside this design work before a wider beta.
+The new client stores each outing separately from profile/preferences. Supported
+lifecycle: planned → active ↔ paused → completed, with explicit abandonment.
+Completed/abandoned records cannot be reopened through stale queued changes.
+Notes, photos, task progress and collected coins are optimistic on the phone;
+IndexedDB atomically stores the base records and retry journal. Photo data stays
+on-device until uploaded privately; the prepared media references and operation ID
+are checkpointed before submission. Lost responses can be retried without applying
+an operation twice. Typing during a slow upload queues a later change.
+
+Reconnect and foreground resume fetch server records before replaying pending
+changes. Different note/task fields merge. A conflict blocks only that outing;
+other outings continue syncing. You can use its cloud version or explicitly keep
+local edits. Storage failures show an unsaved warning. Saved notes/photos and tasks
+at an already reached stop can be edited offline; new directions/hours checks need
+internet, and live arrival still needs a fresh, precise GPS fix. Background GPS is
+not added by this change.
+
+Legacy cloud stories migrate once under the account lock. Legacy local edits are
+retained for migration/conflict review, rather than silently discarded. Older app
+builds must be updated after an account migrates: their whole-document writes are
+rejected to prevent overwriting independently saved outings. Legacy snapshot fields
+remain until the next new-client profile save; they are not the outing authority.
+Deleting an account immediately removes outings and operation receipts, and photo
+cleanup checks both profile and outing references.
+
+XP, coins and demo redemptions are still client-controlled demo values; this phase
+separates outing progress but does not implement authoritative reward accounting.
+Physical airplane-mode photo/lock/relaunch acceptance remains a release check.
 
 ## Build roadmap
 
@@ -191,8 +218,9 @@ trusted reward services and the reliability stages below still need implementati
 | Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
 | Next: detour reliability | Validate entry/access; strengthen venue identity/category matching and multilingual coverage; replace scripted captions with grounded generation | Complete real outings in multiple regions, including closed stops, missing hours, sparse coverage and interrupted sessions |
 | Done: foreground outing recovery foundation | Native while-in-use GPS, accuracy/freshness gates, explicit denied-location recovery, lock/background pause, transient checks after resume/reconnect and every five minutes, cached account startup and read-before-retry sync | Unit tests cover stale/inaccurate fixes, watch cancellation, session invalidation, autosave stability, offline replay and sync conflicts; simulator GPS, screen lock/resume and permission-denied flows pass |
+| Done: independent outing records and offline journal | Private per-outing records/revisions, lifecycle, one-time legacy migration, IndexedDB retry journal, field-level conflicts, idempotent operation receipts, photo-reference retention and deletion | API/PostgreSQL tests exercise cold offline replay, lost acknowledgement, concurrent fields, conflicts, account isolation and deletion; physical-device acceptance remains below |
 | Next: physical outing acceptance | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
-| Optional background tracking | Decide whether active outings should track while locked and send arrival notifications; implement permission, battery and privacy behavior only if selected | Current build remains foreground-only and explains that policy before using GPS |
+| Planned: active-outing background tracking | Track only during an explicitly started outing, with a clear stop control; implement permission, battery, privacy and notification behavior | Current build remains foreground-only and explains that policy before using GPS |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
 | Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |
 | Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) verified Testing in Quavi Development |
@@ -200,7 +228,7 @@ trusted reward services and the reliability stages below still need implementati
 | Beta and launch | CI, monitoring, backups, provider limits/budget, privacy disclosures, final app icon/splash, accessibility and small/large iPhone QA, TestFlight and App Store submission | Beta testers complete the full flow; no blocking failures remain; release metadata matches actual behavior |
 | Later: real partners | Partner agreements, funding model, eligibility/expiry, merchant validation, redemption disputes and abuse prevention | Real offers launch only after participating merchants and funding are secured |
 
-Open decisions: Google Maps budget/credit eligibility and AI provider; whether to extend the current foreground-only policy to active-detour background tracking; initial age policy and story visibility.
+Open decisions: Google Maps budget/credit eligibility and AI provider; initial age policy and story visibility. Active-outing-only background tracking is agreed for a later phase; the current build remains foreground-only.
 Any-city support is a target, with explicit no-result fallbacks where coverage is poor.
 
 ### Selected backend stack

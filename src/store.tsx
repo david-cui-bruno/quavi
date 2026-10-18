@@ -1,3 +1,4 @@
+import {OutingSync,outingStorage,profileOnly,type OutingStatus} from './outing-sync.mjs'
 import {runtime} from './runtime'
 import {scrubGoogleContent} from './google-retention.mjs'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -63,6 +64,8 @@ function load(): AppState {
 
 type Ctx = {
   account: User | null
+  outingStatus: OutingStatus | 'demo'
+  resolveOuting: (choice: 'cloud' | 'local') => Promise<void>
   syncStatus: SyncStatus | 'demo'
   retrySync: () => void
   loadCloud: () => Promise<void>
@@ -94,6 +97,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(true)
   const [syncStatus, setSyncStatus] = useState<SyncStatus | 'demo'>('demo')
   const engine = useRef<SyncEngine | null>(null)
+  const outings = useRef<OutingSync | null>(null)
+  const disk = useMemo(()=>outingStorage(),[])
+  const [outingStatus,setOutingStatus] = useState<OutingStatus | 'demo'>('demo')
   const [stack, setStack] = useState<Route[]>([{ name: 'splash' }])
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd')
   const [toast, setToast] = useState<string | null>(null)
@@ -105,16 +111,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let generation = 0
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       const ticket = ++generation
-      engine.current?.close(); engine.current = null; clearPhotoCache()
+      engine.current?.close(); engine.current = null; outings.current?.close(); outings.current=null; clearPhotoCache()
       setAccount(user); setBusy(true)
       if (!user) {
         const demo = load(); stateRef.current = demo; setS(demo)
-        setSyncStatus('demo'); setBusy(false)
+        setSyncStatus('demo'); setOutingStatus('demo'); setBusy(false)
         return
       }
-      let routed = false
+      let routed = false, outingsReady = false, accountReadable = false
       const enterAccount = (state: AppState) => {
-        if (routed || ticket !== generation) return
+        if (routed || !outingsReady || ticket !== generation) return
         routed = true; setBusy(false)
         const step = state.user.onboarding
         const legacyComplete = state.user.name.trim() && typeof state.user.age21 === 'boolean'
@@ -124,15 +130,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next = new SyncEngine({
         uid: user.uid, storage: localStorage,
         initial,
-        request: (method, body) => api(user, '/state', method, scrubGoogleContent(body)),
+        request: (method, body) => api(user, '/state', method, body ? scrubGoogleContent({...body as {state:AppState;revision:number},state:profileOnly((body as {state:AppState}).state)}) : undefined),
         sanitize: scrubGoogleContent,
         available:()=>runtime.get().active&&runtime.get().online,
-        prepare: photoUploader(user),
-        onState: (state) => { if (ticket === generation) { stateRef.current = state; setS(state) } },
+        prepare: async state=>profileOnly(state),
+        writable:()=>outingsReady,
+        onState: (state) => { if (ticket === generation) { const view=outingsReady ? outings.current!.project(state) : state; stateRef.current = view; setS(view) } },
         onStatus: (status) => { if (ticket === generation) {
           setSyncStatus(status)
+          if(['empty','saved','pending','conflict'].includes(status))accountReadable=true
           if (['empty','saved','pending','conflict'].includes(status) || (knownCache && ['offline','storage-full'].includes(status))) enterAccount(next.cache.state)
-          if (status === 'deleted') { next.close(); localStorage.removeItem(`quavi.account.v1.${user.uid}`); setStack([{name:'welcome'}]); void signOut(auth) }
+          if (status === 'deleted') { next.close(); outing.close();void disk.remove(user.uid); localStorage.removeItem(`quavi.account.v1.${user.uid}`); setStack([{name:'welcome'}]); void signOut(auth) }
         } },
       })
       const knownCache = next.cache.state !== initial
@@ -140,24 +148,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       stateRef.current=next.cache.state;setS(next.cache.state)
       // A known account cache can open offline; unknown accounts wait for their own remote state.
       if (!runtime.get().online && knownCache) enterAccount(next.cache.state)
-      void next.open()
+      const outing = new OutingSync({uid:user.uid,storage:disk,
+        request:(method,body)=>api(user,method==='GET'?'/outings':'/outings/operations',method,body),
+        prepare:photoUploader(user),available:()=>runtime.get().active&&runtime.get().online,
+        onChange:()=>{if(ticket===generation&&outingsReady){const view=outing.project(next.cache.state);stateRef.current=view;setS(view)}},
+        onStatus:status=>{if(ticket===generation){setOutingStatus(status);if(status==='deleted'){void disk.remove(user.uid);void signOut(auth)}}},
+      });outings.current=outing;setOutingStatus('pending')
+      void (async()=>{
+        await next.open();if(ticket!==generation)return
+        await outing.open(next.cache.state,next.cache.dirty);if(ticket!==generation)return
+        outingsReady=true;const view=outing.project(next.cache.state);stateRef.current=view;setS(view)
+        if(knownCache || accountReadable)enterAccount(view)
+        void next.flush()
+      })()
     })
-    const retry = () => { void engine.current?.flush() }
-    const stopRuntime=runtime.subscribe(()=>{if(runtime.get().active&&runtime.get().online)void engine.current?.resume()})
+    const retry = () => { void engine.current?.flush();void outings.current?.flush() }
+    const stopRuntime=runtime.subscribe(()=>{if(runtime.get().active&&runtime.get().online){void engine.current?.resume();void outings.current?.flush()}})
     const interval = window.setInterval(retry, 30000)
-    return () => { generation++; unsubscribe(); engine.current?.close(); stopRuntime(); window.clearInterval(interval) }
-  }, [])
+    return () => { generation++; unsubscribe(); engine.current?.close(); outings.current?.close(); stopRuntime(); window.clearInterval(interval) }
+  }, [disk])
 
   const update = useCallback((fn: (s: AppState) => AppState) => {
-    const next = fn(stateRef.current)
+    const before=stateRef.current
+    const next = fn(before)
+    if(next===before)return
+    if(outings.current?.loaded)outings.current.edit(before,next)
     stateRef.current = next; setS(next)
-    if (engine.current) engine.current.edit(next)
+    if (engine.current) { if(JSON.stringify(profileOnly(before))!==JSON.stringify(profileOnly(next)))engine.current.edit(profileOnly(next)) }
     else {
       try { localStorage.setItem(KEY, JSON.stringify(scrubGoogleContent(next))) }
       catch { setSyncStatus('storage-full') }
     }
   }, [])
-  const retrySync = useCallback(() => { void engine.current?.flush() }, [])
+  const retrySync = useCallback(() => { void engine.current?.flush();void outings.current?.flush() }, [])
+  const resolveOuting = useCallback(async(choice:'cloud'|'local')=>{await outings.current?.resolve(choice)},[])
   const loadCloud = useCallback(async () => { await engine.current?.useCloud() }, [])
   const canImportDemo = !!account && ['saved','empty'].includes(syncStatus) && !hasActivity(s)
   const importDemo = useCallback(() => {
@@ -169,12 +193,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const user = auth.currentUser
     if (!user) throw new Error('Sign in again before deleting your account.')
     await api(user, '', 'DELETE', { confirm: 'DELETE' })
-    engine.current?.close(); clearPhotoCache()
+    engine.current?.close(); outings.current?.close();await disk.remove(user.uid); clearPhotoCache()
     localStorage.removeItem(`quavi.account.v1.${user.uid}`)
     if (clearDemo) localStorage.removeItem(KEY)
     await signOut(auth)
     setStack([{ name: 'welcome' }])
-  }, [])
+  }, [disk])
   const logout = useCallback(async () => { await signOut(auth); setStack([{ name: 'welcome' }]) }, [])
 
   const go = useCallback((name: Screen, params?: Record<string, unknown>) => {
@@ -207,8 +231,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<Ctx>(
-    () => ({ account, syncStatus, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
-    [account, syncStatus, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, stack, dir, go, back, reset, toast, toastOut, say, restart],
+    () => ({ account, syncStatus, outingStatus, resolveOuting, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
+    [account, syncStatus, outingStatus, resolveOuting, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, stack, dir, go, back, reset, toast, toastOut, say, restart],
   )
   const loadFailed = ['offline','sign-in-required','save-error','storage-full'].includes(syncStatus)
   const loadMessage = syncStatus === 'storage-full' ? 'Free up device storage, then try loading your account again.' : syncStatus === 'sign-in-required' ? 'Sign in again to load your account.' : 'Connect to load your account before continuing.'
