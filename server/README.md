@@ -520,3 +520,14 @@ DB had a pre-existing migration-007 checksum mismatch; applied migrations were n
 rewritten or bypassed. Real-device push and operations review remain acceptance
 work until verified. Provider references: [Capacitor push](https://capacitorjs.com/docs/apis/push-notifications)
 and [Apple APNs](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+Live dev verification: source `7281a63`, serving revision `quavi-api-00018-65z`
+(includes push availability flag). Migration 008 and runtime bootstrap grants are
+applied. The dedicated quavi-push job runs every minute; only that identity has
+access to the APNs secret. The approved production signer was authenticated with
+a deliberately invalid synthetic token, which APNs rejected without targeting a
+real phone. Three-account API/native checks verify delivery deduplication, staff
+separation, report coalescing, removal revocation, private record retention and
+republish prevention. TestFlight 1.0 (14) is Testing in the existing internal group.
+Actual phone receipt, notification permission/account lifecycle and operational
+moderation response/appeal processes remain acceptance work.
