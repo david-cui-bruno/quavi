@@ -610,3 +610,7 @@ The review-only build flag VITE_REVIEW_BOARD=true enables three Home colour
 studies in Settings. This control is absent from normal builds. Board variants
 are captured from the app, and prior annotations remain attached to their
 original screen IDs. This working preview is not a new TestFlight release.
+
+The route overview separates overlapping numbered artwork with short pointers
+that retain the true stop coordinates. Empty detour results now show the search
+explanation directly, with a prompt to change area or available time.

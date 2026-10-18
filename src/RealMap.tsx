@@ -21,6 +21,7 @@ export type RealPin = {
   label?: string;
   number?: number;
   size?: number;
+  offsetX?: number;
   sub?: string;
   selected?: boolean;
   quest?: boolean;
@@ -276,7 +277,7 @@ export function RealMap({
         clicks.current.clear();
         const list: (Marker & {quavi?:unknown})[] = await Promise.all(pins.map(async (p) => ({
           coordinate: p.ll,
-          title: p.label ?? "",
+          title: p.number ? `Stop ${p.number}${p.label?`: ${p.label}`:""}` : p.label ?? "",
           snippet: p.sub ?? "",
           ...await mapArt(p),
           zIndex: p.selected ? 10 : p.kind === "current" ? 8 : 2,

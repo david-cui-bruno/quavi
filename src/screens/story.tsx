@@ -1,6 +1,6 @@
 import {demoWalk} from '../demo-walks'
 import {Icon} from '../Icons'
-import {RealMap} from '../RealMap'
+import {RealMap,type RealPin} from '../RealMap'
 import {useWalkingRoute} from '../nav'
 import {PrivateShare} from '../PrivateCircle'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
@@ -31,13 +31,27 @@ export function useStory(): [Story, (fn: (s: Story) => Story) => void] {
 
 const total = (st: Story) => st.chapters.reduce((a, c) => a + c.mins, 0)
 
+// Spread only the fixed overview artwork; its pointer stays on the true coordinate.
+function spreadOverview(stops:RealPin[],points:{lat:number;lng:number}[]) {
+ const cos=Math.cos(points[0].lat*Math.PI/180)
+ const xs=points.map(p=>p.lng*cos),ys=points.map(p=>p.lat)
+ const cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2
+ const scale=Math.min(274/Math.max(.00001,Math.max(...xs)-Math.min(...xs)),106/Math.max(.00001,Math.max(...ys)-Math.min(...ys)))
+ const placed:{x:number;y:number}[]=[]
+ return stops.map(p=>{
+  const x=177+(p.ll.lng*cos-cx)*scale,y=(cy-p.ll.lat)*scale
+  const offset=[0,-32,32,-64,64].find(dx=>x+dx>18&&x+dx<336&&!placed.some(q=>Math.abs(q.x-x-dx)<30&&Math.abs(q.y-y)<40))??0
+  placed.push({x:x+offset,y});return {...p,offsetX:offset}
+ })
+}
 function RoutePreview({ story }: { story: Story }) {
   const {account}=useStore()
   const stops=useMemo(()=>story.chapters.map((_,i)=>({id:String(i),ll:{lat:chapterMeta(story,i).lat,lng:chapterMeta(story,i).lng},kind:'dest' as const,number:i+1,size:24})),[story])
   const points=useMemo(()=>[story.origin??{lat:40.7329,lng:-74.0031},...stops.map(p=>p.ll)],[stops,story.origin])
   const walk=useWalkingRoute(account ? points : null)
   const sample=demoWalk(points)
-  return <div className="route-preview"><div className="route-preview-map"><RealMap compact sampleRoute={!account} pins={stops} fit={points} route={account?walk.route?.geometry:sample} inset={{top:24,bottom:24}} controlsTop={24}/><div className="route-preview-gesture" aria-hidden="true"/></div><div className="route-preview-caption"><span>{walk.route?'Your walking route':account?'Stop locations · checking walking route':sample.length?'Sample walking route':'Sample stop locations'}</span>{account&&walk.status==='error'&&<button onClick={walk.retry}>Retry route</button>}</div></div>
+  const overview=useMemo(()=>spreadOverview(stops,points),[stops,points])
+  return <div className="route-preview"><div className="route-preview-map"><RealMap compact sampleRoute={!account} pins={overview} fit={points} route={account?walk.route?.geometry:sample} inset={{top:24,bottom:24}} controlsTop={24}/><div className="route-preview-gesture" aria-hidden="true"/></div><div className="route-preview-caption"><span>{walk.route?'Your walking route':account?'Stop locations · checking walking route':sample.length?'Sample walking route':'Sample stop locations'}</span>{account&&walk.status==='error'&&<button onClick={walk.retry}>Retry route</button>}</div></div>
 }
 
 export function Details() {

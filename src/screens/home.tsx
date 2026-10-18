@@ -195,7 +195,7 @@ export function Openings() {
           )
         })}
       </div>
-      {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p><p>Check prices, entrances and local conditions before you go.</p></details>}
+      {notice&&(choices.length?<details className="route-notes"><summary>About these routes</summary><p>{notice}</p><p>Check prices, entrances and local conditions before you go.</p></details>:<div className="card" role="status" style={{background:'var(--paper)',padding:20,margin:'12px 0'}}><h2 className="h1 h-xs">Try a different starting point.</h2><p className="small" style={{marginTop:8,lineHeight:1.5}}>{notice}</p><p className="small" style={{marginTop:8}}>Search another neighborhood or give yourself more time.</p></div>)}
       {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
       <div className="grow" />
       {choices[0]?.source&&<p className="small" style={{margin:'12px 0'}}>Places: <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a> · snapshot {new Date(choices[0].source.updatedAt).toLocaleDateString()}. Venue catalog only.</p>}
