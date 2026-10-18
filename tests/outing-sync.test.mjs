@@ -160,3 +160,30 @@ test("account journals stay isolated and closing during a request cannot publish
   assert.ok(storage.values.get("a").records.length);
   b.close();
 });
+
+test('fresh live checks survive an outing sync projection but never disk or cold restore', async () => {
+  const storage = memory();
+  const engine = new OutingSync({uid:'live',storage,available:()=>false,request:async()=>({outings:[]})});
+  const initial=state(); initial.story=undefined;
+  await engine.open(initial);
+  const next=state();
+  next.story={...story,origin:{lat:40,lng:-74},walking:{provider:'Google Maps',checkedAt:new Date().toISOString(),duration:900,distance:1000,legs:[]},estimatedMinutes:60,chapters:[{place:'Test',ll:{lat:40.001,lng:-74},kind:'Café',mins:45,googleRoute:true,hours:{status:'unknown',checkedAt:new Date().toISOString(),websiteURL:'https://example.test',attributions:[]}}]};
+  engine.edit(initial,next);
+  assert.equal(engine.project(initial).story.estimatedMinutes,60);
+  assert.equal(engine.project(initial).story.chapters[0].hours.websiteURL,'https://example.test');
+  await engine.checkpoint;
+  const saved=JSON.stringify(storage.values.get('live'));
+  assert.ok(!saved.includes('websiteURL')); assert.ok(!saved.includes('Google Maps'));
+  const cold=new OutingSync({uid:'live',storage,available:()=>false,request:async()=>({outings:[]})});
+  await cold.open(initial);
+  assert.equal(cold.project(initial).story.chapters[0].hours,undefined);
+  const live=engine.liveStories.get(story.id);
+  live.chapters[0].hours.checkedAt=new Date(Date.now()-300001).toISOString();
+  live.walking.checkedAt=live.chapters[0].hours.checkedAt;
+  assert.equal(engine.project(initial).story.chapters[0].hours,undefined);
+  assert.equal(engine.project(initial).story.walking,undefined);
+  live.chapters[0].hours.checkedAt=new Date().toISOString();
+  engine.cache.pending[0].op.record.story.chapters[0].ll.lat=41;
+  assert.equal(engine.project(initial).story.chapters[0].hours,undefined);
+  engine.close();cold.close();
+});

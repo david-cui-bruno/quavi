@@ -11,7 +11,7 @@ export function useOutingCheck(story:Story, chapter:number) {
   const {account,update}=useStore(),tracking=useTracking(),life=useRuntime()
   const [attempt,retry]=useState(0)
   const remaining=story.chapters.slice(chapter)
-  const stopsKey=JSON.stringify(remaining.map(c=>[c.place,c.ll,c.mins]))
+  const stopsKey=JSON.stringify(remaining.map(c=>[c.place,c.ll,c.mins,c.kind,c.aliases]))
   const key=[account?.uid,story.id,chapter,stopsKey,life.epoch,tracking.mode,attempt].join(':')
   const enabled=Boolean(story.source&&account&&life.active&&life.online&&tracking.ready)
   useEffect(()=>{tracking.setWalking(false)},[key,enabled]) // stop simulation on interruptions; do not auto-resume it
@@ -20,7 +20,7 @@ export function useOutingCheck(story:Story, chapter:number) {
       if(!remaining.length||remaining.some(c=>!c.ll))throw Object.assign(new Error('Choose a detour with mapped stops.'),{publicMessage:true})
       const check=await api<WalkingCheck & {hours:HoursCheck[]}>(account!,'/detour-check','POST',{
         points:[tracking.pos,...remaining.map(c=>c.ll)],
-        stops:remaining.map(c=>({name:c.place,ll:c.ll,mins:c.mins,googlePlaceId:c.googlePlaceId})),
+        stops:remaining.map(c=>({name:c.place,ll:c.ll,mins:c.mins,googlePlaceId:c.googlePlaceId,kind:c.kind,aliases:c.aliases})),
       },signal)
       if(Math.ceil(check.duration/60)+remaining.reduce((sum,c)=>sum+c.mins,0)>(story.timeBudgetMinutes??120))throw Object.assign(new Error('The remaining outing now takes longer than this plan allows. Adjust the stops or choose another detour.'),{publicMessage:true})
       return check

@@ -20,7 +20,7 @@ export function overtureProvider(
           lat: Math.round(origin.lat * 100) / 100,
           lng: Math.round(origin.lng * 100) / 100,
         },
-        key = `overture-v3:${center.lat}:${center.lng}`;
+        key = `overture-v4:${center.lat}:${center.lng}`;
       const db = await pool.connect();
       try {
         await db.query("BEGIN");
@@ -53,6 +53,7 @@ export function overtureProvider(
           throw new Error("Venue dataset is too old");
         const [rows] = await bq.query({
           query: `SELECT id,COALESCE((SELECT value FROM UNNEST(names.common.key_value) WHERE key='en' LIMIT 1),names.primary) AS name,
+    ARRAY_CONCAT([names.primary], ARRAY(SELECT DISTINCT value FROM UNNEST(names.common.key_value) WHERE value IS NOT NULL LIMIT 7)) AS aliases,
     basic_category,taxonomy.primary AS category,confidence,operating_status,
     ST_Y(geometry) AS lat,ST_X(geometry) AS lng,
     addresses.list[SAFE_OFFSET(0)].element.locality AS locality
@@ -75,11 +76,23 @@ export function overtureProvider(
           venues: rows.map((r) => ({
             id: String(r.id),
             name: String(r.name).slice(0, 200),
-            kind: normalizeCategory(r.category) ?? 'unsupported',
+            aliases: Array.isArray(r.aliases)
+              ? ([
+                  ...new Set(
+                    r.aliases
+                      .filter((n: unknown) => typeof n === "string" && n.trim())
+                      .map((n: string) => n.slice(0, 200)),
+                  ),
+                ].slice(0, 8) as string[])
+              : undefined,
+            kind: normalizeCategory(r.category) ?? "unsupported",
             ll: { lat: Number(r.lat), lng: Number(r.lng) },
             locality: r.locality ? String(r.locality) : undefined,
             confidence: Number(r.confidence),
-            status: r.operating_status == null ? "unknown" : String(r.operating_status),
+            status:
+              r.operating_status == null
+                ? "unknown"
+                : String(r.operating_status),
           })),
         };
         await db.query(
