@@ -57,39 +57,36 @@ export function RealMap({
   useLayoutEffect(() => {
     const el = element.current;
     if (!el) return;
-    const panels = [
-      ...(el
-        .closest("main")
-        ?.querySelectorAll<HTMLElement>("[data-map-obstruction]") ?? []),
-    ];
+    const root = el.closest(".phone") ?? el.closest("main") ?? el.parentElement!;
+    const observed = new WeakSet<Element>();
+    let frame = 0;
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+    const observer = new ResizeObserver(schedule);
     const measure = () => {
+      const panels = [...root.querySelectorAll<HTMLElement>("[data-map-obstruction], .sheet")];
+      panels.forEach(p => { if (!observed.has(p)) { observed.add(p); observer.observe(p); } });
       const r = el.parentElement!.getBoundingClientRect();
       const tops = panels
         .map((p) => p.getBoundingClientRect())
-        .filter(
-          (p) =>
-            p.width > r.width * 0.5 &&
-            p.bottom >= r.bottom - 4 &&
-            p.top < r.bottom &&
-            p.top > r.top,
-        );
-      setCover(
-        tops.length
-          ? Math.max(
-              0,
-              Math.min(
-                r.height - 120,
-                r.bottom - Math.min(...tops.map((p) => p.top)),
-              ),
-            )
-          : 0,
-      );
+        .filter(p => p.width > r.width * 0.5 && p.bottom >= r.bottom - 4 && p.top < r.bottom && p.top > r.top);
+      setCover(tops.length ? Math.max(0, Math.min(r.height - 120, r.bottom - Math.min(...tops.map(p => p.top)))) : 0);
     };
-    const observer = new ResizeObserver(measure);
     observer.observe(el.parentElement!);
-    panels.forEach((p) => observer.observe(p));
+    const changes = new MutationObserver(schedule);
+    changes.observe(root, { childList: true, subtree: true });
+    root.addEventListener("animationend", schedule);
+    root.addEventListener("transitionend", schedule);
     measure();
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      changes.disconnect();
+      root.removeEventListener("animationend", schedule);
+      root.removeEventListener("transitionend", schedule);
+    };
   }, []);
   const [map, setMap] = useState<GoogleMap | null>(null),
     [error, setError] = useState(""),

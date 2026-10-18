@@ -77,8 +77,8 @@ Run the reward eligibility and redemption tests with `npm test` (Node.js 22.18+)
 
 Keep all prototype features and its visual identity; target iPhone first and
 support any city. Demo partners stay in the initial release. This is the build
-order. The account/save backend is deployed; the detour, social and trusted reward
-services below still need implementation.
+order. The account/save backend and first live detour checks are deployed; social and
+trusted reward services and the reliability stages below still need implementation.
 
 | Order | Work | Completion check |
 | --- | --- | --- |
@@ -87,7 +87,8 @@ services below still need implementation.
 | Done: account deletion and data guards | Recent-password confirmation, durable deletion requests, immediate access blocking, scheduled Auth/SQL/photo cleanup, immutable verified photos, validated saves and shared account quotas | Emulator/PostgreSQL tests cover deletion retries and races. Live checks verify private uploads and immediate deletion blocking; final scheduled cleanup is tested with disposable accounts |
 | Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
 | Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
-| In progress: detour reliability | Google Maps on iPhone/web; Google walking checks and reported hours for expected arrival/full stay at generation and Start; unknown hours stay explicit, closed matches are excluded and Google responses stay out of durable saves. Next: entry/access validation and pause/resume rechecks, strengthen category quality, replace scripted captions with grounded generation, and test more regions, languages and sparse areas | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
+| Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
+| Next: detour reliability | Recheck after pause/resume and long delays; validate entry/access; strengthen venue identity/category matching and multilingual coverage; replace scripted captions with grounded generation | Complete real outings in multiple regions, including closed stops, missing hours, sparse coverage and interrupted sessions |
 | Native outing experience | Validate foreground GPS, camera, native sharing, resume and permission-denied behavior; decide active-detour background location and arrival notifications; recover safely from offline/interrupted sessions | Complete a real outing on iPhone, including locking/resuming the phone under the selected tracking policy |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
 | Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |

@@ -202,7 +202,7 @@ export function Active() {
       <button className="status-pill" style={{ top: banner ? 232 : 112 }} onClick={() => setGps(true)}><span className="dotlive" />{tr.mode === 'live' ? 'Tracking · My GPS' : 'Tracking · Demo walk'}</button>
       {float && <div className="xpfloat">{float}</div>}
 
-      <div className="qcard fade-in" key={i}>
+      <div data-map-obstruction className="qcard fade-in" key={i}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className="kicker">Chapter {i + 1} of {story.chapters.length}</span>
           <span className="pill" style={{ background: arrived ? 'var(--yellow)' : 'var(--soft)' }}>{arrived ? '✦ You’re here' : `${fmtDist(dist)} · ${getThere(dist)}`}</span>
