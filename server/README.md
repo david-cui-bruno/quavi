@@ -407,3 +407,42 @@ from source `197a5bd`. Migration `006_rewards.sql` completed. Live disposable-ac
 checks verify task XP, duplicate replay, one-time welcome, insufficient funds,
 forged totals and deletion blocking; signed-in UI shows the same confirmed XP and
 receipt. Physical outdoor/offline acceptance remains deferred by the user.
+
+## Private circle (migration 007)
+
+`GET /v1/me/social` returns the minimal own profile, relationship lists, own post
+IDs and up to 50 authorized feed summaries. `PUT /social/profile` sets a unique
+handle. `POST /social/lookup` uses an exact handle; there is no email directory.
+`POST /social/relationships` accepts targetId and request/accept/decline/cancel/
+remove/block/unblock. Only the recipient accepts; crossed requests stay pending.
+
+`POST /social/posts` publishes an owned, saved, completed outingId; retries converge
+on its unique post. `DELETE /social/posts/:id` stops sharing. GET on that post or
+its `/media/:mediaId` checks accepted friendship, blocks, current publication and
+current outing visibility. Photo IDs must occur in the sanitized shared view and
+belong to its author; the existing owner-only media endpoint remains private.
+A five-minute read URL is issued only after authorization; already issued URLs
+and downloaded copies cannot be instantly revoked. Shared content is projected
+from current saved outing content, so edits update the shared view. No origin,
+GPS, arrival, preferences or arbitrary draft fields are included.
+
+Reports: `POST /social/reports` accepts targetId, optional visible postId, a bounded
+reason and details. Records are private to the backend and manual development
+review; no email/notification is sent. Maintenance purges reports older than 90
+days. Review the `social_reports` table with an administrative database identity;
+do not grant tester access. A moderation interface and staffed production review
+process remain prerequisites for wider distribution. All social data cascades on
+account deletion. Do not log raw reports or publish their details to GitHub.
+
+Search/request quotas are 30 per hour; reports 10 per day, in addition to account
+request limits. Pair advisory locks serialize relationship mutations across API
+instances. Unique handles/publication rows keep retries safe. Runtime DML grants
+are explicit; no new cloud permissions or public storage are introduced.
+
+Deployed October 18, 2026 to `quavi-api-00014-flw` (100% development traffic),
+backend source `4a50dfd`; migration 007 succeeded. 74 backend and 32 client tests
+pass. Live disposable-account checks cover private real-photo delivery and denial,
+UI publication/request plus native recipient acceptance, block/unblock, unshare,
+revoked open-story clearing and native report submission. Test accounts are blocked
+for scheduled deletion and private credential files removed. Reports/moderation
+remain manual development operations; no push notifications were introduced.

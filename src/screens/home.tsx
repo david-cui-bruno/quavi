@@ -1,3 +1,5 @@
+import {useSocial} from '../social'
+import {CircleStatus,PrivateStory} from '../PrivateCircle'
 import {OutingSaveStatus} from '../OutingSaveStatus'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
 import {useRuntime} from '../runtime'
@@ -61,12 +63,13 @@ export function SaveSheet({ story, onClose }: { story: Story; onClose: () => voi
 
 export function Home() {
   const life=useRuntime()
-  const { s, go, update, say, syncStatus } = useStore()
+  const { s, go, update, say, syncStatus, account } = useStore()
+  const social=useSocial()
   const [ending, setEnding] = useState(false)
   const live = s.story?.status === 'active' ? s.story : undefined
   const at = live ? Math.min(s.chapter, live.chapters.length - 1) : 0
   const mine = s.shelf.find((x) => x.shared)
-  const feed = [...(mine ? [{ ...mine, author: 'You' }] : []), ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))].slice(0, 4)
+  const feed = account ? (social.data?.feed??[]).slice(0,4) : [...(mine ? [{ ...mine, author: 'You' }] : []), ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))].slice(0, 4)
   return (
     <Screen$ tabs="home" scroll>
       <div className="row" style={{ gap: 10 }}>
@@ -121,6 +124,7 @@ export function Home() {
         <h2 className="h1 h-xs">Stories from your circle</h2>
         <button className="chip" style={{ flex: 'none', paddingRight: 12 }} onClick={() => go('circle')}>See all <Arrow size={16} /></button>
       </div>
+      {account&&<CircleStatus/>}
       {feed.length === 0 && (
         <div className="card" style={{ background: 'var(--soft)', padding: '20px 24px', borderRadius: 24 }}>
           <b className="h1" style={{ fontSize: 19 }}>Nothing here yet.</b>
@@ -130,11 +134,11 @@ export function Home() {
       )}
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         {feed.map((f, i) => {
-          const mine = f.author === 'You'
+          const mine = account ? 'outingId' in f && !!f.outingId : f.author === 'You'
           const sp = mine ? s.user.avatar : flock(['Zed', 'Maple', 'Juno', 'Rex'][i % 4], 'Yellow')
           const bgn = safeSurface(sp, i % 2 ? 'ink-p' : 'orange-p') as Bg
           return (
-            <button key={f.id} className="tile" onClick={() => (mine ? go('read', { id: f.id }) : go('friend', { id: f.id }))} style={{ height: 128, background: BG[bgn], color: onDark(bgn) ? 'var(--paper)' : 'var(--ink)', padding: 20 }}>
+            <button key={f.id} className="tile" onClick={() => (mine ? go('read', { id: account && 'outingId' in f ? f.outingId : f.id }) : go('friend', { id: f.id }))} style={{ height: 128, background: BG[bgn], color: onDark(bgn) ? 'var(--paper)' : 'var(--ink)', padding: 20 }}>
               <div className="h1" style={{ fontSize: 15, lineHeight: 1.05, maxWidth: 90 }}>{f.title.replace('. A breath of fresh air.', ' & air')}</div>
               <div className="small" style={{ position: 'absolute', left: 20, bottom: 20, fontWeight: 500 }}>{mine ? 'You · just now' : `${f.author} · ${f.chapters.length} stops`}</div>
               <div className="pcs" style={{ right: 0 }}><Persona spec={sp} size={58} /></div>
@@ -258,8 +262,9 @@ import { Logo } from '../brand/Persona'
 const LogoMini = () => <Logo size={86} />
 
 export function Friend() {
-  const { route, go, update, back } = useStore()
+  const { route, go, update, back, account } = useStore()
   const [save, setSave] = useState(false)
+  if(account)return <PrivateStory/>
   const f = FRIEND_STORIES.find((x) => x.id === route.params?.id) ?? FRIEND_STORIES[0]
   const write = () => {
     const o = OPENINGS.find((x) => x.id === f.openingId) ?? OPENINGS[0]
@@ -296,14 +301,17 @@ export function Friend() {
 }
 
 export function Circle() {
-  const { s, go } = useStore()
+  const { s, go, account } = useStore()
+  const social=useSocial()
   const mine = s.shelf.filter((x) => x.shared).map((x) => ({ ...x, author: 'You' }))
-  const all = [...mine, ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))]
+  const all = account ? social.data?.feed??[] : [...mine, ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))]
   return (
     <Screen$ scroll tabs="home">
       <BackBtn />
       <div className="kicker" style={{ marginTop: 14 }}>Your circle</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Stories from<br />your circle.</h1>
+      {account&&<CircleStatus/>}
+      {account&&<p className="small muted">Friends only · latest 50 shared stories. Refreshing checks your current access.</p>}
       {all.length === 0 && (
         <div className="col" style={{ gap: 12 }}>
           <div className="card" style={{ background: 'var(--soft)', padding: '20px 24px', borderRadius: 24 }}>
@@ -315,15 +323,15 @@ export function Circle() {
       )}
       <div className="col stagger" style={{ gap: 12 }}>
         {all.map((f, i) => {
-          const isMine = f.author === 'You'
+          const isMine = account ? 'outingId' in f && !!f.outingId : f.author === 'You'
           const sp = isMine ? s.user.avatar : flock(['Zed', 'Maple', 'Juno', 'Rex'][i % 4], 'Yellow')
           const bgn = safeSurface(sp, (['orange-p', 'ink-p', 'yellow-p'] as const)[i % 3]) as Bg
           const dark = onDark(bgn)
           return (
-            <button key={f.id + i} className="tile" onClick={() => (isMine ? go('read', { id: f.id }) : go('friend', { id: f.id }))} style={{ height: isMine && f.rating ? 150 : 112, background: BG[bgn], color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+            <button key={f.id + i} className="tile" onClick={() => (isMine ? go('read', { id: account && 'outingId' in f ? f.outingId : f.id }) : go('friend', { id: f.id }))} style={{ height: isMine && 'rating' in f && f.rating ? 150 : 112, background: BG[bgn], color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
               <div className="h1" style={{ fontSize: 20, lineHeight: 1.05, maxWidth: 200 }}>{f.title}</div>
               <div className="small" style={{ fontWeight: 500 }}>{isMine ? 'You' : f.author} · {f.chapters.length} stops · {f.date}</div>
-              {isMine && f.rating && <div style={{ marginTop: 8 }}><RatingDucks rating={f.rating} /></div>}
+              {isMine && 'rating' in f && f.rating && <div style={{ marginTop: 8 }}><RatingDucks rating={f.rating} /></div>}
               <div className="pcs" style={{ right: 4 }}><Persona spec={sp} size={80} /></div>
             </button>
           )

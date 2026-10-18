@@ -20,9 +20,11 @@ export async function api<T>(user: User, path: string, method = 'GET', body?: un
 const photos = new Map<string, Promise<string>>()
 export function clearPhotoCache() { photos.clear() }
 export function resolvePhoto(src: string): Promise<string> {
-  if (!src.startsWith('quavi-media:')) return Promise.resolve(src)
+  const shared=/^quavi-shared:([0-9a-f-]{36}):([0-9a-f-]{36})$/.exec(src)
+  if (!src.startsWith('quavi-media:') && !shared) return Promise.resolve(src)
   const user = auth.currentUser
   if (!user) return Promise.reject(new Error('Sign in to see this photo.'))
+  if(shared)return api<{url:string}>(user,`/social/posts/${shared[1]}/media/${shared[2]}`).then(({url})=>url)
   const key = user.uid + ':' + src
   if (!photos.has(key)) {
     const job = api<{ url: string }>(user, '/media/' + src.slice(12)).then(async ({ url }) => {

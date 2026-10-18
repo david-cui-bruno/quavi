@@ -1,3 +1,4 @@
+import {PrivateShare} from '../PrivateCircle'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
 import type {HoursCheck} from '../data'
 import { api, accountError, auth } from '../cloud'
@@ -269,10 +270,11 @@ export function Complete() {
 }
 
 function ShareSheet({ story, caps, onClose }: { story: Story; caps: string[]; onClose: () => void }) {
-  const { s: s0, update, say, reset } = useStore()
+  const { s: s0, update, say, reset, account } = useStore()
   const [, setStory] = useStory()
   const [sent, setSent] = useState(false)
   const notes = noteLines(story)
+  if(account)return <PrivateShare story={story} onClose={onClose}/>
   const send = async () => {
     const text = shareText(story, caps, s0.user.name || 'Me')
     try {

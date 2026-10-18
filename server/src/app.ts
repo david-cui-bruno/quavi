@@ -1,3 +1,4 @@
+import * as social from './social.js';
 import {ensureRewards,rewardsActive,rewardState,redeem} from "./rewards.js";
 import { ensureOutings, listOutings, applyOutingOperation } from "./outings.js";
 import { legalPage } from "./legal.js";
@@ -74,6 +75,7 @@ export async function createApp(options: {
     reply.header("X-Content-Type-Options", "nosniff");
   });
   app.setErrorHandler((error, req, reply) => {
+    if(error instanceof social.SocialError)return reply.code(error.statusCode).send({error:error.message});
     if (error instanceof ZodError)
       return reply.code(400).send({
         error: "Invalid request",
@@ -207,6 +209,7 @@ export async function createApp(options: {
             "INSERT INTO account_deletions(owner_hash,user_id) VALUES($1,$2)",
             [hash, req.uid],
           );
+          await db.query("DELETE FROM social_profiles WHERE user_id=$1", [req.uid]);
           await db.query("DELETE FROM reward_accounts WHERE user_id=$1", [req.uid]);
           await db.query("DELETE FROM outings WHERE user_id=$1", [req.uid]);
           await db.query("DELETE FROM outing_accounts WHERE user_id=$1", [req.uid]);
@@ -496,6 +499,15 @@ export async function createApp(options: {
         );
         return { id, status: "uploaded" };
       });
+      api.get('/me/social',async req=>social.socialState(req.db!,req.uid));
+      api.put('/me/social/profile',async req=>social.setHandle(req.db!,req.uid,req.body));
+      api.post('/me/social/lookup',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-lookup',30,3600))return reply.code(429).send({error:'Too many searches. Try again later.'});return social.lookup(req.db!,req.uid,req.body)});
+      api.post('/me/social/relationships',async(req,reply)=>{if((req.body as any)?.action==='request'&&!await quota(req.db!,ownerHash(req.uid),'social-request',30,3600))return reply.code(429).send({error:'Too many friend requests. Try again later.'});return social.relationship(req.db!,req.uid,req.body)});
+      api.post('/me/social/posts',async req=>social.publish(req.db!,req.uid,req.body));
+      api.get('/me/social/posts/:id',async req=>social.readPost(req.db!,req.uid,(req.params as any).id));
+      api.delete('/me/social/posts/:id',async req=>social.unpublish(req.db!,req.uid,(req.params as any).id));
+      api.post('/me/social/reports',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-report',10,86400))return reply.code(429).send({error:'Report limit reached. You can still block this person.'});return social.report(req.db!,req.uid,req.body)});
+      api.get('/me/social/posts/:id/media/:mediaId',async(req,reply)=>{const p=req.params as any;const key=await social.sharedMedia(req.db!,req.uid,p.id,p.mediaId);if(!options.media)return reply.code(503).send({error:'Photo storage unavailable'});return {url:await options.media.read(key),expiresInSeconds:300}});
       api.get("/me/media/:id", async (req, reply) => {
         const id = z.uuid().parse((req.params as { id: string }).id);
         const {

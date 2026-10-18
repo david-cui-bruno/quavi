@@ -63,6 +63,7 @@ function load(): AppState {
 }
 
 type Ctx = {
+  saveForSharing: () => Promise<void>
   account: User | null
   rewards: {confirmedXp:number;legacyXp:number;balance:number;dailyRemaining?:number;dailyLimit?:number}|null
   pendingRewards: string[]
@@ -235,7 +236,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<Ctx>(
-    () => ({ account, rewards:outings.current?.cache.rewards??null,pendingRewards:(outings.current?.cache.pendingRewards??[]).map((x:{offerId:string})=>x.offerId),rewardError:outings.current?.cache.rewardError??'',redeemReward:(offerId:string)=>outings.current?.redeem(offerId),syncStatus, outingStatus, resolveOuting, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
+    () => ({ saveForSharing:async()=>{const out=outings.current;if(!out)throw new Error('Sign in to share.');await out.flush();if(out.cache.pending.length||out.running)throw new Error('Wait for your outing to finish saving, then try again.');}, account, rewards:outings.current?.cache.rewards??null,pendingRewards:(outings.current?.cache.pendingRewards??[]).map((x:{offerId:string})=>x.offerId),rewardError:outings.current?.cache.rewardError??'',redeemReward:(offerId:string)=>outings.current?.redeem(offerId),syncStatus, outingStatus, resolveOuting, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
     [account,syncStatus,outingStatus,resolveOuting,retrySync,loadCloud,canImportDemo,importDemo,logout,deleteAccount,s,update,stack,dir,go,back,reset,toast,toastOut,say,restart],
   )
   const loadFailed = ['offline','sign-in-required','save-error','storage-full'].includes(syncStatus)
