@@ -39,3 +39,12 @@ test('Google content never reaches durable state while independent data, identif
  const expected=scrub(input);assert.ok(!JSON.stringify(expected).includes('reported open'));assert.ok(!JSON.stringify(expected).includes('"hours"'));assert.equal(expected.story.chapters[0].googlePlaceId,'id');assert.equal(expected.story.moments[0].note,'My own note');assert.equal(expected.story.source.provider,'Overture Maps');assert.equal(expected.story.timeBudgetMinutes,60);
  const client=await import('../../src/google-retention.mjs');assert.deepEqual(client.scrubGoogleContent(input),expected);
 });
+
+test('a closed stop is replaced with a nearby available alternative rather than discarding the whole outing',async()=>{
+ const {checkedDetours}=await import('../src/checked-detours.js');const {detourInput}=await import('../src/detours.js');
+ const input=detourInput.parse({origin:ll,label:'Test',interests:['cozy'],minutes:60});
+ const raw={updatedAt:new Date().toISOString(),venues:['coffee_shop','bookstore','park','bakery','arcade','art_gallery'].map((kind,i)=>({id:String(i),name:'Place '+i,kind,ll:{lat:40.7305+i*.0006,lng:-74},confidence:.99,status:'open'}))};
+ let calls=0;const closed=raw.venues[0].name;
+ const geo={async check(){calls++;return {provider:'Google Maps',checkedAt:new Date().toISOString(),legs:Array(3).fill({distance:200,duration:180}),distance:600,duration:540}},async navigate(){return null},async place(name:string,point:typeof ll){return googlePlace.parse({id:name,displayName:{text:name},location:{latitude:point.lat,longitude:point.lng},businessStatus:name===closed?'CLOSED_TEMPORARILY':'OPERATIONAL',currentOpeningHours:{periods:[{open:{day:0,hour:0,minute:0}}]}})}};
+ const result=await checkedDetours(raw,input,geo,geo);assert.ok(result.openings.length);assert.ok(result.openings.every(o=>o.chapters.every(c=>c.place!==closed)));assert.ok(calls<=6);assert.equal(new Set(result.openings.map(o=>o.id)).size,result.openings.length)
+});

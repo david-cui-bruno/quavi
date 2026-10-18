@@ -28,8 +28,14 @@ export async function checkedDetours(
         },
       }
     : undefined;
-  for (const opening of result.openings) {
-    if (live && openings.length >= 2) break;
+  const blocked=new Set<string>(),tried=new Set<string>();
+  let candidates=result.openings;
+  const deadline=Date.now()+35000;
+  for(let attempt=0;attempt<(live?6:3);attempt++){
+    if(live&&(openings.length>=2||Date.now()>deadline-10000))break;
+    const opening=candidates.find(o=>!tried.has(o.chapters.map(c=>c.placeId).join('|')));
+    if(!opening)break;
+    tried.add(opening.chapters.map(c=>c.placeId).join('|'));
     const route = await walking.check([
       input.origin,
       ...opening.chapters.map((c) => c.ll),
@@ -52,9 +58,14 @@ export async function checkedDetours(
           route,
         )
       : undefined;
-    if (hours?.some((h) => h.status === "closed")) continue;
+    if(hours?.some(h=>h.status==='closed')){
+      opening.chapters.forEach((c,i)=>{if(hours[i].status==='closed')blocked.add(c.placeId)});
+      candidates=planDetours({...raw,venues:raw.venues.filter(v=>!blocked.has(v.id))},input).openings;
+      continue;
+    }
     openings.push({
       ...opening,
+      id:live?`${opening.id}-${attempt}`:opening.id,
       estimatedMinutes: walkMinutes + stay * 3,
       timeBudgetMinutes: input.minutes,
       walking: route,
