@@ -363,6 +363,7 @@ export async function createApp(options: {
                 error:
                   "No suitable walking route connects these stops. Choose another detour.",
               });
+          if(hours?.some(h=>h.venueStatus==='unsuitable'))return reply.code(422).send({error:'A stop no longer matches a suitable visit venue. Choose a replacement or another detour.'});
           if (hours?.some((h) => h.status === "closed"))
             return reply
               .code(422)

@@ -222,7 +222,8 @@ production partner verification and the reliability stages below still need impl
 | Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
 | Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
 | Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
-| Next: detour reliability | Validate entry/access; strengthen venue identity/category matching and multilingual coverage; replace scripted captions with grounded generation | Complete real outings in multiple regions, including closed stops, missing hours, sparse coverage and interrupted sessions |
+| Done: detour reliability implementation pass | Category/service-area checks, catalog-localized name aliases, bounded walking/closed-stop replacements, rendered-path validation, whole-visit hours, entry links and note/arrival-grounded captions | 85 backend and 35 client tests cover mismatches, substitutions, provider failures, holiday/closing boundaries, geometry, authenticated Start checks, retention and caption evidence |
+| Remaining: real-world detour acceptance | Verify actual entrances, admission/tickets and accessibility; expand multilingual and sparse-area acceptance using real outings | Complete outings in multiple regions and record coverage, closed-stop replacement and access failures; entry is never inferred from open hours |
 | Done: foreground outing recovery foundation | Native while-in-use GPS, accuracy/freshness gates, explicit denied-location recovery, lock/background pause, transient checks after resume/reconnect and every five minutes, cached account startup and read-before-retry sync | Unit tests cover stale/inaccurate fixes, watch cancellation, session invalidation, autosave stability, offline replay and sync conflicts; simulator GPS, screen lock/resume and permission-denied flows pass |
 | Done: independent outing records and offline journal | Private per-outing records/revisions, lifecycle, one-time legacy migration, IndexedDB retry journal, field-level conflicts, idempotent operation receipts, photo-reference retention and deletion | API/PostgreSQL tests exercise cold offline replay, lost acknowledgement, concurrent fields, conflicts, account isolation and deletion; physical-device acceptance remains below |
 | Deferred by user: physical outing acceptance before wider beta | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
@@ -451,3 +452,44 @@ Signed **1.0 (11)** uploaded successfully after Xcode Apple Developer sign-in an
 is verified **Testing** in **Quavi Development** on October 18, 2026. Beta testing
 notes are saved. Open TestFlight → Update and confirm 1.0 (11) in You. All phones
 participating in the private circle should update before testing together.
+
+### Detour reliability pass — build 12
+
+Venue verification now checks the expected kind against Google's returned types
+and excludes identified non-visit/service-area businesses. Catalog-provided local
+name aliases can establish an exact normalized name match; names are not fuzzily
+matched, and distant or ambiguous matches remain unverified. Overture confidence
+indicates record existence, not opening/access accuracy. The public venue cache
+moves to `overture-v4` to include independently sourced aliases.
+
+When the pedestrian network rejects a chosen path or it exceeds the time budget,
+the planner tries a bounded set of alternative catalog-stop combinations. There
+are at most six walking checks, a 35-second planning deadline and no invented
+stops or straight-line fallback. Known closed/unsuitable venues are replaced.
+If later provider work fails, only previously checked offers can survive, with a
+partial-check message; an initial failure still returns an error. Sparse coverage
+continues to return an explicit no-result rather than a demo outing.
+
+Walking validation checks step endpoints, joins and rendered geometry length as
+well as summary snaps/totals. Dated holiday hours and truncated schedules cannot
+be bypassed by optimistic next-change times; a closing inside the visit is not
+reported open. **Reported open does not confirm admission, tickets or accessible
+entrances.** Route details and active stops expose a current venue website/Maps
+link where available, with entry explicitly unverified. These live facts/links
+remain inside transient hours objects and are scrubbed from durable saves.
+
+Real mapped outing captions now draft from personal moment/task notes, preserving
+the user's words across tones. Without notes they distinguish recorded arrivals
+from stops still on the plan. Drafting does not invent purchases, companions,
+conversations or feelings, and existing edited captions are retained on reopening.
+Anonymous scripted demo captions remain separate. This uses deterministic evidence
+rules and needs no new AI provider or secret. Further AI styling is optional later.
+
+Verification: 85 backend tests, 35 client tests and both TypeScript builds pass.
+Physical entry/ticket/accessibility checks, outdoor GPS and offline/lock-resume
+acceptance remain outstanding; the user-deferred physical checks are not claimed
+complete by this implementation pass.
+
+Provider references: [Google Place fields](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places),
+[Place Details field masks](https://developers.google.com/maps/documentation/places/web-service/place-details)
+and [Overture Places semantics](https://docs.overturemaps.org/guides/places/).

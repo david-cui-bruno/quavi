@@ -1,5 +1,5 @@
 import {PrivateShare} from '../PrivateCircle'
-import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
+import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
 import type {HoursCheck} from '../data'
 import { api, accountError, auth } from '../cloud'
 import { useTracking } from '../tracking'
@@ -87,8 +87,9 @@ export function Details() {
       <p className="it" style={{ fontSize: 18, margin: '12px 2px' }}>“{story.premise}”</p>
       {story.source&&<>
         <GoogleAttribution hours={story.chapters.map(c=>c.hours)}/>
-        <details className="route-notes"><summary>Hours, prices &amp; route details</summary>
-          <p>Reported hours are refreshed before starting. Check prices and entry requirements.</p>
+        <details className="route-notes"><summary>Hours, entry &amp; route details</summary>
+          <p>Reported hours are refreshed before starting. Entry, tickets and accessible entrances are not confirmed. Check each venue’s details.</p>
+          {story.chapters.map((c,i)=><div key={i}><b className="small">{c.place}</b><VenueEntry hours={c.hours}/></div>)}
           <p>Walking directions may be missing sidewalks or pedestrian paths. Check local signs and conditions.</p>
           <p>Venue catalog: <a href={story.source.attributionURL} target="_blank" rel="noreferrer">Overture Maps</a>.</p>
         </details>
@@ -118,7 +119,7 @@ export function Details() {
           setChecking(true);setCheckError('');
           try{
             const origin=tracking.mode==='live'?tracking.pos:story.origin;
-            const result=await api<WalkingCheck & {hours:HoursCheck[]}>(account,'/detour-check','POST',{points:[origin,...story.chapters.map(c=>c.ll)],stops:story.chapters.map(c=>({name:c.place,ll:c.ll,mins:c.mins,googlePlaceId:c.googlePlaceId}))});
+            const result=await api<WalkingCheck & {hours:HoursCheck[]}>(account,'/detour-check','POST',{points:[origin,...story.chapters.map(c=>c.ll)],stops:story.chapters.map(c=>({name:c.place,ll:c.ll,mins:c.mins,googlePlaceId:c.googlePlaceId,kind:c.kind,aliases:c.aliases}))});
             const {hours,...walking}=result;
             if(!mounted.current||auth.currentUser?.uid!==account.uid)return;
             const minutes=Math.ceil(walking.duration/60)+story.chapters.reduce((sum,c)=>sum+c.mins,0);
@@ -335,7 +336,7 @@ export function Tell() {
   const caps = story.captions.length ? story.captions : draftCaptions(story, story.tone)
   const bg: Bg[] = ['yellow-p', 'orange-p', 'ink-p']
   useEffect(() => { if (!story.captions.length) setStory((s0) => ({ ...s0, captions: draftCaptions(s0, s0.tone) })) }, [])
-  const retone = (t: Story['tone']) => setStory((s0) => ({ ...s0, tone: t, captions: draftCaptions({ ...s0, moments: {} }, t) }))
+  const retone = (t: Story['tone']) => setStory((s0) => ({ ...s0, tone: t, captions: draftCaptions(s0, t) }))
   const save = () => { update((st) => ({ ...st, shelf: [story, ...st.shelf.filter((x) => x.id !== story.id)] })); say('Saved to your story shelf'); go('shelf') }
   return (
     <Screen$ scroll>

@@ -1,8 +1,10 @@
+import {normalizePlaceName} from './place-identity.js';
 import { z } from "zod";
 export type Point = { lat: number; lng: number };
 export type Venue = {
   id: string;
   name: string;
+  aliases?:string[];
   kind: string;
   ll: Point;
   locality?: string;
@@ -75,7 +77,8 @@ export function planDetours(
     if (
       !kinds[v.kind] ||
       !["open", "unknown"].includes(v.status) ||
-      v.confidence < 0.8 ||
+      !Number.isFinite(v.confidence) || v.confidence < 0.8 ||
+      Math.abs(v.ll.lat)>85 || Math.abs(v.ll.lng)>180 ||
       !Number.isFinite(v.ll.lat) ||
       !Number.isFinite(v.ll.lng) ||
       meters(input.origin, v.ll) > radius
@@ -87,6 +90,8 @@ export function planDetours(
     )
       return false;
     const name = v.name.trim().toLocaleLowerCase();
+    const identityName=normalizePlaceName(name);
+    if(!identityName)return false;
     if (/\b(coworking|co-working|office space|parking|headquarters|navigator|dba)\b/i.test(v.name)) return false;
     if (
       [
@@ -102,9 +107,9 @@ export function planDetours(
       ].includes(name)
     )
       return false;
-    if (ids.has(v.id) || names.has(name)) return false;
+    if (ids.has(v.id) || names.has(identityName)) return false;
     ids.add(v.id);
-    names.add(name);
+    names.add(identityName);
     return true;
   });
   const themes = [
@@ -198,6 +203,7 @@ export function planDetours(
         ll: v.ll,
         kind: kinds[v.kind].label,
         placeId: v.id,
+        aliases:v.aliases?.slice(0,8),
         alts: [],
       };
     });

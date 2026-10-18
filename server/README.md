@@ -446,3 +446,33 @@ UI publication/request plus native recipient acceptance, block/unblock, unshare,
 revoked open-story clearing and native report submission. Test accounts are blocked
 for scheduled deletion and private credential files removed. Reports/moderation
 remain manual development operations; no push notifications were introduced.
+
+## Detour reliability pass
+
+`liveStop` accepts bounded `kind` and up to eight independent catalog `aliases`.
+Both generation and authenticated Start/resume checks send this evidence to the
+same venue assessment. Expected kinds are compared to returned Google types;
+identified service-area or non-visit uses produce `venueStatus: unsuitable` and
+are replaced during planning / rejected with 422 during Start. Unknown or
+ambiguous identity retains unknown hours. There is no fuzzy identity match.
+
+The Places mask adds primaryType/types/pureServiceAreaBusiness/websiteUri. Only
+HTTPS website links without embedded credentials are returned. All provider facts
+and links remain nested in transient `hours`; server/client retention removes
+these before saves. Independent Overture aliases persist and use a fresh v4 cache
+key. No new migration, cloud IAM grant, secret or raised provider cap is required.
+
+Alternative catalog combinations are tried after missing pedestrian routes or
+budget failures, with six walking checks / a 35-second planning deadline. Later
+provider failure preserves already verified offers only; an initial failure still
+fails. Drawn step geometry must connect to each leg and stay consistent with its
+reported length. Dated/truncated opening periods cannot be overridden by optimistic
+next-change timestamps. Admission, tickets and accessible entrances remain unknown.
+
+85 backend / 35 client tests pass, including authenticated detour-check rejection,
+multilingual aliases, ambiguous identity, unsuitable types, bounded route recovery,
+provider failure, geometry, holiday/closing boundaries, transient retention and
+actual caption-caller evidence. Live dev/native verification is recorded after
+deployment. Production entry validation and physical multi-region acceptance remain
+separate work. Reference: [Google Place resource](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places)
+and [Overture Places](https://docs.overturemaps.org/guides/places/).

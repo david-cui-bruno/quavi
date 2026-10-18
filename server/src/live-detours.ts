@@ -12,6 +12,8 @@ export const liveStop = z
       })
       .strict(),
     mins: z.number().int().min(1).max(120),
+    kind: z.string().max(80).optional(),
+    aliases: z.array(z.string().trim().min(1).max(200)).max(8).optional(),
     googlePlaceId: z
       .string()
       .regex(/^[A-Za-z0-9_-]{1,300}$/)
@@ -56,7 +58,10 @@ export async function checkHours(
   return await Promise.all(
     stops.map(async (s, i) =>
       evaluateHours(
-        await geo.place(s.name, s.ll, s.googlePlaceId),
+        await geo.place(s.name, s.ll, s.googlePlaceId, {
+          kind: s.kind,
+          aliases: s.aliases,
+        }),
         s.ll,
         windows[i].arrival,
         windows[i].leave,

@@ -7,6 +7,7 @@ export function hoursLabel(hours?: HoursCheck) {
     Date.now() - Date.parse(hours.checkedAt) > 300000
   )
     return "Hours not checked";
+  if (hours.venueStatus === "unsuitable") return "Venue needs replacing";
   return hours.status === "open"
     ? "Reported open for your visit"
     : hours.status === "closed"
@@ -65,7 +66,7 @@ export function GoogleAttribution({
           maxWidth: "100%",
         }}
       />
-      <span style={{fontSize:11}}>Hours &amp; walking</span>
+      <span style={{ fontSize: 11 }}>Hours &amp; walking</span>
       {providers.map((p) => (
         <span key={p.displayName} style={{ display: "inline" }}>
           {p.uri?.startsWith("https://") ? (
@@ -78,5 +79,30 @@ export function GoogleAttribution({
         </span>
       ))}
     </div>
+  );
+}
+
+/** Reported opening hours do not establish admission, ticket availability or an accessible entrance. */
+export function VenueEntry({ hours }: { hours?: HoursCheck }) {
+  const fresh = hours && Date.now() - Date.parse(hours.checkedAt) <= 300000;
+  const href = fresh ? (hours?.websiteURL ?? hours?.mapsURL) : undefined;
+  return (
+    <p className="small muted" style={{ margin: "4px 0 10px" }}>
+      Entry &amp; tickets unverified
+      {href && (
+        <>
+          {" "}
+          ·{" "}
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            style={{ textDecoration: "underline" }}
+          >
+            Check venue details
+          </a>
+        </>
+      )}
+    </p>
   );
 }

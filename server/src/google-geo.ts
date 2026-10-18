@@ -1,3 +1,4 @@
+import type { PlaceIdentity, PlaceRejection } from "./place-identity.js";
 import { GoogleAuth } from "google-auth-library";
 import type pg from "pg";
 import { z } from "zod";
@@ -7,7 +8,7 @@ import {
   type WalkingProvider,
   type WalkingCheck,
 } from "./walking.js";
-import { matchPlace, googlePlace, type GooglePlace } from "./google-hours.js";
+import { assessPlace, googlePlace, type GooglePlace } from "./google-hours.js";
 export const WALKING_WARNING =
   "Walking directions may be missing sidewalks or pedestrian paths. Check local signs and conditions.";
 export type GoogleNavigation = WalkingCheck & {
@@ -22,7 +23,12 @@ export type GoogleNavigation = WalkingCheck & {
   warnings: string[];
 };
 export interface LiveGeo extends WalkingProvider {
-  place(name: string, ll: Point, id?: string): Promise<GooglePlace | undefined>;
+  place(
+    name: string,
+    ll: Point,
+    id?: string,
+    context?: PlaceIdentity,
+  ): Promise<GooglePlace | PlaceRejection | undefined>;
   navigate(points: Point[]): Promise<GoogleNavigation | null>;
 }
 const latLng = z.object({
@@ -103,6 +109,29 @@ export function parseGoogleRoute(
     )
   )
     return null;
+  // A correct waypoint response can still carry disconnected or remote step geometry.
+  // Check the actual line we render, rather than trusting only the summary endpoints.
+  let pointCount = 0;
+  for (const leg of r.legs) {
+    let previous = ll(leg.startLocation.latLng),
+      length = 0;
+    if (!leg.steps.length) return null;
+    for (const step of leg.steps) {
+      const coords = step.polyline.geoJsonLinestring.coordinates.map(
+        ([lng, lat]) => ({ lat, lng }),
+      );
+      pointCount += coords.length;
+      if (pointCount > 20000 || meters(previous, coords[0]) > 50) return null;
+      for (let i = 1; i < coords.length; i++)
+        length += meters(coords[i - 1], coords[i]);
+      previous = coords.at(-1)!;
+    }
+    if (
+      meters(previous, ll(leg.endLocation.latLng)) > 50 ||
+      length > leg.distanceMeters * 1.35 + 50
+    )
+      return null;
+  }
   const geometry: Point[] = [],
     steps: GoogleNavigation["steps"] = [];
   for (const leg of r.legs)
@@ -180,26 +209,28 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
         statusCode: 429,
       });
     try {
-    const token = await auth.getAccessToken();
-    const r = await fetch(url, {
-      method: body === undefined ? "GET" : "POST",
-      headers: {
-        Authorization: "Bearer " + token,
-        "X-Goog-User-Project": projectId,
-        "X-Goog-FieldMask": mask,
-        "Content-Type": "application/json",
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!r.ok)
+      const token = await auth.getAccessToken();
+      const r = await fetch(url, {
+        method: body === undefined ? "GET" : "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "X-Goog-User-Project": projectId,
+          "X-Goog-FieldMask": mask,
+          "Content-Type": "application/json",
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!r.ok)
+        throw Object.assign(new Error("Google map lookup unavailable"), {
+          statusCode: 503,
+        });
+      return await r.json();
+    } catch {
+      // Credential/provider transport details must not enter application logs.
       throw Object.assign(new Error("Google map lookup unavailable"), {
         statusCode: 503,
       });
-    return await r.json();
-    } catch {
-      // Credential/provider transport details must not enter application logs.
-      throw Object.assign(new Error('Google map lookup unavailable'),{statusCode:503});
     }
   };
   const navigate = async (points: Point[]) => {
@@ -223,7 +254,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
     return parseGoogleRoute(data, points);
   };
   const fields =
-    "id,displayName,location,businessStatus,currentOpeningHours,attributions,googleMapsUri";
+    "id,displayName,location,businessStatus,currentOpeningHours,attributions,googleMapsUri,primaryType,types,pureServiceAreaBusiness,websiteUri";
   return {
     navigate,
     async check(points) {
@@ -232,7 +263,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
       const { legs, duration, distance, provider, checkedAt } = r;
       return { legs, duration, distance, provider, checkedAt };
     },
-    async place(name, ll, id) {
+    async place(name, ll, id, context) {
       if (id) {
         const raw = await request(
           "https://places.googleapis.com/v1/places/" + encodeURIComponent(id),
@@ -241,7 +272,8 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
           "places",
         );
         const parsed = googlePlace.safeParse(raw);
-        if (parsed.success) return matchPlace([parsed.data], name, ll);
+        if (parsed.success)
+          return assessPlace([parsed.data], name, ll, context);
         return undefined;
       }
       const raw = await request(
@@ -263,7 +295,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
           .join(","),
         "places",
       );
-      return matchPlace(raw.places ?? [], name, ll);
+      return assessPlace(raw.places ?? [], name, ll, context);
     },
   };
 }
