@@ -88,7 +88,11 @@ See **You** for the installed version/build number.
 
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
-title is necessary because Apple reported that “Quavi” is already in use. App
+title is necessary because Apple reported that “Quavi” is already in use. On
+October 18, 2026, **1.0 (4)** finished processing and its internal-group status
+was verified as **Testing** with one accepted tester. Builds 2 and 3 were not
+assigned to the group. Install the TestFlight app on iPhone using the owner's
+Apple account, then open Quavi's invitation/listing and install build 4. App
 Store publication and external tester review remain separate release steps.
 
 ### Map fidelity
@@ -127,6 +131,7 @@ trusted reward services and the reliability stages below still need implementati
 | Optional background tracking | Decide whether active outings should track while locked and send arrival notifications; implement permission, battery and privacy behavior only if selected | Current build remains foreground-only and explains that policy before using GPS |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
 | Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |
+| Done: first internal TestFlight beta | App Store Connect record, explicit app identifier, signed 1.0 (4), real-use onboarding, visible build label and beta instructions | Apple shows Testing in Quavi Development; owner is an accepted tester; installation on the physical phone is the next user step |
 | Beta and launch | CI, monitoring, backups, provider limits/budget, privacy disclosures, final app icon/splash, accessibility and small/large iPhone QA, TestFlight and App Store submission | Beta testers complete the full flow; no blocking failures remain; release metadata matches actual behavior |
 | Later: real partners | Partner agreements, funding model, eligibility/expiry, merchant validation, redemption disputes and abuse prevention | Real offers launch only after participating merchants and funding are secured |
 
