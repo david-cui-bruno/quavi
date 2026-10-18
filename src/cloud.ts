@@ -7,11 +7,11 @@ export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) { super(message); this.status = status }
 }
-export async function api<T>(user: User, path: string, method = 'GET', body?: unknown): Promise<T> {
+export async function api<T>(user: User, path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
   const token = await user.getIdToken()
   const response = await fetch(`${config.apiUrl}/v1/me${path}`, {
-    method, headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(path === '/detours' ? 60000 : 30000),
+    method, headers: { Authorization: `Bearer ${token}`, 'X-Quavi-Maps': 'google', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ? AbortSignal.any([signal,AbortSignal.timeout(path === '/detours' ? 60000 : 30000)]) : AbortSignal.timeout(path === '/detours' ? 60000 : 30000),
   })
   const data = await response.json()
   if (!response.ok) throw new ApiError(response.status, data.error || 'Could not connect. Try again.')

@@ -2,7 +2,11 @@ import type { AvatarSpec, Colorway } from './brand/Persona'
 import { distance } from './geo'
 
 export type Alt = { place: string; meta: string; persona: string; color: Colorway; ll?: { lat: number; lng: number }; kind?: string }
+export type HoursCheck = {status:'open'|'closed'|'unknown';checkedAt:string;arrivalAt:string;leaveAt:string;googlePlaceId?:string;mapsURL?:string;attributions:{displayName:string;uri?:string}[]}
 export type Chapter = {
+  googlePlaceId?:string
+  googleRoute?:boolean
+  hours?:HoursCheck
   title: string
   place: string
   meta: string
@@ -19,7 +23,7 @@ export type Chapter = {
   /** what kind of place it is (café, park…), used to pick sidequests */
   kind?: string
 }
-export type WalkingCheck = { legs: {distance:number;duration:number}[]; distance:number; duration:number; checkedAt:string; provider:string }
+export type WalkingCheck = {warnings?:string[]; legs: {distance:number;duration:number}[]; distance:number; duration:number; checkedAt:string; provider:string }
 export type PlaceSource = { provider: string; updatedAt: string; attributionURL: string }
 
 export type Opening = {

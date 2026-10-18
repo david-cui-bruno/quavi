@@ -1,3 +1,4 @@
+import {cleanupQuotas} from "./account.js";
 import { applicationDefault, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { readConfig } from "./config.js";
@@ -51,9 +52,7 @@ try {
     );
   }
   await media.cleanupStaging();
-  await pool.query(
-    "DELETE FROM request_quotas WHERE window_at<now()-interval '2 days'",
-  );
+  await cleanupQuotas(pool);
   await pool.query(
     "DELETE FROM account_deletions WHERE completed_at<now()-interval '30 days'",
   );

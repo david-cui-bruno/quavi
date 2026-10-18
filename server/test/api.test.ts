@@ -512,3 +512,29 @@ test('provider admission spaces concurrent instances and counts daily failures g
   await pool.query("DELETE FROM request_quotas WHERE owner_hash='project' AND category='walking-provider'");
  }
 });
+
+test('Google preflight authenticates, checks visit hours and stores only independent data and place identifiers',async()=>{
+ const {googlePlace}=await import('../src/google-hours.js');
+ let closed=false;
+ const geo={async check(){return {legs:[{distance:200,duration:160}],distance:200,duration:160,checkedAt:new Date().toISOString(),provider:'Google Maps'}},async navigate(){return {...await this.check(),geometry:[{lat:40.73,lng:-74},{lat:40.731,lng:-74}],steps:[{maneuver:{type:'depart'},name:'',distance:200,duration:160,start:0}],warnings:['Check local signs']}},async place(){return googlePlace.parse({id:'test-place',displayName:{text:'Test Cafe'},location:{latitude:40.731,longitude:-74},businessStatus:closed?'CLOSED_TEMPORARILY':'OPERATIONAL',currentOpeningHours:{periods:[{open:{day:0,hour:0,minute:0}}]}})}};
+ const live=await createApp({pool,auth,origins:[],liveGeo:geo});
+ const payload={points:[{lat:40.73,lng:-74},{lat:40.731,lng:-74}],stops:[{name:'Test Cafe',ll:{lat:40.731,lng:-74},mins:20}]};
+ try{
+  assert.equal((await live.inject({method:'POST',url:'/v1/me/detour-check',payload})).statusCode,401);
+  const valid=await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload});assert.equal(valid.statusCode,200);assert.equal(valid.json().hours[0].status,'open');
+  closed=true;assert.equal((await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload})).statusCode,422);
+  assert.equal((await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload:{...payload,stops:[{...payload.stops[0],ll:{lat:41,lng:-74}}]}})).statusCode,400);
+  const {buildStory,OPENINGS}=await import('../../src/data.ts');const story=buildStory(OPENINGS[0]);story.walking=valid.json();story.chapters[0]={...story.chapters[0],googleRoute:true,googlePlaceId:'test-place',hours:valid.json().hours[0],meta:'reported open for your visit'};
+  const remote=await live.inject({url:'/v1/me/state',headers:headers(1)});const saved=await live.inject({method:'PUT',url:'/v1/me/state',headers:headers(1),payload:{state:{...state('QA'),story},revision:remote.json().revision}});assert.equal(saved.statusCode,200);
+  const restored=await live.inject({url:'/v1/me/state',headers:headers(1)});assert.ok(!JSON.stringify(restored.json()).includes('reported open'));assert.equal(restored.json().state.story.chapters[0].googlePlaceId,'test-place');assert.ok(!restored.json().state.story.walking);
+  assert.equal((await live.inject('/legal/privacy')).statusCode,200);assert.match((await live.inject('/legal/terms')).body,/Google Maps\/Google Earth/);
+ }finally{await live.close()}
+});
+
+test('monthly provider counters survive ordinary quota cleanup until the month ends',async()=>{
+ const {cleanupQuotas}=await import('../src/account.js');const owner='quota-test-'+randomUUID();
+ try{
+  await pool.query("INSERT INTO request_quotas(owner_hash,category,window_at,used) VALUES($1,'google-places',date_trunc('month',now()),499),($1,'ordinary',now()-interval '3 days',1),($1,'google-routes',date_trunc('month',now())-interval '1 month',500)",[owner]);
+  await cleanupQuotas(pool);const rows=await pool.query('SELECT category,used FROM request_quotas WHERE owner_hash=$1',[owner]);assert.deepEqual(rows.rows,[{category:'google-places',used:499}]);
+ }finally{await pool.query('DELETE FROM request_quotas WHERE owner_hash=$1',[owner])}
+});

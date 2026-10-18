@@ -65,7 +65,7 @@ export function Explore() {
         {q ? <button type="button" onClick={() => setQ('')} aria-label="Clear" style={{ fontSize: 22, color: 'var(--ink-p)' }}>×</button> : null}
         {q.trim() && <button type="submit" className="round ink" style={{ width: 40, height: 40 }} aria-label="Find detours"><Arrow size={18} /></button>}
       </form>
-      <div className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
+      <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
         <div className="row" style={{ justifyContent: 'space-between', padding: '0 24px' }}>
           <div><div className="kicker">{account ? 'Recent detour stops' : 'Demo quests nearby'}</div><h2 className="h1 h-xs" style={{ margin: '2px 0 0' }}>What’s around the corner?</h2></div>
           <span className="pill" style={{ background: 'var(--yellow)' }}>{quests} cleared</span>
@@ -195,7 +195,7 @@ export function RouteScreen() {
           <b style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>You → {dest?.name ?? q}</b>
           <span className="small" style={{ color: 'var(--yellow)', flex: 'none', marginLeft: 10 }}>{mins ? `${mins} min walk` : status === 'loading' ? 'Finding…' : '—'}</span>
         </div>
-        <div className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '22px 0 112px', zIndex: 6 }}>
+        <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '22px 0 112px', zIndex: 6 }}>
           <div style={{ padding: '0 24px' }}>
             <div className="kicker">{status === 'notfound' ? 'No match' : status === 'offline' ? (account ? 'Place search unavailable' : 'Offline · sample stops') : 'Where you’re going'}</div>
             <h2 className="h1 h-s" style={{ margin: '4px 0 2px' }}>
@@ -255,7 +255,7 @@ export function Stop() {
       <div style={{ position: 'relative', flex: 1, marginTop: -54, marginBottom: -108 }}>
         <RealMap pins={pins} route={added ? [origin, c.ll, trip.dest.ll] : [origin, trip.dest.ll]} fit={[origin, trip.dest.ll, ...trip.quests.map((f) => f.ll)]} inset={{ top: 130, bottom: 430 }} you={tr.pos} youAvatar={appState.user.avatar} />
         <Search value={trip.dest.name} onBack={back} />
-        <div className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '20px 24px 112px', zIndex: 6 }}>
+        <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '20px 24px 112px', zIndex: 6 }}>
           {added ? (
             <>
               <div className="kicker">Your route, with a little extra</div>

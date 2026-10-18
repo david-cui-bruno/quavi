@@ -74,7 +74,7 @@ export function planDetours(
   const venues = raw.venues.filter((v) => {
     if (
       !kinds[v.kind] ||
-      v.status !== "open" ||
+      !["open", "unknown"].includes(v.status) ||
       v.confidence < 0.8 ||
       !Number.isFinite(v.ll.lat) ||
       !Number.isFinite(v.ll.lng) ||

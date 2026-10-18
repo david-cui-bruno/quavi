@@ -9,6 +9,7 @@ import { cloudStorageSigner } from "./media.js";
 import { osmWalkingProvider } from "./walking.js";
 import { walkingAdmission } from "./provider-admission.js";
 
+import {googleGeo} from "./google-geo.js";
 const config = readConfig();
 const firebase = initializeApp({
   projectId: config.GOOGLE_CLOUD_PROJECT,
@@ -25,6 +26,7 @@ const app = await createApp({
     ? cloudStorageSigner(config.GOOGLE_CLOUD_PROJECT, config.MEDIA_BUCKET)
     : undefined,
   logger: true,
+  liveGeo: process.env.GOOGLE_MAPS_ENABLED==="true"?googleGeo(config.GOOGLE_CLOUD_PROJECT,pool):undefined,
   walking:
     process.env.WALKING_CHECKS_ENABLED === "true"
       ? osmWalkingProvider(walkingAdmission(pool))
