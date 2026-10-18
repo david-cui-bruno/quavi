@@ -354,7 +354,7 @@ export function RealMap({
   return (
     <div
       className="rmap-wrap"
-      style={{ ["--ctl-top" as string]: `${controlsTop}px` }}
+      style={{ ["--ctl-top" as string]: `${controlsTop}px`, ["--map-header-bottom" as string]: `${headerBottom}px`, ["--map-cover" as string]: `${cover}px` }}
     >
       <capacitor-google-map
         ref={element}

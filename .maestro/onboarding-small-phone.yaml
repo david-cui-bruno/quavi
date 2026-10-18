@@ -34,3 +34,12 @@ name: Small iPhone onboarding reaches Home
     element: "Start this story"
     direction: DOWN
 - assertVisible: "Start this story"
+- tapOn: "Start this story"
+- scrollUntilVisible:
+    element: "Let’s go"
+    direction: DOWN
+- tapOn: "Let’s go"
+- extendedWaitUntil:
+    visible: "YOU’VE ARRIVED"
+    timeout: 10000
+- assertVisible: "Skip tasks"

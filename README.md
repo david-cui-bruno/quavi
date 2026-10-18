@@ -136,11 +136,11 @@ The visual pass restores larger opening-card characters, collapses the selected
 starting point to an editable summary, keeps story titles above provider caveats,
 reduces transit-map clutter, and uses the existing Quavi logo for the app icon.
 Interests, customization and mood screens now allow vertical scrolling when their
-content exceeds a smaller phone. Fixed map screens still cannot scroll as pages.
+content exceeds a smaller phone. Fixed map screens still cannot scroll as pages; recenter controls stay above the bottom panel, with a compact walking summary on short phones.
 
 Verification: 24 client tests and 43 server tests; real fresh-account signup and
-interrupted-setup reload; iPhone 17 account startup; a 20-command Maestro flow on
-iPhone SE through onboarding, mood, openings and the story Start button. Production
+interrupted-setup reload; iPhone 17 account startup; a 25-command Maestro flow on
+iPhone SE through onboarding, mood, openings, starting the story and demo arrival. Production
 dependency audits report no known vulnerabilities for client or server. The saved
 flow is `.maestro/onboarding-small-phone.yaml` and must run on a disposable simulator.
 Outdoor GPS/arrival, physical lock/resume and airplane-mode photo recovery still
