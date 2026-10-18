@@ -40,7 +40,7 @@ export function stepText(m: Maneuver, name: string, dest?: string): string {
 
 export async function fetchWalkingRoute(points: LatLng[], signal?: AbortSignal): Promise<WalkRoute> {
   const coords = points.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';')
-  const res = await fetch(`${BASE}${coords}?steps=true&geometries=geojson&overview=full&radiuses=${points.map(() => 100).join(';')}`, { signal })
+  const res = await fetch(`${BASE}${coords}?steps=true&geometries=geojson&overview=full&radiuses=${points.map(() => 100).join(';')}`, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000) })
   if (!res.ok) throw new Error(`Directions failed (${res.status})`)
   const data = await res.json()
   if (data.code !== 'Ok' || !data.routes?.[0] || data.waypoints?.length !== points.length || data.waypoints.some((w: {distance:number})=>!Number.isFinite(w.distance)||w.distance>100)) throw new Error('No walking route found')
