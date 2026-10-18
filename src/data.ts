@@ -183,6 +183,9 @@ export const OPENINGS: Opening[] = [
 ]
 
 export type Story = {
+  /** Online-only, authorized circle view. Never imported into the private outing journal. */
+  sharedNotes?: NoteLine[]
+  sharedPhotos?: PhotoLine[]
   origin?: {lat:number;lng:number}
   source?: PlaceSource
   estimatedMinutes?: number
@@ -539,6 +542,7 @@ export const isPhotoTask = (t: Task) => /photo/i.test(t.id) || /photo/i.test(t.t
 export type PhotoLine = { chapter: number; place: string; task: string; img: string }
 
 export function photoLines(s: Story): PhotoLine[] {
+  if(s.sharedPhotos)return s.sharedPhotos
   const out: PhotoLine[] = []
   s.chapters.forEach((c, i) => {
     for (const t of chapterMeta(s, i).tasks) {
@@ -557,6 +561,7 @@ export function chapterImg(s: Story, i: number): string | undefined {
 export type NoteLine = { chapter: number; place: string; task: string; note: string }
 
 export function noteLines(s: Story): NoteLine[] {
+  if(s.sharedNotes)return s.sharedNotes
   const out: NoteLine[] = []
   s.chapters.forEach((c, i) => {
     const meta = chapterMeta(s, i)

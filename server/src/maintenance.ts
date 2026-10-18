@@ -1,3 +1,4 @@
+import {cleanupSocialReports} from './social.js';
 import {cleanupQuotas} from "./account.js";
 import { applicationDefault, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -17,6 +18,7 @@ const pool = createPool(config.DATABASE_URL),
   media = cloudStorageSigner(config.GOOGLE_CLOUD_PROJECT, config.MEDIA_BUCKET);
 try {
   await processDeletions(pool, getAuth(firebase), media);
+  await cleanupSocialReports(pool);
   const orphans = await pool.query(
     `SELECT m.id,m.user_id,m.object_key FROM media_objects m LEFT JOIN user_state s ON s.user_id=m.user_id WHERE m.created_at<now()-interval '24 hours' AND(s.document IS NULL OR position('quavi-media:'||m.id::text in s.document::text)=0) AND NOT EXISTS(SELECT 1 FROM outings o WHERE o.user_id=m.user_id AND position('quavi-media:'||m.id::text in o.document::text)>0) LIMIT 100`,
   );

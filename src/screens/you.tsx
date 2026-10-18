@@ -1,3 +1,5 @@
+import {useSocial} from '../social'
+import {SocialFriends,PrivateShare} from '../PrivateCircle'
 import { AppBuild } from '../AppBuild'
 import { AccountPanel } from '../AccountPanel'
 import { Photo } from '../CloudPhoto'
@@ -15,7 +17,8 @@ const SHELF_SURF: [Bg, string, 'Yellow' | 'Orange'][] = [
 ]
 
 export function Shelf() {
-  const { s, go } = useStore()
+  const { s, go, account } = useStore()
+  const social=useSocial()
   const [filter, setFilter] = useState<'All' | 'Loved it'>('All')
   const items = s.shelf.filter((x) => filter === 'All' || x.loved)
   const cols: Story[][] = [[], []]
@@ -48,7 +51,7 @@ export function Shelf() {
                   <button key={x.id} className="tile fade-in" onClick={() => go('read', { id: x.id })} style={{ background: BG[bg], height: (tall ? 226 : 176) + extra, color: dark ? 'var(--paper)' : 'var(--ink)', padding: 14 }}>
                     <div className="abs" style={{ left: '50%', top: tall ? 14 : 8, transform: 'translateX(-50%)' }}><Persona spec={flock(pn, pc)} size={tall ? 92 : 68} /></div>
                     <div className="h1" style={{ position: 'absolute', left: 18, right: 18, bottom: 40 + extra, fontSize: 17, lineHeight: 1.05, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{x.title}</div>
-                    <div className="small" style={{ position: 'absolute', left: 18, right: 18, bottom: 18 + extra, fontWeight: 500 }}>{x.date} · {x.shared ? 'Shared' : 'Not shared yet'}</div>
+                    <div className="small" style={{ position: 'absolute', left: 18, right: 18, bottom: 18 + extra, fontWeight: 500 }}>{x.date} · {(account?social.data?.myPosts.some(p=>p.outingId===x.id):x.shared) ? 'Shared' : 'Not shared yet'}</div>
                     {x.rating && <div style={{ position: 'absolute', left: 14, bottom: 14 }}><RatingDucks rating={x.rating} size={12} compact /></div>}
                   </button>
                 )
@@ -63,13 +66,15 @@ export function Shelf() {
 
 export function Profile() {
   const { s, go, restart, account } = useStore()
+  const social=useSocial()
+  const friendCount=account?social.data?.friends.length??0:s.friends.length
   const { user } = s
   const [confirm, setConfirm] = useState(false)
   const { stage: stageName, disc: discName } = safePair(user.avatar)
   const rows: [string, string, () => void][] = [
     ['Your lists', Object.keys(s.lists).join(' · '), () => go('lists')],
     ['Story shelf', 'Stories you’ve told', () => go('shelf')],
-    ['Friends', s.friends.length ? `${s.friends.length} friend${s.friends.length > 1 ? 's' : ''}` : 'Add your first friend', () => go('friends')],
+    ['Friends', friendCount ? `${friendCount} friend${friendCount > 1 ? 's' : ''}` : 'Add your first friend', () => go('friends')],
     ['Your interests', user.interests.length ? `${user.interests.length} picked` : 'Open to anything', () => go('interests')],
     ['Edit profile', `${user.name || 'Add your name'} · ${user.age21 ? '21+' : user.age21 === false ? 'Under 21' : 'Age'} · ${user.who ?? 'Solo'}`, () => go('about', { editing: true })],
   ]
@@ -82,7 +87,7 @@ export function Profile() {
         <button className="btn primary abs" style={{ left: 90, right: 90, bottom: 14, width: 'auto', height: 46, fontSize: 14 }} onClick={() => go('customize', { editing: true })}>Edit your Quavi</button>
       </div>
       <div style={{ display: 'flex', margin: '12px 0', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
-        {[[s.shelf.length, 'Told'], [Object.values(s.lists).reduce((a, l) => a + l.length, 0), 'Saved'], [s.friends.length, 'Friends']].map(([n, l], k) => (
+        {[[s.shelf.length, 'Told'], [Object.values(s.lists).reduce((a, l) => a + l.length, 0), 'Saved'], [friendCount, 'Friends']].map(([n, l], k) => (
           <div key={String(l)} style={{ flex: 1, paddingLeft: k ? 16 : 0, borderLeft: k ? '1px solid rgba(30,27,22,.14)' : 'none' }}>
             <div style={{ fontWeight: 700, fontSize: 26, letterSpacing: '-.01em', lineHeight: 1.1 }}>{n}</div>
             <div className="kicker" style={{ marginTop: 4 }}>{l}</div>
@@ -159,11 +164,13 @@ export function Lists() {
 }
 
 export function Read() {
-  const { s, route, say, update } = useStore()
+  const { s, route, say, update, account } = useStore()
   const mine = s.shelf.find((x) => x.id === route.params?.id)
-  const st = mine ?? s.library[String(route.params?.id)] ?? FRIEND_STORIES[0]
-  const caps = st.captions.length ? st.captions : st.chapters.map((c) => c.place)
+  const st = mine ?? s.library[String(route.params?.id)] ?? (account?undefined:FRIEND_STORIES[0])
+  const [privateShare,setPrivateShare]=useState(false)
   const [draft, setDraft] = useState<Story | null>(null)
+  if(!st)return <Screen$><BackBtn/><p>This story is unavailable. Open your circle to check current access.</p></Screen$>
+  const caps = st.captions.length ? st.captions : st.chapters.map((c) => c.place)
   if (draft && mine) return <EditStory orig={mine} draft={draft} setDraft={setDraft} onSave={() => { update((x) => ({ ...x, shelf: x.shelf.map((y) => (y.id === draft.id ? draft : y)), story: x.story?.id === draft.id ? draft : x.story })); setDraft(null); say('Saved your changes') }} onCancel={() => setDraft(null)} />
   const share = async () => {
     const text = shareText(st, caps, st.author ?? (mine ? s.user.name || 'Me' : 'A friend'))
@@ -192,7 +199,9 @@ export function Read() {
         })}
       </div>
       <div className="grow" style={{ minHeight: 20 }} />
-      <Btn onClick={share}>Share this story</Btn>
+      {account&&mine&&<Btn onClick={()=>setPrivateShare(true)}>Share with friends</Btn>}
+      <Btn kind={account?"soft":"primary"} onClick={share}>{account?"Export a copy":"Share this story"}</Btn>
+      {privateShare&&<PrivateShare story={st} onClose={()=>setPrivateShare(false)}/>}
     </Screen$>
   )
 }
@@ -277,8 +286,9 @@ export const storiesBy = (name: string) => FRIEND_STORIES.filter((f) => f.author
 
 /** Who's in your circle: see them, add people, remove people. */
 export function Friends() {
-  const { s, update, go, say } = useStore()
+  const { s, update, go, say, account } = useStore()
   const [name, setName] = useState('')
+  if(account)return <SocialFriends/>
   const has = (n: string) => s.friends.some((f) => f.name.toLowerCase() === n.trim().toLowerCase())
   const add = (n: string) => {
     const t = n.trim()

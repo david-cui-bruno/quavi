@@ -43,7 +43,7 @@ location and native notifications are not implemented by this shell.
 | --- | --- | --- |
 | Accounts | Firebase accounts, recovery/verification controls and confirmed account deletion connected to Quavi dev | Email-delivery acceptance and extended account-lifecycle QA |
 | Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA and richer photo retry/conflict resolution |
-| Friends and circle | Locally added names and bundled example stories | User lookup, friendship requests, shared feed, privacy controls |
+| Friends and circle | Signed-in exact handles, requests, accepted friends, private feed, story/photo access controls, block/report; anonymous sample circle | Notifications, moderation tooling and wider-beta acceptance |
 | Mood-based plans and captions | Signed-in nearby openings use worldwide Overture venues through the server; anonymous openings and captions keep scripted demo behavior | Admission/access validation, grounded captions and stronger venue quality controls |
 | Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
 | Location and arrival tasks | Native iPhone foreground GPS or browser GPS, explicit demo walking, accuracy/freshness gates and resume checks | Outdoor device acceptance; background tracking only if selected |
@@ -161,8 +161,10 @@ prototype design, and keep Quavi on GCP. Improve the implementation in this orde
    append-only ledger own signed-in awards and demo spending. Arrival/task
    participation remains self-reported demo evidence, not proof of a visit or
    purchase. Real partner verification and funding remain later work.
-3. **Social access.** Server-side friendships, visibility and blocking, with
-   authorization on feed and shared-media reads.
+3. **Private circle foundation (implemented).** Exact handle lookup, explicit
+   friend requests/acceptance, friends-only stories, removal, blocking, private
+   reports and authorization on story/photo reads. Push notifications and
+   moderation tooling remain next steps.
 4. **Physical acceptance and mobile improvements.** Test real outings, gestures,
    accessibility, battery and lifecycle behavior; use those results to decide any
    additional native UI migration. Add background tracking only during an explicitly
@@ -225,7 +227,8 @@ production partner verification and the reliability stages below still need impl
 | Done: independent outing records and offline journal | Private per-outing records/revisions, lifecycle, one-time legacy migration, IndexedDB retry journal, field-level conflicts, idempotent operation receipts, photo-reference retention and deletion | API/PostgreSQL tests exercise cold offline replay, lost acknowledgement, concurrent fields, conflicts, account isolation and deletion; physical-device acceptance remains below |
 | Deferred by user: physical outing acceptance before wider beta | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
 | Planned: active-outing background tracking | Track only during an explicitly started outing, with a clear stop control; implement permission, battery, privacy and notification behavior | Current build remains foreground-only and explains that policy before using GPS |
-| Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
+| Done: private circle foundation | Exact handle discovery, requests/acceptance/cancel/decline/remove, friends-only completed stories, stop sharing, private story/photo reads, block/unblock and private reports | API tests verify A→accepted B access and C denial, pending requests, races, removal/unshare/block and deletion; notification delivery and moderation operations remain below |
+| Next: social delivery and moderation operations | Push/in-app notifications, report-review workflow/tooling, stronger abuse controls and feed pagination | Request/share notices reach authorized recipients; reports can be triaged and resolved privately; access revocation remains enforced |
 | Done: server-owned demo rewards | Deterministic task plans, append-only ledger, one-time redemptions, offline commands and legacy display-only XP | 63 backend and 30 client tests cover duplicate awards, concurrent spending, inflated balances and lost acknowledgements; partners remain fictional |
 | Done: explicit Explore location selection | Address-bearing search suggestions, keyboard selection and stale-response cancellation | Searching never silently chooses the first hit; the selected result coordinates drive the route |
 | Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) verified Testing in Quavi Development |
@@ -401,3 +404,33 @@ blocked for deletion and its temporary credentials removed. Native iPhone SE
 verification confirms address suggestions fit above the keyboard and selecting
 Springfield Park opens the New York destination. Signed archive/upload 1.0 (10)
 succeeded; **1.0 (10)** is verified **Testing** in Quavi Development.
+
+### Friends and private sharing — build 11
+
+Signed-in **You → Friends** shows your handle. Share it with a friend; exact-handle
+lookup exposes only a name, handle and public profile ID, never an email or starting
+location. Requests need the recipient's acceptance. Old locally typed demo names
+are not real friends and cannot grant access. Anonymous demo mode stays separate.
+
+From a saved, completed story choose **Share with friends**, preview the content,
+and explicitly publish to accepted friends. New accepted friends can see existing
+shared stories. Saved edits update the shared story; use **Stop sharing** to revoke
+it. **Export a copy** is a separate action for your own story. Private circle reads
+are online-only; other people's stories/photos do not enter the offline journal.
+The feed shows the latest 50 accessible posts and refreshes on entry/resume and
+periodically while active. A direct story or photo read always checks server access.
+
+The shared view includes title, captions, intro and previewed task notes/photos.
+It omits starting coordinates, GPS/arrival records, preferences and unknown draft
+fields. Unsharing, removing/blocking a friend or deleting an account prevents new
+reads. Issued photo links may remain valid for five minutes; copies/downloads
+cannot be recalled. Blocks remove requests/friendships and unblocking does not
+restore them. Reports are private and retained at most 90 days (or until a related
+account is deleted); operational review is manual for this development phase.
+
+Migration `007_social.sql` keeps social authority separate from editable profile
+snapshots. Pair locks and unique rows handle repeated requests, crossed requests,
+concurrent accept/block and duplicate publication. Request/search/report quotas
+bound abuse. Account deletion cascades profiles, relationships, blocks, posts and
+reports. Push notifications, a moderation dashboard, pagination and wider-beta
+social acceptance remain work. Outdoor iPhone/offline checks remain user-deferred.

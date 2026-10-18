@@ -1,3 +1,4 @@
+import {SocialProvider} from './social'
 import { StoreProvider, useStore, type Screen } from './store'
 import { About, Customize, Interests, Login, Mood, Splash, Welcome } from './screens/onboarding'
 import { Circle, Friend, Home, Openings, Writing } from './screens/home'
@@ -53,9 +54,11 @@ export default function App() {
   useEffect(observeRuntime, [])
   return (
     <StoreProvider>
+      <SocialProvider>
       <TrackingProvider>
         <Shell />
       </TrackingProvider>
+      </SocialProvider>
     </StoreProvider>
   )
 }

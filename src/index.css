@@ -459,3 +459,18 @@ button.pill.abs { padding: 0 16px; }
 .screen:has(.place-search input:focus) > [data-map-obstruction],
 .phone:has(.place-search input:focus) .tabbar { visibility: hidden; }
 .screen:has(.place-search input:focus) .explore-map { bottom: 0 !important; }
+
+/* Private circle controls inherit Quavi's paper, ink and rounded fields. */
+.circle-person { padding: 14px 0; border-bottom: 1px solid var(--soft); }
+.circle-person b { overflow-wrap: anywhere; }
+.circle-face { width:52px; height:52px; border-radius:26px; background:var(--yellow-p); overflow:hidden; padding:7px 4px 0; flex:none; }
+.circle-actions { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+.circle-actions .chip { min-height:44px; }
+.circle-identity { margin:0 0 24px; padding:18px 20px; border-radius:24px; background:var(--yellow-p); }
+.circle-form { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:14px 0; }
+.circle-form .field { flex:1; min-width:180px; }
+.circle-form input { width:100%; }
+.circle-field { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+.circle-field select { min-height:44px; font:inherit; border-radius:16px; padding:10px; color:var(--ink); background:var(--paper); }
+.circle-field.field { height:auto; padding:16px 24px; }
+.circle-preview { margin:20px 0 24px; display:flex; flex-direction:column; gap:10px; }

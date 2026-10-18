@@ -24,6 +24,7 @@ export class OutingSync {
   cache:any;
   redeem(offerId:string):void;
   loaded: boolean;
+  running: boolean;
   status: OutingStatus;
   open(legacy: AppState, dirty?: boolean): Promise<void>;
   project(profile: AppState): AppState;
