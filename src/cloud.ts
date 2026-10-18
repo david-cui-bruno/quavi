@@ -8,8 +8,9 @@ export class ApiError extends Error {
   constructor(status: number, message: string) { super(message); this.status = status }
 }
 export async function api<T>(user: User, path: string, method = 'GET', body?: unknown): Promise<T> {
+  const token = await user.getIdToken()
   const response = await fetch(`${config.apiUrl}/v1/me${path}`, {
-    method, headers: { Authorization: `Bearer ${await user.getIdToken()}`, 'Content-Type': 'application/json' },
+    method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000),
   })
   const data = await response.json()
@@ -47,6 +48,7 @@ export function photoUploader(user: User) {
       form.append('file', blob)
       const response = await fetch(grant.upload.url, { method: 'POST', body: form, signal: AbortSignal.timeout(60000) })
       if (!response.ok) throw new Error('Photo upload failed. Your changes remain on this device.')
+      await api(user, '/media/' + grant.id + '/complete', 'POST')
       const ref = 'quavi-media:' + grant.id
       uploaded.set(value, ref); photos.set(user.uid + ':' + ref, Promise.resolve(value))
       return ref
