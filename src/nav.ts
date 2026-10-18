@@ -40,10 +40,10 @@ export function stepText(m: Maneuver, name: string, dest?: string): string {
 
 export async function fetchWalkingRoute(points: LatLng[], signal?: AbortSignal): Promise<WalkRoute> {
   const coords = points.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';')
-  const res = await fetch(`${BASE}${coords}?steps=true&geometries=geojson&overview=full`, { signal })
+  const res = await fetch(`${BASE}${coords}?steps=true&geometries=geojson&overview=full&radiuses=${points.map(() => 100).join(';')}`, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000) })
   if (!res.ok) throw new Error(`Directions failed (${res.status})`)
   const data = await res.json()
-  if (data.code !== 'Ok' || !data.routes?.[0]) throw new Error('No walking route found')
+  if (data.code !== 'Ok' || !data.routes?.[0] || data.waypoints?.length !== points.length || data.waypoints.some((w: {distance:number})=>!Number.isFinite(w.distance)||w.distance>100)) throw new Error('No walking route found')
   const r = data.routes[0]
   const geometry: LatLng[] = []
   const steps: NavStep[] = []
@@ -55,6 +55,7 @@ export async function fetchWalkingRoute(points: LatLng[], signal?: AbortSignal):
       steps.push({ maneuver, name: st.name ?? '', distance: st.distance, duration: st.duration, start })
     }
   }
+  if(geometry.length<2||!steps.length||!Number.isFinite(r.distance)||!Number.isFinite(r.duration)||geometry.some(p=>!Number.isFinite(p.lat)||!Number.isFinite(p.lng)))throw new Error('Invalid walking directions')
   return { geometry, steps, distance: r.distance, duration: r.duration }
 }
 
@@ -75,8 +76,9 @@ export function useWalkingRoute(points: LatLng[] | null) {
     const ac = new AbortController()
     abort.current = ac
     last.current = Date.now()
+    setRoute(null)
     setStatus('loading')
-    fetchWalkingRoute(pts, ac.signal).then((r) => { if (!ac.signal.aborted) { setRoute(r); setStatus('ready') } }).catch((e) => { if ((e as Error).name !== 'AbortError') setStatus('error') })
+    fetchWalkingRoute(pts, ac.signal).then((r) => { if (!ac.signal.aborted) { setRoute(r); setStatus('ready') } }).catch((e) => { if (!ac.signal.aborted && (e as Error).name !== 'AbortError') { setRoute(null); setStatus('error') } })
   }, [])
 
   useEffect(() => {

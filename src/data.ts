@@ -19,12 +19,15 @@ export type Chapter = {
   /** what kind of place it is (café, park…), used to pick sidequests */
   kind?: string
 }
+export type WalkingCheck = { legs: {distance:number;duration:number}[]; distance:number; duration:number; checkedAt:string; provider:string }
 export type PlaceSource = { provider: string; updatedAt: string; attributionURL: string }
 
 export type Opening = {
   origin?: {lat:number;lng:number}
   source?: PlaceSource
   estimatedMinutes?: number
+  walking?: WalkingCheck
+  timeBudgetMinutes?: number
   id: string
   title: string
   tags: string
@@ -178,6 +181,8 @@ export type Story = {
   origin?: {lat:number;lng:number}
   source?: PlaceSource
   estimatedMinutes?: number
+  walking?: WalkingCheck
+  timeBudgetMinutes?: number
   id: string
   title: string
   openingId: string
@@ -214,7 +219,7 @@ export function buildStory(o: Opening): Story {
     id: `${o.id}-${Date.now()}`,
     title: TITLES[o.id] ?? o.title,
     openingId: o.id,
-    origin: o.origin, source: o.source, estimatedMinutes: o.estimatedMinutes,
+    origin: o.origin, source: o.source, estimatedMinutes: o.estimatedMinutes, walking:o.walking, timeBudgetMinutes:o.timeBudgetMinutes,
     premise: o.premise,
     chapters: o.chapters.map((c) => ({ ...c })),
     moments: {},

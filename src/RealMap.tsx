@@ -73,7 +73,7 @@ export function RealMap({ pins, route, doneRoute, coins, fit, inset = { top: 180
   useEffect(() => {
     if (!el.current) return
     const m = L.map(el.current, { zoomControl: false, attributionControl: false, minZoom: 10, maxZoom: 19, zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 90 })
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(m)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Routes: <a href="https://routing.openstreetmap.de/about.html">FOSSGIS</a> · <a href="https://www.openstreetmap.org/fixthemap">Fix the map</a>'  }).addTo(m)
     L.control.zoom({ position: 'topright' }).addTo(m)
     L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(m)
     m.setView([40.7329, -74.0031], 15)

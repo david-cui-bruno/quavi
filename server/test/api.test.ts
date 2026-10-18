@@ -483,3 +483,32 @@ test('city routes require identity and a configured provider and never return de
     assert.equal((await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:{...input,origin:{lat:999,lng:0}}})).statusCode,400)
   }finally{await real.close()}
 })
+
+test('walking preflight authenticates, validates points and returns explicit no-route instead of estimates',async()=>{
+ let connected=true;let calls=0;
+ const live=await createApp({pool,auth,origins:[],walking:{async check(){calls++;return connected?{legs:[{distance:200,duration:160}],distance:200,duration:160,checkedAt:new Date().toISOString(),provider:'test'}:null}}});
+ const request={method:'POST' as const,url:'/v1/me/walking-check',payload:{points:[{lat:40.73,lng:-74},{lat:40.731,lng:-74}]}};
+ try{
+  assert.equal((await live.inject(request)).statusCode,401);assert.equal(calls,0);
+  assert.equal((await live.inject({...request,headers:headers(1),payload:{points:[{lat:0,lng:0},{lat:40,lng:40}]}})).statusCode,400);assert.equal(calls,0);
+  const ok=await live.inject({...request,headers:headers(1)});assert.equal(ok.statusCode,200);assert.equal(ok.json().duration,160);
+  connected=false;assert.equal((await live.inject({...request,headers:headers(1)})).statusCode,422);
+  assert.equal((await app.inject({...request,headers:headers(1)})).statusCode,503);
+ }finally{await live.close()}
+});
+
+test('provider admission spaces concurrent instances and counts daily failures globally',async()=>{
+ const {walkingAdmission}=await import('../src/provider-admission.js');
+ await pool.query("DELETE FROM venue_cache WHERE area_key='provider-clock:foot'");
+ await pool.query("DELETE FROM request_quotas WHERE owner_hash='project' AND category='walking-provider'");
+ try{
+  const marks:number[]=[];
+  await Promise.all([walkingAdmission(pool),walkingAdmission(pool)].map(async admit=>{await admit();marks.push(Date.now())}));
+  marks.sort();assert.ok(marks[1]-marks[0]>=1000);
+  await pool.query("UPDATE request_quotas SET used=400 WHERE owner_hash='project' AND category='walking-provider'");
+  await assert.rejects(walkingAdmission(pool)(),(e:unknown)=>(e as {statusCode:number}).statusCode===429);
+ }finally{
+  await pool.query("DELETE FROM venue_cache WHERE area_key='provider-clock:foot'");
+  await pool.query("DELETE FROM request_quotas WHERE owner_hash='project' AND category='walking-provider'");
+ }
+});

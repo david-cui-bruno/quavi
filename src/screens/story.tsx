@@ -1,3 +1,6 @@
+import { api, accountError, auth } from '../cloud'
+import { useTracking } from '../tracking'
+import type { WalkingCheck } from '../data'
 import { Photo } from '../CloudPhoto'
 import { useEffect, useRef, useState } from 'react'
 import { photoFiles, photoFromFile } from '../photo'
@@ -40,7 +43,12 @@ function RoutePreview({ chapters, h = 112 }: { chapters: Chapter[]; h?: number }
 }
 
 export function Details() {
-  const { go, reset, say } = useStore()
+  const { go, reset, say, account } = useStore()
+  const tracking=useTracking()
+  const mounted=useRef(true)
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false}},[])
+  const [checking,setChecking]=useState(false)
+  const [checkError,setCheckError]=useState('')
   const [story, setStory] = useStory()
   const [adjust, setAdjust] = useState(false)
   const [save, setSave] = useState(false)
@@ -57,14 +65,14 @@ export function Details() {
         <BackBtn onClick={() => reset('home')} />
         <button className="chip" onClick={() => setSave(true)} aria-label="Save this plan to a list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>Save for later</button>
       </div>
-      {story.source&&<p className="small" style={{marginTop:14}}>Real nearby venues from <a href={story.source.attributionURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a>. Hours, access and prices unverified; walking times are estimates.</p>}
+      {story.source&&<p className="small" style={{marginTop:14}}>Real nearby venues from <a href={story.source.attributionURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a>. Hours, access and prices unverified. {story.walking ? 'A mapped pedestrian route was found; street conditions and entrances can change.' : 'Walking times are estimates.'}</p>}
       <div className="kicker" style={{ marginTop: 14 }}>Your plan for tonight</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 12px' }}>{story.title.split(' ').slice(0, 2).join(' ')}<br />{story.title.split(' ').slice(2).join(' ')}</h1>
       <div style={{ display: 'flex', margin: '4px 0 14px', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
         {([
           [story.source ? `~${story.estimatedMinutes ?? total(story)} min` : prefs.time === '60 min' ? `${total(story)} min` : prefs.time, 'Time'],
           [story.source ? 'Check prices' : { Free: '$0–5', '$ Low': '$12–20', '$$ Treat myself': '$40+' }[story.prefs?.spend ?? 'Free'] ?? '$0–5', 'Spend'],
-          [`${(tripMeters(story) / 1609).toFixed(1)} mi`, story.prefs?.move ?? 'Walking'],
+          [`${((story.walking?.distance ?? tripMeters(story)) / 1609).toFixed(1)} mi`, story.prefs?.move ?? 'Walking'],
         ] as const).map(([value, label], k) => (
           <div key={label} style={{ flex: 1, paddingLeft: k ? 16 : 0, borderLeft: k ? '1px solid rgba(30,27,22,.14)' : 'none' }}>
             <div style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-.01em', lineHeight: 1.1 }}>{value}</div>
@@ -89,8 +97,21 @@ export function Details() {
         })}
       </div>
       <div className="grow" style={{ minHeight: 16 }} />
+      {checkError&&<p role="alert" className="small" style={{marginBottom:12}}>{checkError}</p>}
       <div className="row">
-        <div style={{ flex: 1 }}><Btn onClick={() => { setStory((st) => ({ ...st, status: 'active' })); go('active') }}>Start this story <Arrow size={18} /></Btn></div>
+        <div style={{ flex: 1 }}><Btn disabled={checking} onClick={async () => {
+          if(!story.source){setStory(st=>({...st,status:'active'}));go('active');return}
+          if(!account||!story.origin||story.chapters.some(c=>!c.ll)){setCheckError('Sign in and choose a nearby detour to check its route.');return}
+          setChecking(true);setCheckError('');
+          try{
+            const origin=tracking.mode==='live'?tracking.pos:story.origin;
+            const walking=await api<WalkingCheck>(account,'/walking-check','POST',{points:[origin,...story.chapters.map(c=>c.ll)]});
+            if(!mounted.current||auth.currentUser?.uid!==account.uid)return;
+            const minutes=Math.ceil(walking.duration/60)+story.chapters.reduce((sum,c)=>sum+c.mins,0);
+            if(minutes>(story.timeBudgetMinutes??story.estimatedMinutes??120)){setCheckError('The walk now takes longer than this plan allows. Choose another detour or allow more time.');return}
+            setStory(st=>st.id===story.id?({...st,origin,walking,estimatedMinutes:minutes,status:'active'}):st);go('active');
+          }catch(e){setCheckError(accountError(e))}finally{setChecking(false)}
+        }}>{checking?'Checking walk…':'Start this story'} {!checking&&<Arrow size={18} />}</Btn></div>
         <Btn kind="soft" inline onClick={() => setAdjust(true)} style={{ width: 110 }}>Adjust</Btn>
       </div>
       {adjust && (

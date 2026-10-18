@@ -11,7 +11,7 @@ export async function api<T>(user: User, path: string, method = 'GET', body?: un
   const token = await user.getIdToken()
   const response = await fetch(`${config.apiUrl}/v1/me${path}`, {
     method, headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(path === '/detours' ? 60000 : 30000),
   })
   const data = await response.json()
   if (!response.ok) throw new ApiError(response.status, data.error || 'Could not connect. Try again.')

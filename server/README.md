@@ -210,7 +210,7 @@ categories and applies age/name exclusions, uniqueness, distance/time and prefer
 ranking. Specific coordinates take precedence over any prototype name match.
 `operating_status=open` is not live opening hours; every route states hours/access/
 prices are unverified. The app shows Overture attribution and the table update date.
-A dataset older than 90 days is rejected. Live hours, pedestrian/access validation,
+A dataset older than 90 days is rejected. Live hours, current access validation,
 category accuracy and international acceptance remain the next detour stage.
 
 Public venue caches contain coarse area keys (about 1 km), venue records and source
@@ -231,3 +231,38 @@ need production service agreements or replacements before public launch.
 Sources: [Overture Places](https://docs.overturemaps.org/guides/places/),
 [attribution/licensing](https://docs.overturemaps.org/attribution/),
 [BigQuery public data](https://docs.cloud.google.com/bigquery/public-data).
+
+
+### Walking feasibility checks
+
+`WALKING_CHECKS_ENABLED=true` adds a pedestrian-network check to each candidate
+outing and enables authenticated `POST /v1/me/walking-check` with two to four
+`points`. The app rechecks before starting a city story, using the current GPS
+position when live tracking is active. No path, >100 m snap, invalid metrics or
+an over-budget walk rejects the route. A provider outage returns an error rather
+than an estimated route. This validates mapped connectivity, **not** safe sidewalks,
+wheelchair suitability, entrances, construction or actual current access.
+
+The development adapter uses FOSSGIS's worldwide **foot** OSRM graph. Admission
+reserves starts at least 1.1 seconds apart across API instances via a SQL advisory
+lock and a provider clock (no coordinates) in `venue_cache`. It caps calls at
+400/project/day, including failures, with at most 3.5 seconds of waiting. Individual
+preflight is also limited to 60/account/hour; each call times out after six seconds.
+Exact route requests aren't persisted by this adapter. The upstream server logs
+requests under its own privacy policy. Existing device navigation also contacts
+FOSSGIS directly. A contracted or hosted provider is still needed for launch.
+
+Live outings draw the fetched current pedestrian leg rather than invented straight
+lines to later stops. Failed/rerouting requests clear the old route. Missing street
+directions shows a pause/check message and an external walking-directions link.
+The active map's straight-line coin trail is hidden for live outings; authoritative
+on-route rewards remain a separate roadmap item.
+
+Live venue hours remain unverified pending the provider choice. Do not turn the
+Overture operating-status field into an open-now claim. Google Places would require
+Google Maps for mapped results and suitable retention/attribution controls; keeping
+the current map requires a compatible venue provider.
+
+Sources: [FOSSGIS service and usage policy](https://routing.openstreetmap.de/about.html),
+[OSRM route and waypoint API](https://project-osrm.org/docs/v5.24.0/api/),
+[Google Places policies](https://developers.google.com/maps/documentation/places/web-service/policies).
