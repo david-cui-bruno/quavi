@@ -135,7 +135,7 @@ function along(p: LatLng, a: LatLng, b: LatLng) {
 export function RouteScreen() {
   const { s, route, go, back, account } = useStore()
   const tr = useTracking()
-  const origin = useRef(tr.pos).current
+  const [origin] = useState(tr.pos)
   const typed = String(route.params?.dest ?? 'Washington Square Park')
   const [q, setQ] = useState(typed)
   const [dest, setDest] = useState<Found | null>(null)
@@ -163,7 +163,7 @@ export function RouteScreen() {
       if(!account){setDest(SAMPLE_DEST);setQuests(sampleQuests())}
       setStatus('offline');setLooking(false)
     }
-  }, [])
+  }, [account,origin,s.user.age21])
   useEffect(() => { void run(typed); return () => abort.current?.abort() }, [run, typed])
   // until you pick for yourself, the two nearest different detours are already on your route
   useEffect(() => { if (!touched.current) setPicked(bestDetours(quests)) }, [quests])
@@ -231,7 +231,7 @@ export function RouteScreen() {
 export function Stop() {
   const { s: appState, route, back, go, update, say } = useStore()
   const tr = useTracking()
-  const origin = useRef(tr.pos).current
+  const [origin] = useState(tr.pos)
   const trip = useMemo<Trip>(() => {
     const t = route.params?.trip as Trip | undefined
     return t ?? { dest: SAMPLE_DEST, quests: sampleQuests() }

@@ -157,7 +157,8 @@ export function Openings() {
     go('writing')
   }
   return (
-    <Screen$ bg="yellow" scroll>
+    <Screen$ bg="yellow">
+      <div className="col" style={{flex:1,minHeight:0,overflowY:'auto',paddingBottom:4}}>
       <BackBtn />
       <div className="kicker" style={{ marginTop: 14 }}>{account ? 'A few ways tonight could go' : 'Three ways tonight could go'}</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Pick your<br />opening.</h1>
@@ -173,8 +174,8 @@ export function Openings() {
             <button key={o.id} onClick={() => setSel(oi)} className="tile fade-in" style={{ background: BG[bg], minHeight: 132, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
               <div className="h1" style={{ fontSize: 25 }}>{o.title}</div>
               <div className="small" style={{ fontWeight: 500 }}>{o.tags}</div>
-              <div className="small" style={{ fontWeight: 700, color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
-              <div className="pcs" style={{ right: 14, bottom: -26 }}><Persona spec={flock(o.persona, o.color)} size={96} /></div>
+              <div className="small" style={{ fontWeight: 700, maxWidth:o.source?'calc(100% - 72px)':undefined, overflowWrap:'anywhere', color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
+              <div className="pcs" style={{ right: 14, bottom: o.source?4:-26 }}><Persona spec={flock(o.persona, o.color)} size={o.source?60:96} /></div>
               {on && <span className="tick" style={{ left: 'auto', right: 14, top: 14, bottom: 'auto' }}><Check /></span>}
             </button>
           )
@@ -186,6 +187,7 @@ export function Openings() {
       <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
         <button className="small" style={{ fontWeight: 700, fontSize: 14 }} disabled={!choices.length} onClick={() => start(Math.floor(Math.random() * choices.length))}>Pick for me</button>
         <button className="small" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => { setOrder((o) => o.length ? [...o.slice(1),o[0]] : o); }}>Show me different openings</button>
+      </div>
       </div>
     </Screen$>
   )
