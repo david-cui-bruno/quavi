@@ -85,7 +85,7 @@ const ICONS: Record<string, ReactNode> = {
 }
 
 export function TabBar({ active }: { active: 'home' | 'explore' | 'you' }) {
-  const { reset } = useStore()
+  const { reset, route } = useStore()
   const tabs: { id: 'home' | 'explore' | 'you'; label: string; to: Screen }[] = [
     { id: 'home', label: 'Home', to: 'home' },
     { id: 'explore', label: 'Explore', to: 'explore' },
@@ -94,7 +94,7 @@ export function TabBar({ active }: { active: 'home' | 'explore' | 'you' }) {
   return (
     <nav className="tabbar" aria-label="Main">
       {tabs.map((t) => (
-        <button key={t.id} className={`tab${active === t.id ? ' on' : ''}`} aria-current={active === t.id ? 'page' : undefined} onClick={() => active !== t.id && reset(t.to)}>
+        <button key={t.id} className={`tab${active === t.id ? ' on' : ''}`} aria-current={active === t.id ? 'page' : undefined} onClick={() => route.name !== t.to && reset(t.to)}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">{ICONS[t.id]}</svg>
           {t.label}
         </button>
@@ -111,7 +111,9 @@ export function Sheet({ onClose, children, label }: { onClose: () => void; child
     const prev = document.activeElement as HTMLElement | null
     const el = ref.current
     const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>('button, input, textarea, [href], [tabindex]:not([tabindex="-1"])') ?? []).filter((n) => !n.hasAttribute('disabled'))
-    ;(focusables()[0] ?? el)?.focus({ preventScroll: true })
+    // Focus the native dialog itself so a sheet does not open the keyboard
+    // before the person chooses to edit a field.
+    ;(document.documentElement.classList.contains('native-app') ? el : focusables()[0] ?? el)?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.stopPropagation(); close.current(); return }
       if (e.key !== 'Tab') return
@@ -144,7 +146,7 @@ export function Screen$({
   const { dir } = useStore()
   return (
     <>
-      <main className={`screen${scroll ? ' scroll' : ''}${scroll && bg === 'paper' ? ' masked' : ''}${flush ? ' flush' : ''}${onDark(bg) ? ' dark' : ''}${dir === 'back' ? ' back-nav' : ''}`} style={{ background: BG[bg], paddingBottom: tabs ? 108 : 20 }}>
+      <main className={`screen${scroll ? ' scroll' : ''}${scroll && bg === 'paper' ? ' masked' : ''}${flush ? ' flush' : ''}${onDark(bg) ? ' dark' : ''}${dir === 'back' ? ' back-nav' : ''}`} style={{ background: BG[bg], paddingBottom: `calc(${tabs ? 108 : 20}px + var(--native-bottom, 0px))` }}>
         {children}
       </main>
       <div aria-hidden="true" className={`statusbar${light || onDark(bg) ? ' light' : ''}`}><span>9:41</span><span>▪▪▪ ▮</span></div>

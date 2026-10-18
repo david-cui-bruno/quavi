@@ -64,7 +64,7 @@ export function Explore() {
         {q ? <button type="button" onClick={() => setQ('')} aria-label="Clear" style={{ fontSize: 22, color: 'var(--ink-p)' }}>×</button> : null}
         {q.trim() && <button type="submit" className="round ink" style={{ width: 40, height: 40 }} aria-label="Find detours"><Arrow size={18} /></button>}
       </form>
-      <div className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 112px', zIndex: 9 }}>
+      <div className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
         <div className="row" style={{ justifyContent: 'space-between', padding: '0 24px' }}>
           <div><div className="kicker">Quests nearby</div><h2 className="h1 h-xs" style={{ margin: '2px 0 0' }}>What’s around the corner?</h2></div>
           <span className="pill" style={{ background: 'var(--yellow)' }}>{quests} cleared</span>

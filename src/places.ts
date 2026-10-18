@@ -99,8 +99,14 @@ export async function searchPlace(query: string, near: LatLng, signal?: AbortSig
       const address = [p.housenumber && p.street ? `${p.housenumber} ${p.street}` : p.street, p.locality ?? p.city].filter(Boolean).join(', ')
       return { id: `${p.osm_type}${p.osm_id}`, name, ll, kind, about: aboutFor(kind), address: address || undefined } as Found
     })
-  // prefer what's close by
-  return hits.sort((a, b) => distance(near, a.ll) - distance(near, b.ll)).slice(0, 5)
+  // Prefer the requested place over a nearby sub-place (for example, a dog
+  // run inside the park someone searched for), then use distance to break ties.
+  const requested = query.trim().toLocaleLowerCase()
+  const relevance = (name: string) => {
+    const normalized = name.toLocaleLowerCase()
+    return normalized === requested ? 0 : normalized.startsWith(requested) ? 1 : 2
+  }
+  return hits.sort((a, b) => relevance(a.name) - relevance(b.name) || distance(near, a.ll) - distance(near, b.ll)).slice(0, 5)
 }
 
 /** Places a few steps off the straight line from `a` to `b`, one category at a time (Nominatim allows ~1 request/second). */
