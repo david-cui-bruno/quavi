@@ -92,23 +92,34 @@ title is necessary because Apple reported that “Quavi” is already in use. On
 October 18, 2026, **1.0 (4)** finished processing and its internal-group status
 was verified as **Testing** with one accepted tester. Builds 2 and 3 were not
 assigned to the group. Install the TestFlight app on iPhone using the owner's
-Apple account, then open Quavi's invitation/listing and install build 4. App
-Store publication and external tester review remain separate release steps.
+Apple account, then open Quavi's invitation/listing. The map-motion update,
+**1.0 (5)**, uploaded successfully on October 18; assignment to the internal group
+is pending a renewed App Store Connect browser session. Build 4 remains the last
+verified Testing build until that assignment is confirmed. App Store publication and external tester review remain separate release steps.
 
 ### Map fidelity
 
-Google Maps replaced the prototype’s OpenStreetMap base after the provider
-choice. The original Quavi vectors now render locally over Google: customized
-user avatar, colored/selected silhouettes, visible place-name pills, circular
-coins, dotted future route and orange completed route. Google attribution stays
-visible above cards. Generated PNG markers and Google route/place responses are
-memory-only. The pinned plugin patch adds local PNG support and native dotted
-strokes; `npm ci` reapplies it and rejects unsupported SDK source changes.
+Google Maps supplies the street map and live walking geometry. Quavi’s original
+vectors render as a separate geographic artwork layer: customized avatar,
+colored/selected silhouettes, place-name pills, circular coins, dotted future
+route and orange completed route. Native camera callbacks project artwork without
+rebuilding markers on zoom. Labels wrap, avoid other pins/labels, and stay clear
+of measured screen controls and attribution; quest labels hide at distant zooms.
 
-The underlying cartography differs from OpenStreetMap. Pulse rings currently
-render as static highlights, and coin bobbing plus overlapping/edge-clipped label refinement
-remain visual polish work. Compare against the original prototype before calling
-the map fully 1-to-1.
+Original pulse timing and coin bobbing run in native Core Animation (DOM/CSS on
+web), pause offscreen/background, and respect Reduce Motion. Google recognizes
+tap versus pan before dispatching artwork selection. Map gestures stay north-up
+and flat. The outer screen and native placeholder cannot scroll or bounce; long
+content retains vertical scrolling below the iPhone status area. Google’s legal
+branding stays visible, with compact provider credits on cards. Route-preview
+numbered pins now stay inside the illustration.
+
+The underlying Google cartography differs from the prototype’s OpenStreetMap.
+Artwork and transient Google responses remain memory-only. The pinned SDK patch
+is reapplied by `npm ci` and rejects unsupported source changes. Client regression
+coverage exercises the actual map component: zoom in/out and cloned autosave
+props preserve marker/path identity; removing a stop removes only that marker.
+Physical outdoor acceptance remains on the roadmap.
 
 ## Build roadmap
 
@@ -131,6 +142,7 @@ trusted reward services and the reliability stages below still need implementati
 | Optional background tracking | Decide whether active outings should track while locked and send arrival notifications; implement permission, battery and privacy behavior only if selected | Current build remains foreground-only and explains that policy before using GPS |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
 | Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |
+| Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) uploaded, internal-group assignment pending |
 | Done: first internal TestFlight beta | App Store Connect record, explicit app identifier, signed 1.0 (4), real-use onboarding, visible build label and beta instructions | Apple shows Testing in Quavi Development; owner is an accepted tester; installation on the physical phone is the next user step |
 | Beta and launch | CI, monitoring, backups, provider limits/budget, privacy disclosures, final app icon/splash, accessibility and small/large iPhone QA, TestFlight and App Store submission | Beta testers complete the full flow; no blocking failures remain; release metadata matches actual behavior |
 | Later: real partners | Partner agreements, funding model, eligibility/expiry, merchant validation, redemption disputes and abuse prevention | Real offers launch only after participating merchants and funding are secured |
