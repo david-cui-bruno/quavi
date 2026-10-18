@@ -383,14 +383,14 @@ test("deletion immediately blocks writes, survives cleanup failure and purges ag
   );
   removalFails = false;
   await pool.query(
-    "UPDATE account_deletions SET retry_at=now() WHERE owner_hash=$1",
+    "UPDATE account_deletions SET retry_at=now()-interval '1 second' WHERE owner_hash=$1",
     [ownerHash(uid)],
   );
   await processDeletions(pool, auth, mediaAdapter);
   assert.equal((await auth.getUser(uid)).disabled, true);
   assert.equal(removed.filter((o) => o === ownerHash(uid)).length, 1);
   await pool.query(
-    "UPDATE account_deletions SET finalize_after=now()-interval '1 minute',retry_at=now() WHERE owner_hash=$1",
+    "UPDATE account_deletions SET finalize_after=now()-interval '1 minute',retry_at=now()-interval '1 second' WHERE owner_hash=$1",
     [ownerHash(uid)],
   );
   await processDeletions(pool, auth, mediaAdapter);

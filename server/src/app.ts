@@ -1,3 +1,4 @@
+import { ensureOutings, listOutings, applyOutingOperation } from "./outings.js";
 import { legalPage } from "./legal.js";
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
@@ -65,7 +66,7 @@ export async function createApp(options: {
   await app.register(cors, {
     origin: options.origins,
     methods: ["GET", "PUT", "POST", "DELETE"],
-    allowedHeaders: ["Authorization", "Content-Type", "X-Quavi-Maps"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Quavi-Maps", "X-Quavi-Outings"],
   });
   app.addHook("onSend", async (_req, reply) => {
     reply.header("Cache-Control", "no-store");
@@ -205,6 +206,8 @@ export async function createApp(options: {
             "INSERT INTO account_deletions(owner_hash,user_id) VALUES($1,$2)",
             [hash, req.uid],
           );
+          await db.query("DELETE FROM outings WHERE user_id=$1", [req.uid]);
+          await db.query("DELETE FROM outing_accounts WHERE user_id=$1", [req.uid]);
           await db.query("DELETE FROM user_state WHERE user_id=$1", [req.uid]);
         }
         return reply.code(202).send({
@@ -375,6 +378,8 @@ export async function createApp(options: {
             hours,
           };
         });
+      api.get("/me/outings", async req => ({outings:await listOutings(req.db!,req.uid)}));
+      api.post("/me/outings/operations", async req => applyOutingOperation(req.db!,req.uid,req.body));
       api.get(
         "/me/state",
         async (req) =>
@@ -399,6 +404,9 @@ export async function createApp(options: {
               error: "Finish uploading your own photos before saving.",
             });
         }
+        if(req.headers['x-quavi-outings']==='1')await ensureOutings(req.db!,req.uid);
+        else if((await req.db!.query('SELECT 1 FROM outing_accounts WHERE user_id=$1',[req.uid])).rowCount)
+          return reply.code(409).send({error:'Update Quavi before saving this account. Outings now sync separately.'});
         const saved = await writeState(
           req.db!,
           req.uid,

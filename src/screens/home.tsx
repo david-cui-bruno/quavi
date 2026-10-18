@@ -1,3 +1,4 @@
+import {OutingSaveStatus} from '../OutingSaveStatus'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
 import {useRuntime} from '../runtime'
 import { CityPicker } from '../CityPicker'
@@ -76,6 +77,7 @@ export function Home() {
       </div>
       {syncStatus==='storage-full'&&<p role="alert" className="small" style={{marginBottom:12}}>Device storage is full. Keep Quavi open and free up space before leaving; your latest changes may not be saved.</p>}
       {!life.online&&syncStatus!=='storage-full'&&<p role="status" className="small" style={{marginBottom:12}}>You’re offline. Saved plans, notes and progress stay on this device. Changes sync when you reconnect.</p>}
+      <OutingSaveStatus />
       <div className="kicker" style={{ marginTop: 12 }}>Good evening, {s.user.name}</div>
       <h1 className="h1 h-l" style={{ marginTop: 6 }}>Plans fell through?</h1>
       <p className="it" style={{ fontSize: 20, margin: '6px 0 4px' }}>Good. Let’s find your plot twist.</p>
@@ -109,7 +111,7 @@ export function Home() {
           <h2 className="h1 h-m" style={{ margin: '4px 0 8px' }}>End this detour?</h2>
           <p className="body muted" style={{ marginBottom: 16 }}>You’re on stop {at + 1} of {live.chapters.length}. You can wrap it up and tell the story so far, or discard it.</p>
           <div className="col" style={{ gap: 10 }}>
-            <Btn onClick={() => { update((st) => ({ ...st, story: st.story && { ...st.story, status: 'done' } })); setEnding(false); go('complete') }}>End and tell my story</Btn>
+            <Btn onClick={() => { update((st) => ({ ...st, story: st.story && { ...st.story, status: 'done', outingPhase:'completed' } })); setEnding(false); go('complete') }}>End and tell my story</Btn>
             <Btn kind="soft" onClick={() => setEnding(false)}>Keep going</Btn>
             <button className="center small" style={{ fontWeight: 700, fontSize: 14, color: '#A8331A', marginTop: 4 }} onClick={() => { update((st) => ({ ...st, story: undefined, chapter: 0 })); setEnding(false); say('Detour discarded') }}>Discard this detour</button>
           </div>

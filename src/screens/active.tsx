@@ -18,7 +18,7 @@ import { MomentSheet, useStory } from './story'
 
 export function Active() {
   useLiveHoursClock()
-  const { s, update, go, reset, say, syncStatus } = useStore()
+  const { s, update, go, reset, say, syncStatus, outingStatus } = useStore()
   const tr = useTracking()
   const life = useRuntime()
   const [story, setStory] = useStory()
@@ -34,7 +34,8 @@ export function Active() {
   const target = useMemo(() => ({ lat: meta.lat, lng: meta.lng }), [meta.lat, meta.lng])
   const dist = distance(tr.pos, target)
   const recovery=useOutingCheck(story,i)
-  const arrived = recovery.ready && (tr.mode==='demo' ? dist < ARRIVE_RADIUS : canArrive(dist,tr.fix))
+  const arrivalReady = recovery.ready || (recovery.phase==='offline' && !!story.arrivedStops?.includes(i))
+  const arrived = arrivalReady && (tr.mode==='demo' ? dist < ARRIVE_RADIUS : canArrive(dist,tr.fix))
   // far stops on a transit plan are a subway ride, not a walk
   const getThere = (m: number) => (story.prefs?.move === 'Transit' && m > 1500 ? `${Math.max(1, Math.round(m / 250))} min by subway` : fmtWalk(m))
   const key = `${story.id}:${i}`
@@ -107,6 +108,7 @@ export function Active() {
   useEffect(() => {
     if (arrived && !seen.current[key]) {
       seen.current[key] = true
+      setStory(st=>st.arrivedStops?.includes(i)?st:{...st,arrivedStops:[...(st.arrivedStops??[]),i]})
       tr.notify(`You’ve arrived at ${c.place}`, `${meta.tasks.length} tasks · ${totalXp} XP waiting`)
       setTasks(true)
     }
@@ -125,7 +127,7 @@ export function Active() {
   }, [s.game.xp, s.game.tripXp, story.id, update, say])
 
   const complete = (id: string, xp: number) => {
-    if (!recovery.ready || !arrived) return
+    if (!arrived) return
     if (done.includes(id)) {
       // tapping a finished task again unchecks it (XP you already earned stays, and the trip cap still applies)
       update((st) => ({ ...st, game: { ...st.game, done: { ...st.game.done, [key]: (st.game.done[key] ?? []).filter((x) => x !== id) } } }))
@@ -167,7 +169,7 @@ export function Active() {
   const advance = () => {
     setTasks(false)
     tr.setWalking(false)
-    if (i + 1 >= story.chapters.length) { setStory((st) => ({ ...st, status: 'done' })); go('complete') }
+    if (i + 1 >= story.chapters.length) { setStory((st) => ({ ...st, status: 'done', outingPhase:'completed' })); go('complete') }
     else update((st) => ({ ...st, chapter: st.chapter + 1 }))
   }
 
@@ -220,11 +222,11 @@ export function Active() {
         <h1 className="h1" style={{ fontSize: 28, margin: '4px 0 8px' }}>{c.title}</h1>
         <p className="small muted active-stop-summary" style={{ marginBottom: 10 }}>{c.place} · {c.desc}</p>
         <div className="active-stop-stats"><StatRow style={{ marginBottom: 12 }} size={18} stats={[[`${done.length}/${meta.tasks.length}`, 'Tasks'], [`${tripEarned}/${TRIP_XP_CAP}`, 'Trip XP'], [`${c.mins} min`, 'Here']]} /></div>
-        {syncStatus==='storage-full'&&<p role="alert" className="small" style={{marginBottom:10}}>Device storage is full. Keep Quavi open and free up space; your latest changes may not be saved.</p>}
+        {(syncStatus==='storage-full'||outingStatus==='storage-full')&&<p role="alert" className="small" style={{marginBottom:10}}>Device storage is full. Keep Quavi open and free up space; your latest changes may not be saved.</p>}
         {!recovery.ready&&<p className="small" role="status" style={{marginBottom:10}}>{recovery.phase==='offline'?'Saved on this device. Reconnect to refresh directions and hours.':recovery.phase==='location'?tr.locationError||'Waiting for a fresh position. Arrival tasks stay paused.':recovery.message||'Refreshing your outing before continuing.'}</p>}
         <div className="row">
           <div style={{ flex: 1 }}>
-            {!recovery.ready ? <Btn kind="soft" disabled={!life.online||recovery.phase==='checking'} onClick={()=>recovery.phase==='sign-in'?go('login'):recovery.phase==='location'?tr.retryLocation():recovery.retry()}>{recovery.phase==='sign-in'?'Log in':recovery.phase==='location'?'Retry GPS':recovery.phase==='checking'?'Checking stops…':'Retry checks'}</Btn> : story.source&&nav.status==='error'&&!arrived ? <Btn kind="soft" onClick={nav.retry}>Retry directions</Btn> : arrived ? <Btn onClick={() => setTasks(true)}>{allDone ? 'See tasks ✓' : 'Open tasks'}</Btn>
+            {!recovery.ready&&!arrived ? <Btn kind="soft" disabled={!life.online||recovery.phase==='checking'} onClick={()=>recovery.phase==='sign-in'?go('login'):recovery.phase==='location'?tr.retryLocation():recovery.retry()}>{recovery.phase==='sign-in'?'Log in':recovery.phase==='location'?'Retry GPS':recovery.phase==='checking'?'Checking stops…':'Retry checks'}</Btn> : story.source&&nav.status==='error'&&!arrived ? <Btn kind="soft" onClick={nav.retry}>Retry directions</Btn> : arrived ? <Btn onClick={() => setTasks(true)}>{allDone ? 'See tasks ✓' : 'Open tasks'}</Btn>
               : tr.mode === 'demo' ? <Btn onClick={() => tr.setWalking(!tr.walking)}>{tr.walking ? 'Pause walking' : 'Walk there ▶'}</Btn>
               : <Btn kind="soft" disabled>Walk to {c.place}</Btn>}
           </div>
@@ -280,7 +282,7 @@ export function Active() {
               const nk = `${i}:${t.id}`
               return (
                 <div key={t.id} className={`task-wrap${on ? ' on' : ''}`}>
-                  <button disabled={!arrived||!recovery.ready} className={`task${on ? ' on' : ''}`} aria-pressed={on} onClick={() => complete(t.id, taskXp(story, t))}>
+                  <button disabled={!arrived} className={`task${on ? ' on' : ''}`} aria-pressed={on} onClick={() => complete(t.id, taskXp(story, t))}>
                     <span className="box">{on && <Check size={15} />}</span>
                     <span className="col" style={{ flex: 1, gap: 2 }}><b style={{ fontSize: 14, lineHeight: 1.25 }}>{t.text}</b><span className="small muted">{t.hint}</span></span>
                     <span className="xp">+{taskXp(story, t)}</span>

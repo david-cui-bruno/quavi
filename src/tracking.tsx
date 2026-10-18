@@ -18,7 +18,7 @@ const TrackCtx=createContext<Ctx>(null as unknown as Ctx)
 export const useTracking=()=>useContext(TrackCtx)
 const MODE_KEY='quavi.track.mode'
 export function TrackingProvider({children}:{children:ReactNode}) {
-  const {s,account}=useStore()
+  const {s,account,update}=useStore()
   const life=useRuntime()
   const [mode,setModeState]=useState<TrackMode>(()=>localStorage.getItem(MODE_KEY)==='live'?'live':'demo')
   const [pos,setPos]=useState<LatLng>(()=>s.story?.origin??START)
@@ -54,7 +54,7 @@ export function TrackingProvider({children}:{children:ReactNode}) {
     })
   },[mode,life.active,retry,identity,s.story?.id,accept])
   useEffect(()=>{if(mode!=='live')return;const timer=window.setInterval(()=>tick(Date.now()),1000);return()=>window.clearInterval(timer)},[mode])
-  useEffect(()=>{if(!life.active){setWalking(false);pathRef.current=null}},[life.active])
+  useEffect(()=>{if(!life.active){setWalking(false);pathRef.current=null;update(st=>st.story?.outingPhase==='active'?{...st,story:{...st.story,outingPhase:'paused'}}:st)}},[life.active,update])
   useEffect(()=>{
     if(mode!=='demo'||!walking||!life.active)return
     const t=window.setInterval(()=>{
@@ -68,8 +68,8 @@ export function TrackingProvider({children}:{children:ReactNode}) {
   },[mode,walking,life.active])
   const notify=useCallback((_title:string,_body:string)=>{try{navigator.vibrate?.(60)}catch{/* optional */}},[])
   const ready=mode==='demo'?life.active:life.active&&usableFix(fix,clock)
-  const value=useMemo<Ctx>(()=>({pos,accuracy:fix?.coords.accuracy,fix,ready,locationError,mode,setMode,retryLocation,locate,perm,walking,setWalking,
+  const value=useMemo<Ctx>(()=>({pos,accuracy:fix?.coords.accuracy,fix,ready,locationError,mode,setMode,retryLocation,locate,perm,walking,setWalking:(w:boolean)=>{setWalking(w);if(w)update(st=>!st.story?st:{...st,story:{...st.story,outingPhase:'active'}})},
     setTarget:t=>{target.current=t},setPath:p=>{pathRef.current=p?[...p]:null},teleport:p=>{if(mode==='demo')setPos(p);setWalking(false)},notify,
-  }),[pos,fix,ready,locationError,mode,setMode,retryLocation,locate,perm,walking,notify])
+  }),[pos,fix,ready,locationError,mode,setMode,retryLocation,locate,perm,walking,notify,update])
   return <TrackCtx.Provider value={value}>{children}</TrackCtx.Provider>
 }

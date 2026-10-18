@@ -111,7 +111,7 @@ export function Details() {
       {checkError&&<p role="alert" className="small" style={{marginBottom:12}}>{checkError}</p>}
       <div className="row">
         <div style={{ flex: 1 }}><Btn disabled={checking} onClick={async () => {
-          if(!story.source){setStory(st=>({...st,status:'active'}));go('active');return}
+          if(!story.source){setStory(st=>({...st,status:'active',outingPhase:'active'}));go('active');return}
           if(tracking.mode==='live'&&!tracking.ready){setCheckError('Wait for a fresh, precise GPS position before starting. Check Location Services and try again.');return}
           if(!account||!story.origin||story.chapters.some(c=>!c.ll)){setCheckError('Sign in and choose a nearby detour to check its route.');return}
           setChecking(true);setCheckError('');
@@ -122,7 +122,7 @@ export function Details() {
             if(!mounted.current||auth.currentUser?.uid!==account.uid)return;
             const minutes=Math.ceil(walking.duration/60)+story.chapters.reduce((sum,c)=>sum+c.mins,0);
             if(minutes>(story.timeBudgetMinutes??story.estimatedMinutes??120)){setCheckError('The walk now takes longer than this plan allows. Choose another detour or allow more time.');return}
-            setStory(st=>st.id===story.id?({...st,origin,walking,estimatedMinutes:minutes,chapters:st.chapters.map((c,i)=>({...c,hours:hours[i],googlePlaceId:hours[i]?.googlePlaceId,googleRoute:true})),status:'active'}):st);go('active');
+            setStory(st=>st.id===story.id?({...st,origin,walking,estimatedMinutes:minutes,chapters:st.chapters.map((c,i)=>({...c,hours:hours[i],googlePlaceId:hours[i]?.googlePlaceId,googleRoute:true})),status:'active',outingPhase:'active'}):st);go('active');
           }catch(e){setCheckError(accountError(e))}finally{setChecking(false)}
         }}>{checking?'Checking stops…':'Start this story'} {!checking&&<Arrow size={18} />}</Btn></div>
         <Btn kind="soft" inline onClick={() => setAdjust(true)} style={{ width: 110 }}>Adjust</Btn>

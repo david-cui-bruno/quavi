@@ -18,7 +18,7 @@ const pool = createPool(config.DATABASE_URL),
 try {
   await processDeletions(pool, getAuth(firebase), media);
   const orphans = await pool.query(
-    `SELECT m.id,m.user_id,m.object_key FROM media_objects m LEFT JOIN user_state s ON s.user_id=m.user_id WHERE m.created_at<now()-interval '24 hours' AND(s.document IS NULL OR position('quavi-media:'||m.id::text in s.document::text)=0) LIMIT 100`,
+    `SELECT m.id,m.user_id,m.object_key FROM media_objects m LEFT JOIN user_state s ON s.user_id=m.user_id WHERE m.created_at<now()-interval '24 hours' AND(s.document IS NULL OR position('quavi-media:'||m.id::text in s.document::text)=0) AND NOT EXISTS(SELECT 1 FROM outings o WHERE o.user_id=m.user_id AND position('quavi-media:'||m.id::text in o.document::text)>0) LIMIT 100`,
   );
   for (const photo of orphans.rows) {
     const db = await pool.connect();
@@ -26,7 +26,7 @@ try {
       await db.query("BEGIN");
       await lockAccount(db, photo.user_id);
       const referenced = await db.query(
-        "SELECT 1 FROM user_state WHERE user_id=$1 AND position('quavi-media:'||$2 in document::text)>0",
+        "SELECT 1 FROM user_state WHERE user_id=$1 AND position('quavi-media:'||$2 in document::text)>0 UNION ALL SELECT 1 FROM outings WHERE user_id=$1 AND position('quavi-media:'||$2 in document::text)>0",
         [photo.user_id, photo.id],
       );
       if (!referenced.rowCount) {

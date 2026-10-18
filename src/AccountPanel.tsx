@@ -1,3 +1,4 @@
+import {OutingSaveStatus} from './OutingSaveStatus'
 import config from './cloud-config.json';
 import { useState } from "react";
 import { useStore } from "./store";
@@ -58,6 +59,7 @@ export function AccountPanel() {
       <p className="small muted" role="status">
         {labels[syncStatus]}
       </p>
+      <OutingSaveStatus controls />
       <div className="col" style={{ gap: 10, marginTop: 12 }}>
         {!account ? (
           <Btn kind="soft" onClick={() => go("login")}>
@@ -76,7 +78,7 @@ export function AccountPanel() {
               <>
                 <p className="small">
                   Your edits are kept on this device. Loading the cloud save
-                  replaces those local edits.
+                  replaces those profile edits. Outing edits sync separately.
                 </p>
                 <Btn kind="soft" onClick={() => setConfirm("cloud")}>
                   Load cloud save

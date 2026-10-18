@@ -56,6 +56,8 @@ from that verified token; there are no client-selectable owner IDs in the API.
 | `DELETE /v1/me` | Recent-authenticated, confirmed and retryable account deletion; returns 202 after access is blocked |
 | `POST /v1/me/detours` | Authenticated nearby route generation with per-account/project quotas and explicit no-result behavior |
 | `POST /v1/me/media/:id/complete` | Verifies a staged image and finalizes an immutable private photo |
+| `GET /v1/me/outings` | One-time legacy migration, then only this account’s independent outing records |
+| `POST /v1/me/outings/operations` | Idempotent create/field-patch commands; distinct fields merge; same-field conflicts return 409 |
 | `GET /v1/me` | Returns the verified Firebase user ID |
 | `GET /v1/me/state` | Reads only this user's private document; returns revision 0 and null state for a new account |
 | `PUT /v1/me/state` | Accepts `{state: {...}, revision: number}`; saves only if the expected revision matches; returns 409 on a conflict |
@@ -340,3 +342,42 @@ Sources: [Places policies](https://developers.google.com/maps/documentation/plac
 [Routes response fields](https://developers.google.com/maps/documentation/routes/reference/rest/v2/TopLevel/computeRoutes),
 [Google pricing](https://developers.google.com/maps/billing-and-pricing/pricing),
 [Capacitor map plugin](https://capacitorjs.com/docs/apis/google-maps).
+
+## Independent outings and offline commands
+
+Deployed to `quavi-api-00012-8jk` from `fe25491` on October 18, 2026; migration
+005 and the expanded runtime DML grants completed, and readiness returns ready.
+28 client and 53 backend tests pass. Live disposable-account checks verified
+migration, isolation, idempotent replay, conflicts and profile/outing separation.
+The native iPhone SE restores the migrated outing after stop/relaunch.
+
+Migration `005_outings.sql` introduces `outings`, `outing_operations` and an
+`outing_accounts` migration marker. Runtime DML grants and account deletion include
+all three. GET copies legacy stories/progress once under the existing account
+transaction/lock. New clients send `X-Quavi-Outings: 1`; a legacy client cannot PUT
+a whole-account save after migration. Update every device that uses that account.
+
+Outing create and patch commands include a UUID operation ID. The server records a
+canonical request fingerprint in the same transaction as the outing write. An
+identical retry returns the current record without another revision increment;
+reusing the ID for a different payload returns 409. Receipts live with the outing
+until account deletion, so a long-offline retry does not outlive its receipt.
+
+Patches carry a path, expected previous value and desired value. Distinct fields
+merge without replacing the record; a different current value returns 409. A
+request whose desired value is already present can converge. Identity/prototype
+paths, invalid lifecycle transitions, oversized records and unowned/unuploaded
+photos are rejected. Limits: 500 outings, 128 KiB per record, 8 MiB total outing
+content per account, plus the existing authenticated request quota. No GPS trail
+is stored, and transient Google facts are scrubbed from durable content.
+
+The client atomically checkpoints its account-scoped IndexedDB records/outbox,
+uploads photos, checkpoints prepared references, then sends the operation. A
+conflict retains the local projection, blocks that outing only and supports
+explicit cloud/local resolution. Profile snapshot syncing stays separate; XP and
+demo balances remain client demo values pending the reward-ledger phase. Media
+maintenance checks outing references before removing an orphan.
+
+Verification includes the actual shipped JavaScript journal calling Fastify and
+PostgreSQL through simulated offline transport and lost responses. Physical iPhone
+airplane-mode photo capture, forced relaunch and lock/resume remain acceptance work.
