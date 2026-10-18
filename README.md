@@ -88,14 +88,13 @@ See **You** for the installed version/build number.
 
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
-title is necessary because Apple reported that “Quavi” is already in use. On
-October 18, 2026, **1.0 (4)** finished processing and its internal-group status
-was verified as **Testing** with one accepted tester. Builds 2 and 3 were not
-assigned to the group. Install the TestFlight app on iPhone using the owner's
-Apple account, then open Quavi's invitation/listing. The map-motion update,
-**1.0 (5)**, is verified **Testing** in Quavi Development on October 18.
-Open TestFlight on the accepted tester’s iPhone and tap **Update** for Quavi;
-confirm **1.0 (8)** in You. The account setup, visual and compact-phone bug-pass update, **1.0 (8)**, is verified **Testing** in Quavi Development on October 18. Builds 4 and 5 remain available as fallbacks; intermediate builds 6 and 7 are unassigned. App Store publication and external tester review remain separate release steps.
+name is necessary because Apple reported that “Quavi” is already in use.
+**1.0 (9)** is verified **Testing** in Quavi Development on October 18, 2026.
+Open TestFlight on the accepted tester's iPhone, tap **Update**, and confirm
+**1.0 (9)** in You. Update every device using a migrated account: old builds'
+whole-document writes cannot replace independent outing records. Earlier builds
+remain listed as release history, not a safe persistence rollback. App Store
+publication and external tester review remain separate release steps.
 
 ### Map fidelity
 
@@ -199,7 +198,12 @@ cleanup checks both profile and outing references.
 
 XP, coins and demo redemptions are still client-controlled demo values; this phase
 separates outing progress but does not implement authoritative reward accounting.
-Physical airplane-mode photo/lock/relaunch acceptance remains a release check.
+Verification: 28 client tests and 53 backend tests pass, both TypeScript builds
+pass, and the 25-command native iPhone SE flow reaches demo arrival. A separate
+signed-in native check restores a migrated outing after stop/relaunch and shows
+Outings saved. Live disposable-account API checks pass against development
+revision `quavi-api-00012-8jk` (source `fe25491`). Physical airplane-mode
+photo/lock/relaunch acceptance remains a release check.
 
 ## Build roadmap
 

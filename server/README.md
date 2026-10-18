@@ -345,6 +345,12 @@ Sources: [Places policies](https://developers.google.com/maps/documentation/plac
 
 ## Independent outings and offline commands
 
+Deployed to `quavi-api-00012-8jk` from `fe25491` on October 18, 2026; migration
+005 and the expanded runtime DML grants completed, and readiness returns ready.
+28 client and 53 backend tests pass. Live disposable-account checks verified
+migration, isolation, idempotent replay, conflicts and profile/outing separation.
+The native iPhone SE restores the migrated outing after stop/relaunch.
+
 Migration `005_outings.sql` introduces `outings`, `outing_operations` and an
 `outing_accounts` migration marker. Runtime DML grants and account deletion include
 all three. GET copies legacy stories/progress once under the existing account
