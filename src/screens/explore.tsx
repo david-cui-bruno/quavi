@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flock, safeSurface } from '../brand/Persona'
 import { OPENINGS, PLACE_META, chapterMeta, buildStory, categoryTasks, placeInfo, startStory, type Chapter, type Story } from '../data'
 import { distance, fmtDist, type LatLng } from '../geo'
-import { GameHUD, coinsFor } from '../GameMap'
+import { coinsFor } from '../GameMap'
 import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
 import { useWalkingRoute } from '../nav'
 import { aboutFor, searchPlace, sideQuestsAlong, walkMins, type Found } from '../places'
@@ -41,36 +41,32 @@ export function Explore() {
   const collect = useCallback((id: number) => account?undefined:update((st) => { const g = st.game.collected.explore ?? []; return g.includes(id) ? st : { ...st, game: { ...st.game, coins: st.game.coins + 1, collected: { ...st.game.collected, explore: [...g, id] } } } }), [update,account])
   useCoinCollect(tr.pos, coins, collect)
   const ranked = nearby.map((x) => ({ ...x, d: distance(tr.pos, x.ll) })).sort((a, b) => a.d - b.d)
-  const quests = Object.keys(s.game.done).filter((k) => !k.endsWith('!')).length
   return (
     <Screen$ tabs="explore" flush>
-      <div className="explore-map" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 360 }}>
-        <RealMap pins={pins} route={route} coins={coins} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 200, bottom: 30 }} />
+      <div className="explore-map" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 280 }}>
+        <RealMap pins={pins} route={route} coins={coins} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 140, bottom: 25 }} controlsTop={140} />
       </div>
-      <div className="hud-inline" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8 }}><GameHUD /></div>
       <PlaceSearch value={q} onChange={setQ} onChoose={choose} near={tr.mode==='live'?tr.pos:START} explore />
       <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
         <div className="row" style={{ justifyContent: 'space-between', padding: '0 24px' }}>
-          <div><div className="kicker">{account ? 'Recent detour stops' : 'Demo quests nearby'}</div><h2 className="h1 h-xs" style={{ margin: '2px 0 0' }}>What’s around the corner?</h2></div>
-          <span className="pill" style={{ background: 'var(--yellow)' }}>{quests} cleared</span>
+          <h2 className="h1 h-xs">{account ? 'Your nearby stops.' : 'Around the corner.'}</h2><button className="text-action" onClick={surprise}>Surprise me <Arrow size={16}/></button>
         </div>
         <div className="chips scroll" style={{ gap: 10, margin: '12px 0', padding: '0 24px' }}>
           {account && !ranked.length && <p className="small" style={{padding:'10px 0'}}>Choose an area to find real nearby stops.</p>}
           {ranked.map((x, i) => {
-            const m = x
             const bgn = safeSurface(flock(x.persona, 'Orange'), (['yellow-p', 'orange-p', 'ink-p'] as const)[i % 3])
             const bg = `var(--${bgn})`
             return (
-              <button key={x.place} className="tile" onClick={() => go('stop', { trip: account ? currentTrip() : questTrip(), sel: x.place })} style={{ flex: 'none', width: 140, height: 124, padding: 0, background: bg, color: bgn === 'ink-p' || bgn === 'ink' ? 'var(--paper)' : 'var(--ink)' }}>
+              <button key={x.place} className="tile" onClick={() => go('stop', { trip: account ? currentTrip() : questTrip(), sel: x.place })} style={{ flex: 'none', width: 156, height: 112, padding: 0, background: bg, color: bgn === 'ink-p' || bgn === 'ink' ? 'var(--paper)' : 'var(--ink)' }}>
                 <div className="abs" style={{ right: 16, bottom: 16 }}><PinIcon size={30} color={bgn === 'orange-p' ? '#1E1B16' : '#EE6A2C'} /></div>
                 <div className="h1" style={{ position: 'absolute', left: 18, top: 18, right: 40, fontSize: 16, lineHeight: 1.05 }}>{x.place}</div>
-                <span className="xp" style={{ position: 'absolute', left: 18, bottom: 40, color: 'var(--ink)' }}>{m.tasks.length} quests</span>
+
                 <span className="small" style={{ position: 'absolute', left: 18, bottom: 18, fontWeight: 500 }}>{fmtDist(x.d)}</span>
               </button>
             )
           })}
         </div>
-        <div style={{ padding: '0 24px' }}><Btn kind="secondary" onClick={surprise}>Surprise me with a detour</Btn></div>
+
       </div>
     </Screen$>
   )
@@ -257,7 +253,6 @@ export function Stop() {
               <div className="clip" style={{ background: 'var(--yellow-p)', borderRadius: 28, minHeight: 138, position: 'relative', margin: '10px 0', padding: '20px 24px' }}>
                 <p className="body" style={{ width: 188, fontWeight: 500, fontSize: 14 }}>{c.about}</p>
                 {c.address && <p className="small muted" style={{ width: 188, marginTop: 8 }}>{c.address}</p>}
-                <p className="small" style={{ width: 188, marginTop: 8, fontWeight: 500 }}>Find demo partner rewards in You. No real discount is available at this stop.</p>
                 <div className="abs" style={{ right: 28, top: 22 }}><PinIcon size={64} /></div>
               </div>
               <StatRow style={{ marginBottom: 12 }} size={18} stats={[[`+${extraMins(c)} min`, 'Detour'], [String(tasks.length), 'Sidequests']]} />

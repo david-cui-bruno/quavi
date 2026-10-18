@@ -58,9 +58,10 @@ Background tracking during active detours is recommended but still needs a decis
 
 ## Demo partner rewards
 
-Open **You → Browse demo rewards**. Quavi Demo Café and Quavi Demo Bookshop are
-fictional partners, with no actual funding, merchant agreements or discounts.
-Every offer and redemption screen is labeled demo-only and non-redeemable.
+Open **You → Browse rewards**. Starbucks and Barnes & Noble names illustrate
+possible reward scenarios; neither is a Quavi partner. There is no funding,
+merchant agreement or actual discount. Offer and redemption views carry one
+compact **Preview · not redeemable** label.
 
 - Signed-in accounts receive XP and coins from a server ledger. Each 1,000
   confirmed XP unlocks one earned demo reward; café and bookshop each spend one.
@@ -211,8 +212,8 @@ photo/lock/relaunch acceptance remains a release check.
 
 Keep all prototype features and its visual identity; target iPhone first and
 support any city. Demo partners stay in the initial release. This is the build
-order. The account/save backend and first live detour checks are deployed; social and
-production partner verification and the reliability stages below still need implementation.
+order. The account/save, live detour and social foundations are deployed. Physical-device
+acceptance, operations hardening and real partner verification remain pending.
 
 | Order | Work | Completion check |
 | --- | --- | --- |
@@ -568,3 +569,22 @@ saved. Physical push receipt/permission/tap/logout acceptance remains outstandin
 A separate local review board contains 27 actual SE screenshots with pinned or
 general notes, local persistence and JSON export. It is a review artifact and is
 not bundled into the app. Physical outing/offline checks remain deferred. Physical outing/offline checks remain deferred.
+
+### Visual review pass — working preview
+
+The October 18 review keeps Quavi’s fonts, character artwork and palette while
+reworking inbox activity, friend requests and shared stories. Notification and
+account/legal controls now live in Settings. Friend requests emphasize Accept;
+report/block remain available in person/story menus.
+
+Explore puts search and the map first, without the game HUD, clearance count or
+repeated action bar. The active stop panel uses a compact facts row and named
+actions; an authored SVG replaces the streak emoji. Only fetched pedestrian
+geometry is drawn, removing the demo’s invented orange connecting lines.
+Detour details use a noninteractive Google map of stop locations, with a fresh
+walking path when signed in and online. The anonymous demo shows stop locations
+without claiming a checked route. Provider data remains transient.
+
+This is a review preview, not a new TestFlight release. Review the updated
+standard iPhone screenshots before publishing the next beta. Physical offline,
+lock/resume and push-receipt acceptance remain pending as recorded above.

@@ -92,9 +92,7 @@ export function PlaceSearch({
       style={{
         left: 24,
         right: 24,
-        top: explore
-          ? "calc(var(--screen-top, 54px) + 60px)"
-          : "var(--screen-top, 54px)",
+        top: "var(--screen-top, 54px)",
         zIndex: 50,
         bottom: shown ? 16 : undefined,
         display: "flex",

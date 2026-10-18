@@ -1,9 +1,10 @@
+import { Icon } from "./Icons";
 import { useEffect, useState, type ReactNode } from "react";
 import { useStore } from "./store";
 import { useSocial, type Person, type PrivatePost } from "./social";
 import { api } from "./cloud";
 import { useRuntime } from "./runtime";
-import { BackBtn, Btn, Screen$, Sheet, NoteQuote } from "./ui";
+import { Arrow, BackBtn, Btn, Screen$, Sheet, NoteQuote } from "./ui";
 import { Persona, flock } from "./brand/Persona";
 import { Photo } from "./CloudPhoto";
 import { noteLines, photoLines, type Story } from "./data";
@@ -77,8 +78,8 @@ export function ReportSheet({
         <>
           <p className="body">
             Your report was recorded. You can also block this person to remove
-            access between you. Reports are reviewed manually. We’ll put an update in your
-            notifications when the review is complete.
+            access between you. Reports are reviewed manually. We’ll put an
+            update in your notifications when the review is complete.
           </p>
           <Btn onClick={onClose}>Done</Btn>
         </>
@@ -141,7 +142,11 @@ export function SocialFriends() {
     );
   const button = (p: Person, action: string, label: string) => (
     <button
-      className="chip"
+      className={
+        action === "accept" || action === "request"
+          ? "btn primary sm"
+          : "text-action"
+      }
       disabled={!!busy}
       onClick={() => relationship(p, action)}
     >
@@ -153,7 +158,7 @@ export function SocialFriends() {
       <div className="row" style={{ gap: 12 }}>
         <PersonFace person={p} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <b>{p.name}</b>
+          <b className="h1 person-name">{p.name}</b>
           <div className="small muted" style={{ overflowWrap: "anywhere" }}>
             @{p.handle}
           </div>
@@ -165,9 +170,10 @@ export function SocialFriends() {
   return (
     <Screen$ tabs="you" scroll>
       <BackBtn onClick={() => go("profile")} />
-      <h1 className="h1 h-l" style={{ margin: "18px 0" }}>
-        Friends.
-      </h1>
+      <h1 className="h1 social-title">Better together.</h1>
+      <p className="body muted social-intro">
+        Your people. Their little adventures.
+      </p>
       <CircleStatus />
       {error && (
         <p role="alert" className="small">
@@ -176,56 +182,67 @@ export function SocialFriends() {
       )}
       {data && (
         <>
-          <div className="circle-identity">
-            <p className="small">Your friend handle</p>
-            <b style={{ overflowWrap: "anywhere" }}>@{data.me.handle}</b>
-            <p className="small muted">
-              Give this to a friend. Only your name and handle appear in lookup.
-            </p>
-            <button
-              className="chip"
-              onClick={() => setEditingHandle((v) => !v)}
-            >
-              {editingHandle ? "Cancel handle change" : "Change handle"}
-            </button>
-            {editingHandle && (
-              <>
-                <form
-                  className="circle-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void act("handle", async () => {
-                      await command("/profile", "PUT", {
-                        handle: handle.trim().replace(/^@/, "").toLowerCase(),
+          <details className="circle-identity">
+            <summary>
+              <Icon name="users" />
+              <span>Your friend code</span>
+              <span className="identity-handle">@{data.me.handle}</span>
+              <span aria-hidden="true">+</span>
+            </summary>
+            <div className="identity-content">
+              <b style={{ overflowWrap: "anywhere" }}>@{data.me.handle}</b>
+              <p className="small muted">
+                Give this to a friend. Only your name and handle appear in
+                lookup.
+              </p>
+              <button
+                className="chip"
+                onClick={() => setEditingHandle((v) => !v)}
+              >
+                {editingHandle ? "Cancel handle change" : "Change handle"}
+              </button>
+              {editingHandle && (
+                <>
+                  <form
+                    className="circle-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void act("handle", async () => {
+                        await command("/profile", "PUT", {
+                          handle: handle.trim().replace(/^@/, "").toLowerCase(),
+                        });
+                        setEditingHandle(false);
+                        setHandle("");
                       });
-                      setEditingHandle(false);
-                      setHandle("");
-                    });
-                  }}
-                >
-                  <label className="field">
-                    <span>CHANGE YOUR HANDLE</span>
-                    <input
-                      aria-label="New friend handle"
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      autoComplete="off"
-                      value={handle}
-                      maxLength={24}
-                      placeholder="e.g. david_wanders"
-                      onChange={(e) => setHandle(e.target.value)}
-                    />
-                  </label>
-                  <button className="chip" disabled={!!busy || !handle.trim()}>
-                    Save handle
-                  </button>
-                </form>
-                <p className="small muted">
-                  3–24 letters, numbers or underscores. Start with a letter.
-                </p>
-              </>
-            )}
-          </div>
+                    }}
+                  >
+                    <label className="field">
+                      <span>CHANGE YOUR HANDLE</span>
+                      <input
+                        aria-label="New friend handle"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        autoComplete="off"
+                        value={handle}
+                        maxLength={24}
+                        placeholder="e.g. david_wanders"
+                        onChange={(e) => setHandle(e.target.value)}
+                      />
+                    </label>
+                    <button
+                      className="chip"
+                      disabled={!!busy || !handle.trim()}
+                    >
+                      Save handle
+                    </button>
+                  </form>
+                  <p className="small muted">
+                    3–24 letters, numbers or underscores. Start with a letter.
+                  </p>
+                </>
+              )}
+            </div>
+          </details>
           <form
             className="circle-form"
             onSubmit={(e) => {
@@ -249,7 +266,7 @@ export function SocialFriends() {
                   setQuery(e.target.value);
                   setPeople(null);
                 }}
-                placeholder="Their exact handle"
+                placeholder="Search by friend code"
                 maxLength={25}
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -291,7 +308,12 @@ export function SocialFriends() {
                   <>
                     {button(p, "accept", "Accept")}
                     {button(p, "decline", "Decline")}
-                    {button(p, "block", "Block")}
+                    <details className="person-menu">
+                      <summary aria-label={`More options for ${p.name}`}>
+                        <Icon name="more" />
+                      </summary>
+                      <div>{button(p, "block", "Block")}</div>
+                    </details>
                   </>,
                 ),
               )}
@@ -309,20 +331,28 @@ export function SocialFriends() {
             <h2 className="h1 h-xs">Your circle · {data.friends.length}</h2>
             {!data.friends.length && (
               <p className="body muted">
-                No friends yet. Find someone by their handle and send a request.
-                Stories stay private until you choose to share.
+                Your next detour could be better together. Find a friend above
+                to get started.
               </p>
             )}
             {data.friends.map((p) =>
               render(
                 p,
-                <>
-                  {button(p, "remove", "Remove")}
-                  {button(p, "block", "Block")}
-                  <button className="chip" onClick={() => setReported(p)}>
-                    Report
-                  </button>
-                </>,
+                <details className="person-menu">
+                  <summary aria-label={`More options for ${p.name}`}>
+                    <Icon name="more" />
+                  </summary>
+                  <div>
+                    {button(p, "remove", "Remove friend")}
+                    {button(p, "block", "Block")}
+                    <button
+                      className="text-action"
+                      onClick={() => setReported(p)}
+                    >
+                      Report
+                    </button>
+                  </div>
+                </details>,
               ),
             )}
           </section>
@@ -337,11 +367,14 @@ export function SocialFriends() {
               )}
             </section>
           )}
-          <p className="small muted">
-            Removing or blocking a friend stops new story and photo access
-            between you. Content already downloaded or copied cannot be
-            recalled.
-          </p>
+          <details className="circle-privacy">
+            <summary>How private sharing works</summary>
+            <p className="small muted">
+              Only accepted friends can open shared stories. Removing or
+              blocking someone stops new access. Copies already saved by a
+              friend cannot be recalled.
+            </p>
+          </details>
         </>
       )}
       {reported && (
@@ -477,7 +510,37 @@ export function PrivateStory() {
   const shown = life.online && life.active && data ? post : null;
   return (
     <Screen$ scroll>
-      <BackBtn onClick={back} />
+      <div className="social-toolbar">
+        <BackBtn onClick={back} />
+        {shown && !shown.mine && (
+          <details className="person-menu story-menu">
+            <summary aria-label="Story options">
+              <Icon name="more" />
+            </summary>
+            <div>
+              <button
+                className="text-action"
+                onClick={() => setReporting(true)}
+              >
+                Report story
+              </button>
+              <button
+                className="text-action"
+                onClick={() =>
+                  void command("/relationships", "POST", {
+                    targetId: shown.owner.id,
+                    action: "block",
+                  })
+                    .then(() => go("circle"))
+                    .catch((e) => setError(e.message))
+                }
+              >
+                Block {shown.owner.name}
+              </button>
+            </div>
+          </details>
+        )}
+      </div>
       <CircleStatus />
       {error && <p role="alert">{error}</p>}
       {!shown ? (
@@ -496,9 +559,9 @@ export function PrivateStory() {
           <div className="row" style={{ gap: 12, margin: "18px 0 12px" }}>
             <PersonFace person={shown.owner} />
             <div style={{ minWidth: 0 }}>
-              <b>{shown.owner.name}’s story</b>
+              <b>{shown.owner.name}</b>
               <p className="small muted" style={{ overflowWrap: "anywhere" }}>
-                @{shown.owner.handle} · Friends only
+                Shared with friends
               </p>
             </div>
           </div>
@@ -506,8 +569,8 @@ export function PrivateStory() {
             className="clip"
             style={{
               position: "relative",
-              borderRadius: 32,
-              minHeight: 190,
+              borderRadius: 28,
+              minHeight: 210,
               background: "var(--orange-p)",
               padding: "24px 108px 24px 24px",
               marginBottom: 18,
@@ -515,7 +578,7 @@ export function PrivateStory() {
             }}
           >
             <h1
-              className="h1 h-s"
+              className="h1 shared-story-title"
               style={{
                 position: "relative",
                 zIndex: 1,
@@ -558,33 +621,17 @@ export function PrivateStory() {
                 ))}
             </section>
           ))}
-          <p className="small muted">
-            Private circle stories stay online and are not saved into your
-            offline library.
-          </p>
-          <Btn kind="soft" onClick={() => go("mood")}>
-            Plan my own detour
+          <div className="story-end">
+            <Icon name="book" />
+            <p className="it">There’s a story around your corner, too.</p>
+          </div>
+          <Btn onClick={() => go("mood")}>
+            Plan my own detour <Arrow size={18} />
           </Btn>
-          {!shown.mine && (
-            <div className="circle-actions">
-              <button className="chip" onClick={() => setReporting(true)}>
-                Report story
-              </button>
-              <button
-                className="chip"
-                onClick={() =>
-                  void command("/relationships", "POST", {
-                    targetId: shown.owner.id,
-                    action: "block",
-                  })
-                    .then(() => go("circle"))
-                    .catch((e) => setError(e.message))
-                }
-              >
-                Block {shown.owner.name}
-              </button>
-            </div>
-          )}
+          <p className="small muted shared-story-footnote">
+            Shared privately · available while you’re online.
+          </p>
+
           {reporting && (
             <ReportSheet
               person={shown.owner}

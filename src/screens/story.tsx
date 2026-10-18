@@ -1,3 +1,5 @@
+import {RealMap} from '../RealMap'
+import {useWalkingRoute} from '../nav'
 import {PrivateShare} from '../PrivateCircle'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
 import type {HoursCheck} from '../data'
@@ -5,12 +7,12 @@ import { api, accountError, auth } from '../cloud'
 import { useTracking } from '../tracking'
 import type { WalkingCheck } from '../data'
 import { Photo } from '../CloudPhoto'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { photoFiles, photoFromFile } from '../photo'
 import { MoodLogo, Persona, flock, safeSurface, type Colorway } from '../brand/Persona'
-import { DEFAULT_PREFS, OPENINGS, applyPrefs, buildStory, chapterImg, chapterMeta, draftCaptions, isPhotoTask, noteLines, notePrompt, photoLines, shareText, tripMeters, type Chapter, type Prefs, type Story } from '../data'
+import { DEFAULT_PREFS, OPENINGS, applyPrefs, buildStory, chapterImg, chapterMeta, draftCaptions, isPhotoTask, noteLines, notePrompt, photoLines, shareText, tripMeters, type Prefs, type Story } from '../data'
 import { useStore } from '../store'
-import { Arrow, BackBtn, BG, Btn, Check, Chip, NoteQuote, PinIcon, SURFACE, Screen$, Sheet, type Bg } from '../ui'
+import { Arrow, BackBtn, BG, Btn, Check, Chip, NoteQuote, SURFACE, Screen$, Sheet, type Bg } from '../ui'
 import { SaveSheet } from './home'
 
 export function useStory(): [Story, (fn: (s: Story) => Story) => void] {
@@ -27,22 +29,12 @@ export function useStory(): [Story, (fn: (s: Story) => Story) => void] {
 
 const total = (st: Story) => st.chapters.reduce((a, c) => a + c.mins, 0)
 
-function RoutePreview({ chapters, h = 112 }: { chapters: Chapter[]; h?: number }) {
-  const pts = chapters.map(c => [20 + Math.max(0, Math.min(100, c.at[0])) * 3.1, 50 + Math.max(0, Math.min(100, c.at[1])) * ((h - 64) / 100)])
-  const d = pts.map((p, i) => `${i ? 'L' : 'M'} ${p[0]} ${p[1]}`).join(' ')
-  return (
-    <div className="clip" style={{ background: 'var(--soft)', borderRadius: 28, height: h, position: 'relative', flex: 'none' }}>
-      <svg width="100%" height={h} viewBox={`0 0 350 ${h}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
-        <path d={d} stroke="#EE6A2C" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      {pts.map((p, i) => (
-        <div key={i} className="abs" style={{ left: `${p[0] / 350 * 100}%`, top: p[1] - 45, transform: 'translateX(-50%)' }}>
-          <PinIcon size={32} />
-          <b className="abs" style={{ left: 0, right: 0, top: 9, textAlign: 'center', color: 'var(--yellow)', fontSize: 13 }}>{i + 1}</b>
-        </div>
-      ))}
-    </div>
-  )
+function RoutePreview({ story }: { story: Story }) {
+  const {account}=useStore()
+  const stops=useMemo(()=>story.chapters.map((_,i)=>({id:String(i),ll:{lat:chapterMeta(story,i).lat,lng:chapterMeta(story,i).lng},kind:'dest' as const})),[story])
+  const points=useMemo(()=>[...(story.origin?[story.origin]:[]),...stops.map(p=>p.ll)],[stops,story.origin])
+  const walk=useWalkingRoute(account ? points : null)
+  return <div className="route-preview"><div className="route-preview-map"><RealMap compact pins={stops} fit={points} route={walk.route?.geometry} inset={{top:24,bottom:24}} controlsTop={24}/><div className="route-preview-gesture" aria-hidden="true"/></div><div className="route-preview-caption"><span>{walk.route?'Your walking route':account?'Stop locations · checking walking route':'Sample stop locations'}</span>{account&&walk.status==='error'&&<button onClick={walk.retry}>Retry route</button>}</div></div>
 }
 
 export function Details() {
@@ -70,7 +62,7 @@ export function Details() {
         <button className="chip" onClick={() => setSave(true)} aria-label="Save this plan to a list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>Save for later</button>
       </div>
       <div className="kicker" style={{ marginTop: 14 }}>Your plan for tonight</div>
-      <h1 className="h1 h-l" style={{ margin: '6px 0 12px' }}>{story.title.split(' ').slice(0, 2).join(' ')}<br />{story.title.split(' ').slice(2).join(' ')}</h1>
+      <h1 className="h1 h-l details-title" style={{ margin: '6px 0 12px' }}>{story.title.split(' ').slice(0, 2).join(' ')}<br />{story.title.split(' ').slice(2).join(' ')}</h1>
       <div style={{ display: 'flex', margin: '4px 0 14px', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
         {([
           [story.source ? `~${story.estimatedMinutes ?? total(story)} min` : prefs.time === '60 min' ? `${total(story)} min` : prefs.time, 'Time'],
@@ -83,8 +75,8 @@ export function Details() {
           </div>
         ))}
       </div>
-      <RoutePreview chapters={story.chapters} />
-      <p className="it" style={{ fontSize: 18, margin: '12px 2px' }}>“{story.premise}”</p>
+      <RoutePreview story={story} />
+      <p className="it" style={{ fontSize: 17, margin: '10px 2px' }}>“{story.premise}”</p>
       {story.source&&<>
         <GoogleAttribution hours={story.chapters.map(c=>c.hours)}/>
         <details className="route-notes"><summary>Hours, entry &amp; route details</summary>

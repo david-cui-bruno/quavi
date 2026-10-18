@@ -38,6 +38,7 @@ export function RealMap({
   follow = false,
   zoomOnYou = 16,
   controlsTop = 176,
+  compact = false,
 }: {
   pins: RealPin[];
   route?: LatLng[];
@@ -50,6 +51,7 @@ export function RealMap({
   follow?: boolean;
   zoomOnYou?: number;
   controlsTop?: number;
+  compact?: boolean;
 }) {
   const life=useRuntime()
   const element = useRef<HTMLElement>(null),
@@ -70,6 +72,7 @@ export function RealMap({
     };
     const observer = new ResizeObserver(schedule);
     const measure = () => {
+      if(compact){setCover(0);setHeaderBottom(0);return}
       const panels = [...root.querySelectorAll<HTMLElement>("[data-map-obstruction], .sheet")];
       panels.forEach(p => { if (!observed.has(p)) { observed.add(p); observer.observe(p); } });
       const r = el.parentElement!.getBoundingClientRect();
@@ -94,7 +97,7 @@ export function RealMap({
       root.removeEventListener("animationend", schedule);
       root.removeEventListener("transitionend", schedule);
     };
-  }, []);
+  }, [compact]);
   const [map, setMap] = useState<GoogleMap | null>(null),
     [error, setError] = useState(""),
     [following, setFollowing] = useState(follow);
@@ -185,6 +188,7 @@ export function RealMap({
           created = undefined;
           return;
         }
+        if(compact)await m.disableTouch();
         await m.setOnCameraMoveStartedListener((e) => {
           if (e.isGesture) setFollow(false);
         });
@@ -219,18 +223,18 @@ export function RealMap({
           if (created) await created.destroy();
         });
     };
-  }, [id, cover, life.epoch, life.active, life.online]);
+  }, [id, cover, life.epoch, life.active, life.online, compact]);
   const paddingReady = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     if (!map) return;
     const h = element.current?.clientHeight ?? 600;
-    const top = Math.min(headerBottom || inset.top, Math.max(0,h-100)),
-      bottom = Math.min(
+    const top = compact ? 40 : Math.min(headerBottom || inset.top, Math.max(0,h-100)),
+      bottom = compact ? 12 : Math.min(
         cover ? 60 : Math.max(70, inset.bottom),
         Math.max(20,h-top-80),
       );
     paddingReady.current = map.setPadding({ top, bottom, left: 24, right: 24 }).catch(() => {});
-  }, [map, inset.top, inset.bottom, cover, headerBottom]);
+  }, [map, inset.top, inset.bottom, cover, headerBottom, compact]);
   const fitKey = (fit ?? []).map((p) => p.lat + "," + p.lng).join("|");
   useEffect(() => {
     if (!map || !fit?.length) return;
@@ -249,11 +253,11 @@ export function RealMap({
     });
     let canceled=false;
     // Native bridge calls may execute concurrently; fit only after obstruction padding applies.
-    void paddingReady.current.then(()=>{if(!canceled)return map.fitBounds(bounds,32)}).catch(()=>{});
+    void paddingReady.current.then(()=>{if(!canceled)return map.fitBounds(bounds,compact?16:32)}).catch(()=>{});
     return ()=>{canceled=true};
     // Geometry controls framing; array identity changes while walking do not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, fitKey]);
+  }, [map, fitKey, compact]);
   const markers = useRef<string[]>([]),
     lines = useRef<string[]>([]);
   useEffect(() => {

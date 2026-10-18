@@ -1,3 +1,4 @@
+import {Icon} from '../Icons'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
 import { Photo } from '../CloudPhoto'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -10,7 +11,7 @@ import { photoFromFile } from '../photo'
 import { START, useTracking } from '../tracking'
 import { bearingTo, compass, fmtMeters, locateOnRoute, stepText, useWalkingRoute } from '../nav'
 import { useStore } from '../store'
-import { Arrow, BackBtn, Btn, Check, Round, Screen$, Sheet, StatRow } from '../ui'
+import { Arrow, BackBtn, Btn, Check, Screen$, Sheet } from '../ui'
 import { canArrive } from '../location-session.mjs'
 import { useRuntime } from '../runtime'
 import { useOutingCheck } from '../use-outing-check'
@@ -26,6 +27,7 @@ export function Active() {
   const [tasks, setTasks] = useState(false)
   const [preview, setPreview] = useState(true)
   const [gps, setGps] = useState(false)
+  const [more, setMore] = useState(false)
   const [float, setFloat] = useState<string | null>(null)
   const i = s.chapter
   const c = story.chapters[i]
@@ -180,9 +182,8 @@ export function Active() {
   }
 
   const route = useMemo(() => [story.origin ?? START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas, story.origin])
-  const reached = i + (arrived ? 1 : 0)
-  // Live outings draw only the fetched path; later stops are pins rather than invented connecting lines.
-  const legRoute = useMemo(() => story.source ? (nav.route?.geometry ?? []) : [...(nav.route ? nav.route.geometry : [tr.pos, target]), ...metas.slice(i + 1).map((m) => ({ lat: m.lat, lng: m.lng }))], [nav.route, i, metas]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Draw only fetched pedestrian geometry. Sample stops never become invented straight-line roads.
+  const legRoute = nav.route?.geometry ?? []
   const pins: RealPin[] = metas.map((m, k) => {
     const state = k < i || (k === i && allDone) ? 'done' : k === i ? 'current' : 'locked'
     return { id: String(k), ll: { lat: m.lat, lng: m.lng }, kind: state as RealPin['kind'], label: state === 'current' ? story.chapters[k].place : undefined, selected: false }
@@ -193,8 +194,8 @@ export function Active() {
 
   return (
     <Screen$ bg="paper" flush>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 'var(--active-map-bottom, 292px)' }}>
-        <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}  doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={16.5} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 'var(--active-map-bottom, 220px)' }}>
+        <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}   coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={16.5} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
       </div>
       <div className="row active-map-header" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8, gap: 10 }}>
         <button className="back" onClick={() => { tr.setWalking(false); reset('home') }} aria-label="Back to Home" style={{ background: 'var(--paper)' }}>
@@ -213,21 +214,20 @@ export function Active() {
           </div>
           {banner.link
             ? <a className="navbtn" href={banner.link} target="_blank" rel="noopener noreferrer">Open</a>
-            : <button className="navbtn" onClick={() => setVoice((v) => !v)} aria-pressed={voice} aria-label={voice ? 'Turn off spoken directions' : 'Turn on spoken directions'}>{voice ? '🔊' : '🔇'}</button>}
+            : <button className="navbtn" onClick={() => setVoice((v) => !v)} aria-pressed={voice} aria-label={voice ? 'Turn off spoken directions' : 'Turn on spoken directions'}><Icon name={voice ? "volume" : "muted"}/></button>}
         </div>
       )}
       <button className="status-pill" onClick={() => setGps(true)}><span className="dotlive" />{tr.mode === 'live' ? (tr.ready?'Tracking · My GPS':'GPS · Waiting for location') : 'Tracking · Demo walk'}</button>
       </div>
       {float && <div className="xpfloat">{float}</div>}
 
-      <div data-map-obstruction className="qcard fade-in" key={i}>
+      <div data-map-obstruction className="qcard active-card fade-in" key={i}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className="kicker">Chapter {i + 1} of {story.chapters.length}</span>
           <span className="pill" style={{ background: arrived ? 'var(--yellow)' : 'var(--soft)' }}>{tr.mode==='live'&&!tr.ready?'Location needed':!recovery.ready?'Walking checks paused':arrived?'✦ You’re here':nav.route?`${fmtMeters(nav.route.distance)} · ${Math.ceil(nav.route.duration/60)} min walk`:story.source?'Route not checked':`${fmtDist(dist)} · ${getThere(dist)}`} </span>
         </div>
-        <h1 className="h1" style={{ fontSize: 28, margin: '4px 0 8px' }}>{c.title}</h1>
-        <p className="small muted active-stop-summary" style={{ marginBottom: 10 }}>{c.place} · {c.desc}</p>
-        <div className="active-stop-stats"><StatRow style={{ marginBottom: 12 }} size={18} stats={[[`${done.length}/${meta.tasks.length}`, 'Tasks'], [`${tripEarned}/${TRIP_XP_CAP}`, 'Trip XP'], [`${c.mins} min`, 'Here']]} /></div>
+        <h1 className="h1 active-stop-title">{c.title}</h1>
+        <div className="active-facts" aria-label="Stop progress"><span>{done.length}/{meta.tasks.length} tasks</span><span>{tripEarned}/{TRIP_XP_CAP} XP</span><span>{c.mins} min here</span></div>
         {(syncStatus==='storage-full'||outingStatus==='storage-full')&&<p role="alert" className="small" style={{marginBottom:10}}>Device storage is full. Keep Quavi open and free up space; your latest changes may not be saved.</p>}
         {!recovery.ready&&<p className="small" role="status" style={{marginBottom:10}}>{recovery.phase==='offline'?'Saved on this device. Reconnect to refresh directions and hours.':recovery.phase==='location'?tr.locationError||'Waiting for a fresh position. Arrival tasks stay paused.':recovery.message||'Refreshing your outing before continuing.'}</p>}
         <div className="row">
@@ -236,15 +236,12 @@ export function Active() {
               : tr.mode === 'demo' ? <Btn onClick={() => tr.setWalking(!tr.walking)}>{tr.walking ? 'Pause walking' : 'Walk there ▶'}</Btn>
               : <Btn kind="soft" disabled>Walk to {c.place}</Btn>}
           </div>
-          <Round kind={allDone ? 'yellow' : 'soft'} onClick={advance} label={next ? 'Next chapter' : 'Finish'} />
+          <button className="active-next" onClick={advance} aria-label={next ? 'Next chapter' : 'Finish'}>{next ? 'Next' : 'Finish'}<Arrow size={18}/></button>
         </div>
-        <div className="row" style={{ marginTop: 12, justifyContent: 'center', gap: 18 }}>
-          <button className="small" style={{ fontWeight: 700 }} onClick={() => setMoment(true)}>＋ Add a moment</button>
-          <button className="small" style={{ fontWeight: 700 }} onClick={() => setPreview(true)}>About this stop</button>
-          <button className="small" style={{ fontWeight: 700 }} disabled={!!account&&(done.length>0||tripEarned>0)} onClick={() => go('swap', { i })}>Rewrite chapter</button>
-        </div>
+        <div className="active-utilities"><button onClick={() => setMoment(true)}><Icon name="plus" size={18}/>Add a moment</button><button onClick={() => setPreview(true)}><Icon name="info" size={18}/>This stop</button><button aria-label="More stop options" onClick={()=>setMore(true)}><Icon name="more"/></button></div>
       </div>
 
+      {more && <Sheet label="Stop options" onClose={()=>setMore(false)}><h2 className="h1 h-s">A different turn?</h2><p className="body muted" style={{margin:'12px 0 20px'}}>Find another stop for this chapter.</p><Btn kind="soft" disabled={!!account&&(done.length>0||tripEarned>0)} onClick={()=>{setMore(false);go('swap',{i})}}>Rewrite chapter</Btn><button className="text-action" onClick={()=>setMore(false)}>Keep this stop</button></Sheet>}
       {preview && recovery.ready && !arrived && !tasks && (
         <Sheet label={`About ${c.place}`} onClose={() => setPreview(false)}>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -257,7 +254,6 @@ export function Active() {
           </div>
           <p className="body" style={{ margin: '14px 0 12px' }}>{placeInfo(c.place, c.desc).about}</p>
           {story.source&&<><p className="small">{hoursLabel(c.hours)}{c.hours?.mapsURL&&<> · <a href={c.hours.mapsURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Check venue</a></>}</p><VenueEntry hours={c.hours}/><GoogleAttribution hours={[c.hours]}/>{[...new Set([...(story.walking?.warnings??[]),...(nav.route?.warnings??[])])].map(w=><p key={w} className="small" style={{marginBottom:8}}>{w}</p>)}</>}
-          <p className="small" style={{ margin: '-4px 0 12px', fontWeight: 500 }}>Earn XP toward demo partner rewards in You. Demo offers have no cash value.</p>
           <div className="kicker" style={{ marginBottom: 8 }}>Sidequests here · earn “{meta.badge}”</div>
           <div className="col" style={{ gap: 8, marginBottom: 16 }}>
             {meta.tasks.map((t) => (

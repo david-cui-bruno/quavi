@@ -146,7 +146,7 @@ export function Screen$({
   const { dir } = useStore()
   return (
     <>
-      <main className={`screen${scroll ? ' scroll' : ''}${scroll && bg === 'paper' ? ' masked' : ''}${flush ? ' flush' : ''}${onDark(bg) ? ' dark' : ''}${dir === 'back' ? ' back-nav' : ''}`} style={{ background: BG[bg], paddingBottom: `calc(${tabs ? 108 : 20}px + var(--native-bottom, 0px))` }}>
+      <main className={`screen${scroll ? ' scroll' : ''}${scroll && bg === 'paper' ? ' masked' : ''}${flush ? ' flush' : ''}${onDark(bg) ? ' dark' : ''}${dir === 'back' ? ' back-nav' : ''}`} style={{ background: BG[bg], bottom: tabs && scroll ? 'calc(104px + var(--native-bottom, 0px))' : undefined, paddingBottom: tabs && scroll ? 20 : `calc(${tabs ? 108 : 20}px + var(--native-bottom, 0px))` }}>
         {children}
       </main>
       <div aria-hidden="true" className="screen-safe-top" style={{background:BG[bg]}} />

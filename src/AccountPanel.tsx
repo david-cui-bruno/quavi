@@ -44,7 +44,7 @@ export function AccountPanel() {
   const [clearDemo, setClearDemo] = useState(true);
   const [busy, setBusy] = useState(false);
   return (
-    <section
+    <section className="settings-account"
       style={{
         margin: "18px 0",
         padding: "18px 0",
@@ -52,7 +52,7 @@ export function AccountPanel() {
       }}
       aria-label="Account and cloud saves"
     >
-      <h2 className="h1 h-xs">Your account.</h2><p className="small" style={{marginTop:10}}><a href={`${config.apiUrl}/legal/privacy`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Privacy</a> · <a href={`${config.apiUrl}/legal/terms`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Terms</a></p>
+      <h2 className="h1 h-xs">Your account.</h2><p className="small" style={{marginTop:10}}><a href={`${config.apiUrl}/legal/privacy`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Privacy policy</a> · <a href={`${config.apiUrl}/legal/terms`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Terms</a></p>
       <p className="small" style={{ margin: "8px 0" }}>
         {account?.email || "You’re exploring the demo."}
       </p>

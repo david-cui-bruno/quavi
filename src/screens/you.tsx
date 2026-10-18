@@ -1,14 +1,14 @@
 import {useSocial} from '../social'
 import {SocialFriends,PrivateShare} from '../PrivateCircle'
-import { AppBuild } from '../AppBuild'
-import { AccountPanel } from '../AccountPanel'
+import { SettingsSheet } from '../SettingsSheet'
+import {Icon} from '../Icons'
 import { Photo } from '../CloudPhoto'
 import { useRef, useState } from 'react'
 import { Persona, flock, safePair, safeSurface } from '../brand/Persona'
 import { FRIEND_STORIES, SUGGESTED_FRIENDS, XP_PER_LEVEL, chapterImg, levelOf, chapterMeta, isPhotoTask, noteLines, notePrompt, photoLines, shareText, type Story } from '../data'
 import { photoFiles, photoFromFile } from '../photo'
 import { useStore } from '../store'
-import { Arrow, BackBtn, BG, Btn, Chip, NoteQuote, RatingDucks, Screen$, Sheet, type Bg } from '../ui'
+import { Arrow, BackBtn, BG, Btn, Chip, NoteQuote, RatingDucks, Screen$, type Bg } from '../ui'
 import { GameHUD } from '../GameMap'
 import { DemoRewards } from '../DemoRewards'
 
@@ -65,11 +65,11 @@ export function Shelf() {
 }
 
 export function Profile() {
-  const { s, go, restart, account } = useStore()
+  const { s, go, account } = useStore()
   const social=useSocial()
   const friendCount=account?social.data?.friends.length??0:s.friends.length
   const { user } = s
-  const [confirm, setConfirm] = useState(false)
+  const [settings, setSettings] = useState(false)
   const { stage: stageName, disc: discName } = safePair(user.avatar)
   const rows: [string, string, () => void][] = [
     ...(account ? [['Notifications', 'Updates from your circle', () => go('notifications')]] as [string,string,()=>void][] : []),
@@ -82,6 +82,7 @@ export function Profile() {
   ]
   return (
     <Screen$ tabs="you" scroll>
+      <div className="profile-heading"><h1 className="h1 h-s">Your little world.</h1><button className="back" aria-label="Settings" onClick={()=>setSettings(true)}><Icon name="settings"/></button></div>
       <div className="clip" style={{ background: BG[stageName as Bg], borderRadius: 36, height: 250, position: 'relative', flex: 'none' }}>
         <div className="abs" style={{ left: '50%', top: 36, width: 180, height: 180, marginLeft: -90, borderRadius: '50%', background: BG[discName as Bg] }} />
         <div className="abs bounce" style={{ left: '50%', top: 22, marginLeft: -78 }}><Persona spec={user.avatar} size={156} /></div>
@@ -101,12 +102,10 @@ export function Profile() {
         <span><b style={{ fontSize: 20, letterSpacing: '-.01em' }}>{s.game.xp.toLocaleString()} XP</b></span>
         <span className="small muted" style={{ fontWeight: 500 }}>{XP_PER_LEVEL - (s.game.xp % XP_PER_LEVEL)} XP to Level {levelOf(s.game.xp) + 1}</span>
       </div>
-      <AccountPanel />
-      <AppBuild />
       <DemoRewards />
       <div className="card" style={{ borderRadius: 26, padding: 20, marginBottom: 10 }}>
         <div className="kicker">Badges</div>
-        <div className="chips" style={{ marginTop: 8 }}>{s.game.badges.map((b) => <span key={b} className="pill" style={{ background: 'var(--yellow)' }}>🏅 {b}</span>)}</div>
+        <div className="chips" style={{ marginTop: 8 }}>{s.game.badges.map((b) => <span key={b} className="pill" style={{ background: 'var(--yellow)' }}><Icon name="spark" size={14}/> {b}</span>)}</div>
       </div>
       <div className="col" style={{ gap: 8 }}>
         {rows.map(([t, m, fn]) => (
@@ -116,17 +115,7 @@ export function Profile() {
           </button>
         ))}
       </div>
-      {!account && <button className="small muted center" style={{ fontWeight: 700, marginTop: 14 }} onClick={() => setConfirm(true)}>Clear & restart demo</button>}
-      {confirm && (
-        <Sheet label="Log out and restart demo?" onClose={() => setConfirm(false)}>
-          <h2 className="h1 h-xs">Log out and restart?</h2>
-          <p className="body muted" style={{ margin: '8px 0 16px' }}>This clears your stories, lists and progress on this device. It can’t be undone.</p>
-          <div className="col" style={{ gap: 10 }}>
-            <Btn kind="secondary" onClick={restart}>Yes, log out and clear</Btn>
-            <Btn kind="soft" onClick={() => setConfirm(false)}>Keep my stuff</Btn>
-          </div>
-        </Sheet>
-      )}
+      {settings && <SettingsSheet onClose={()=>setSettings(false)}/>}
     </Screen$>
   )
 }

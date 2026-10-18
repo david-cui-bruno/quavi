@@ -1,3 +1,4 @@
+import {Icon} from './Icons'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Persona, flock, safeSurface, type AvatarSpec } from './brand/Persona'
 import { distance, makeProjector, type LatLng } from './geo'
@@ -54,7 +55,7 @@ export function GameHUD({ compact }: { compact?: boolean }) {
         <div className="hud-bar"><i style={{ width: `${Math.max(6, levelProgress(xp) * 100)}%` }} /></div>
       </div>
       <span className="hud-chip coin"><i /> {coins}</span>
-      <span className="hud-chip flame">🔥 {streak}</span>
+      <span className="hud-chip flame" aria-label={`${streak} day streak`}><Icon name="spark" size={15}/> {streak}</span>
     </div>
   )
 }

@@ -48,11 +48,9 @@ export function DemoRewards() {
       >
         <h2 className="h1 h-s">
           Little perks.
-          <br />
-          More stories.
         </h2>
         <span className="pill" style={{ background: "var(--paper)" }}>
-          Demo
+          Preview
         </span>
       </div>
       <p className="body" style={{ margin: "12px 0 8px" }}>
@@ -70,15 +68,12 @@ export function DemoRewards() {
         />
       </div>
       <p className="small" style={{ margin: "8px 0 16px", lineHeight: 1.5 }}>
-        {untilNext.toLocaleString()} XP to your next reward. Your XP and level
-        stay yours when you use a reward.
+        {untilNext.toLocaleString()} XP to your next reward.
       </p>
       <Btn kind="secondary" onClick={() => setOpen(true)}>
-        Browse demo rewards
+        Browse rewards
       </Btn>
-      <p className="small" style={{ marginTop: 10, lineHeight: 1.5 }}>
-        Fictional partners. No real discounts, payments or cash value.
-      </p>
+
       {!!account && !rewards && (
         <p className="small" role="status">
           Connect to load your confirmed reward balance.
@@ -111,7 +106,7 @@ export function DemoRewards() {
           {selected ? (
             <>
               <button className="chip" onClick={() => setSelected(null)}>
-                All demo offers
+                All offers
               </button>
               <div
                 className="row"
@@ -120,11 +115,11 @@ export function DemoRewards() {
                 <div style={{ flex: 1 }}>
                   <h2 className="h1 h-m">
                     {status === "used"
-                      ? "Demo redemption complete."
+                      ? "Preview complete."
                       : selected.title}
                   </h2>
                   <p className="body" style={{ marginTop: 8 }}>
-                    {selected.partner} · fictional partner
+                    {selected.partner}
                   </p>
                 </div>
                 <Persona spec={flock("Pip", "Orange")} size={68} />
@@ -137,19 +132,19 @@ export function DemoRewards() {
                   ? "You tried the reward flow. No payment was made and no real voucher was issued."
                   : selected.description}
               </p>
-              <p className="demo-notice">
-                Demo only — cannot be redeemed at a real business.
+              <p className="reward-preview-label">
+                Preview · not redeemable
               </p>
               {status === "used" ? (
                 <>
                   <p className="small muted" style={{ margin: "12px 0 16px" }}>
-                    Recorded in your demo history.{" "}
+                    Recorded in your preview history.{" "}
                     {selected.cost
                       ? "1 earned reward used; your XP is unchanged."
                       : "Welcome sample used; no earned reward or XP spent."}
                   </p>
                   <Btn onClick={() => setSelected(null)}>
-                    Back to demo offers
+                    Back to offers
                   </Btn>
                 </>
               ) : (
@@ -183,20 +178,19 @@ export function DemoRewards() {
                       ? "Pending confirmation"
                       : status === "locked"
                         ? "Earn a reward to unlock"
-                        : "Try demo redemption"}
+                        : "Try this reward"}
                   </Btn>
                 </>
               )}
             </>
           ) : (
             <>
-              <h2 className="h1 h-m">Demo partner rewards.</h2>
+              <h2 className="h1 h-m">A little something back.</h2>
               <p className="body muted" style={{ margin: "8px 0 14px" }}>
-                Try a little perk for taking the scenic way. These partners and
-                offers are fictional.
+                A coffee. A new book. A reason to take the scenic way.
               </p>
-              <p className="demo-notice">
-                Demo only — cannot be redeemed at a real business.
+              <p className="reward-preview-label">
+                Preview · not redeemable
               </p>
               <div className="col" style={{ marginTop: 8 }}>
                 {DEMO_REWARDS.map((offer) => {
@@ -217,12 +211,12 @@ export function DemoRewards() {
                       <span className="col" style={{ gap: 5 }}>
                         <b className="h1 h-xs">{offer.title}</b>
                         <span className="small muted">
-                          {offer.partner} · fictional
+                          {offer.partner}
                         </span>
                         <span className="body">{offer.benefit}</span>
                         <span className="small" style={{ fontWeight: 700 }}>
                           {state === "used"
-                            ? "Demo used · view receipt"
+                            ? "Preview used · view receipt"
                             : offer.cost === 0
                               ? "Welcome sample · ready to try"
                               : state === "locked"

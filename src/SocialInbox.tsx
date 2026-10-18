@@ -6,7 +6,9 @@ import { useSocial } from "./social";
 import { api, auth } from "./cloud";
 import { useRuntime } from "./runtime";
 import { BackBtn, Btn, Screen$, Sheet } from "./ui";
-import { enablePush, detachPush, nativePush } from "./push";
+import { SettingsSheet } from "./SettingsSheet";
+import { Icon } from "./Icons";
+import { Persona, flock } from "./brand/Persona";
 type Notice = {
   id: string;
   kind: string;
@@ -23,7 +25,7 @@ export function Notifications() {
   const [saved, setData] = useState<(Inbox & { uid: string }) | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [push, setPush] = useState("");
+    [settings, setSettings] = useState(false);
   const data =
     saved?.uid === account?.uid && life.online && life.active ? saved : null;
   const load = useCallback(
@@ -84,14 +86,19 @@ export function Notifications() {
   };
   return (
     <Screen$ scroll tabs="you">
-      <BackBtn />
-      <h1 className="h1 h-l" style={{ margin: "16px 0" }}>
-        Your circle,
-        <br />
-        caught up.
-      </h1>
-      <p className="body">
-        Friend requests, new stories and private report updates.
+      <div className="social-toolbar">
+        <BackBtn />
+        <button
+          className="back"
+          aria-label="Settings"
+          onClick={() => setSettings(true)}
+        >
+          <Icon name="settings" />
+        </button>
+      </div>
+      <h1 className="h1 social-title">Your circle.</h1>
+      <p className="body muted social-intro">
+        A new friend. A story worth opening.
       </p>
       {!life.online && <p role="status">Connect to see your notifications.</p>}
       {error && (
@@ -108,9 +115,13 @@ export function Notifications() {
             className="row"
             style={{ justifyContent: "space-between", margin: "14px 0" }}
           >
-            <b>{data.unread ? `${data.unread} unread` : "All caught up"}</b>
+            <span className="small muted">
+              {data.unread
+                ? `${data.unread} new ${data.unread === 1 ? "update" : "updates"}`
+                : "All caught up"}
+            </span>
             <button
-              className="chip"
+              className="text-action"
               disabled={busy || !data.items.some((n) => !n.read)}
               onClick={() =>
                 void act(() =>
@@ -118,7 +129,7 @@ export function Notifications() {
                 )
               }
             >
-              Mark shown as read
+              Mark read
             </button>
           </div>
           {!data.items.length && (
@@ -129,7 +140,7 @@ export function Notifications() {
           {data.items.map((n) => (
             <button
               key={n.id}
-              className="notice-row"
+              className={"notice-row activity-row" + (n.read ? "" : " unread")}
               disabled={busy}
               onClick={() =>
                 void act(async () => {
@@ -146,10 +157,13 @@ export function Notifications() {
                 })
               }
             >
-              <span
-                className={"notice-dot " + (n.read ? "read" : "")}
-                aria-label={n.read ? "Read" : "Unread"}
-              />
+              <span className="activity-avatar" aria-hidden="true">
+                {n.actor ? (
+                  <Persona spec={flock("Pip", "Orange")} size={42} />
+                ) : (
+                  <Icon name="check" size={24} />
+                )}
+              </span>
               <span>
                 <b>
                   {n.kind === "friend_request"
@@ -164,13 +178,25 @@ export function Notifications() {
                   className="small muted"
                   style={{ display: "block", marginTop: 4 }}
                 >
-                  {new Date(n.createdAt).toLocaleDateString()} ·{" "}
-                  {n.kind === "report_update"
-                    ? "Review complete. Thank you for helping keep Quavi safe."
-                    : n.kind === "story_shared"
-                      ? "Open story"
-                      : "Open friends"}
+                  {n.kind === "story_shared"
+                    ? "A little detour, from their day to yours."
+                    : n.kind === "report_update"
+                      ? "Thank you for looking out for your circle."
+                      : "Make room for another wanderer."}
+                  <time className="activity-date">
+                    {new Date(n.createdAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </time>
                 </span>
+              </span>
+              <span
+                className="activity-end"
+                aria-label={n.read ? "Read" : "Unread"}
+              >
+                {!n.read && <i />}
+                <span aria-hidden="true">›</span>
               </span>
             </button>
           ))}
@@ -185,44 +211,7 @@ export function Notifications() {
           )}
         </>
       )}
-      {nativePush() && (
-        <div style={{ marginTop: 24 }}>
-          <h2 className="h1 h-s">On your iPhone.</h2>
-          <p className="small">
-            Optional alerts show a generic Quavi update. Names, story text and
-            locations stay inside the app.
-          </p>
-          <div className="row">
-            <button
-              className="chip"
-              disabled={busy}
-              onClick={() =>
-                void act(async () => {
-                  await enablePush();
-                  setPush("Notifications enabled on this phone.");
-                })
-              }
-            >
-              Enable push
-            </button>
-            <button
-              className="chip"
-              disabled={busy}
-              onClick={() =>
-                void act(async () => {
-                  await detachPush();
-                  setPush(
-                    "Push is off on this phone. Your inbox stays available.",
-                  );
-                })
-              }
-            >
-              Turn off push
-            </button>
-          </div>
-          {push && <p role="status">{push}</p>}
-        </div>
-      )}
+      {settings && <SettingsSheet onClose={() => setSettings(false)} />}
     </Screen$>
   );
 }
