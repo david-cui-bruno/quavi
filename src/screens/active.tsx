@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BODY_PLAIN, Persona, flock } from '../brand/Persona'
-import { ARRIVE_RADIUS, NOTE_STARTERS, chapterMeta, levelName, levelOf, notePrompt, placeInfo, isPhotoTask, TRIP_XP_CAP, rewardUsd, taskXp } from '../data'
+import { ARRIVE_RADIUS, NOTE_STARTERS, chapterMeta, levelName, levelOf, notePrompt, placeInfo, isPhotoTask, TRIP_XP_CAP, taskXp } from '../data'
 import { distance, fmtDist, fmtWalk } from '../geo'
 import { GameHUD, coinsFor } from '../GameMap'
 import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
@@ -34,7 +34,6 @@ export function Active() {
   const allDone = done.length >= meta.tasks.length
   const totalXp = meta.tasks.reduce((a, t) => a + taskXp(story, t), 0)
   const tripEarned = s.game.tripXp?.[story.id] ?? 0
-  const credit = rewardUsd(s.game.xp)
 
   // ---- turn-by-turn: a real walking route to this stop, with the next instruction ----
   const farTransit = story.prefs?.move === 'Transit' && dist > 1500
@@ -234,7 +233,7 @@ export function Active() {
             <div className="wiggle"><Persona spec={flock(c.persona, 'Orange')} size={70} /></div>
           </div>
           <p className="body" style={{ margin: '14px 0 12px' }}>{placeInfo(c.place, c.desc).about}</p>
-          {credit > 0 && (i < story.chapters.length - 1 || !story.id.startsWith('trip-')) && <p className="small" style={{ margin: '-4px 0 12px', fontWeight: 700 }}>You have ${credit} in rewards to use here.</p>}
+          <p className="small" style={{ margin: '-4px 0 12px', fontWeight: 500 }}>Earn XP toward demo partner rewards in You. Demo offers have no cash value.</p>
           <div className="kicker" style={{ marginBottom: 8 }}>Sidequests here · earn “{meta.badge}”</div>
           <div className="col" style={{ gap: 8, marginBottom: 16 }}>
             {meta.tasks.map((t) => (

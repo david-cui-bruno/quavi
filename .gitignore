@@ -27,3 +27,6 @@ dist-ssr
 .claude
 ui-review
 design-review
+
+# Local mobile test captures
+.maestro/artifacts/

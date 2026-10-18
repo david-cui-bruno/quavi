@@ -1,0 +1,28 @@
+appId: com.quavi.app
+name: iPhone navigation and destination regression checks
+---
+# Run only against a disposable simulator: this resets its Quavi demo data.
+- launchApp:
+    clearState: true
+- assertVisible: "Find my detour"
+- tapOn: "I already have an account"
+- tapOn: "Log in"
+- assertVisible: "Take a detour"
+- tapOn: "You"
+- swipe:
+    start: 50%,75%
+    end: 50%,30%
+- tapOn: "Friends Add your first friend ›"
+- assertVisible: "Friends."
+# Reselecting You from a nested page must return to Profile.
+- tapOn: "You"
+- assertVisible: "Edit your Quavi"
+- tapOn: "Explore"
+- assertVisible: "Surprise me with a detour"
+- tapOn: "Where to?"
+- inputText: "Washington Square Park"
+- pressKey: Enter
+# Exact destination wins over nearby sub-places such as its dog run.
+- extendedWaitUntil:
+    visible: "Start my detour to Washington Square Park"
+    timeout: 30000

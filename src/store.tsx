@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AvatarSpec } from './brand/Persona'
 import { DEFAULT_LISTS, type Story } from './data'
+import type { DemoRedemption } from './rewards'
 
 export type Screen =
   | 'splash' | 'welcome' | 'login' | 'interests' | 'customize' | 'mood'
@@ -14,6 +15,7 @@ export type Friend = { id: string; name: string }
 export type AppState = {
   user: { name: string; avatar: AvatarSpec; interests: string[]; neighborhood: string; authed: boolean; /** 21 or older? decides whether drink spots are suggested */ age21?: boolean; /** who you usually go out with */ who?: 'Solo' | 'With friends' }
   friends: Friend[]
+  demoRedemptions: DemoRedemption[]
   mood?: string
   story?: Story
   chapter: number
@@ -32,6 +34,7 @@ const DEFAULT_STATE: AppState = {
     authed: false,
   },
   friends: [],
+  demoRedemptions: [],
   chapter: 0,
   shelf: [],
   lists: Object.fromEntries(DEFAULT_LISTS.map((l) => [l, [] as string[]])),

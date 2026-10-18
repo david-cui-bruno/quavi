@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { Persona, flock, safePair, safeSurface } from '../brand/Persona'
-import { FRIEND_STORIES, SUGGESTED_FRIENDS, REWARD_USD, TRIP_XP_CAP, XP_PER_LEVEL, XP_PER_REWARD, chapterImg, levelOf, rewardUsd, chapterMeta, isPhotoTask, noteLines, notePrompt, photoLines, shareText, type Story } from '../data'
+import { FRIEND_STORIES, SUGGESTED_FRIENDS, XP_PER_LEVEL, chapterImg, levelOf, chapterMeta, isPhotoTask, noteLines, notePrompt, photoLines, shareText, type Story } from '../data'
 import { photoFiles, photoFromFile } from '../photo'
 import { useStore } from '../store'
 import { Arrow, BackBtn, BG, Btn, Chip, NoteQuote, RatingDucks, Screen$, Sheet, type Bg } from '../ui'
 import { GameHUD } from '../GameMap'
+import { DemoRewards } from '../DemoRewards'
 
 const SHELF_SURF: [Bg, string, 'Yellow' | 'Orange'][] = [
   ['yellow-p', 'Maple', 'Orange'], ['ink-p', 'Juno', 'Yellow'], ['soft', 'Pip', 'Orange'], ['orange-p', 'Luna', 'Yellow'],
@@ -90,14 +91,7 @@ export function Profile() {
         <span><b style={{ fontSize: 20, letterSpacing: '-.01em' }}>{s.game.xp.toLocaleString()} XP</b></span>
         <span className="small muted" style={{ fontWeight: 500 }}>{XP_PER_LEVEL - (s.game.xp % XP_PER_LEVEL)} XP to Level {levelOf(s.game.xp) + 1}</span>
       </div>
-      <div className="card" style={{ padding: '14px 24px', borderRadius: 24, marginBottom: 14, background: 'var(--yellow-p)' }}>
-        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div><div className="kicker">Rewards to spend</div><div style={{ fontWeight: 700, fontSize: 26, letterSpacing: '-.01em', lineHeight: 1.1, marginTop: 2 }}>${rewardUsd(s.game.xp).toFixed(2)}</div></div>
-          <span className="small" style={{ fontWeight: 500, textAlign: 'right' }}>${REWARD_USD} per {XP_PER_REWARD.toLocaleString()} XP</span>
-        </div>
-        <div className="hud-bar" style={{ background: 'rgba(30,27,22,.18)', marginTop: 10 }}><i style={{ width: `${Math.max(3, ((s.game.xp % XP_PER_REWARD) / XP_PER_REWARD) * 100)}%`, background: 'var(--ink)' }} /></div>
-        <p className="small" style={{ marginTop: 8 }}>{(XP_PER_REWARD - (s.game.xp % XP_PER_REWARD)).toLocaleString()} XP until your next ${REWARD_USD}. Use it at the side quests you visit. You can earn up to {TRIP_XP_CAP} XP per trip.</p>
-      </div>
+      <DemoRewards />
       <div className="card" style={{ borderRadius: 26, padding: 20, marginBottom: 10 }}>
         <div className="kicker">Badges</div>
         <div className="chips" style={{ marginTop: 8 }}>{s.game.badges.map((b) => <span key={b} className="pill" style={{ background: 'var(--yellow)' }}>🏅 {b}</span>)}</div>
