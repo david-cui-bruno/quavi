@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { GoogleMap, LatLngBounds, type Marker } from "@capacitor/google-maps";
+import { GoogleMap, LatLngBounds, type Marker, type Polyline } from "@capacitor/google-maps";
 import type { AvatarSpec } from "./brand/Persona";
 import { distance, type LatLng } from "./geo";
 import {useRuntime} from './runtime'
+import {mapArt} from "./map-art";
 import mapsConfig from "./maps-config.json";
 export type PinKind =
   | "quest"
@@ -33,7 +34,7 @@ export function RealMap({
   fit,
   inset = { top: 180, bottom: 340 },
   you,
-  youAvatar: _youAvatar,
+  youAvatar,
   follow = false,
   zoomOnYou = 16,
   controlsTop = 176,
@@ -56,6 +57,7 @@ export function RealMap({
     latest = useRef({ pins, you, fit, inset, zoomOnYou });
   latest.current = { pins, you, fit, inset, zoomOnYou };
   const [cover, setCover] = useState(0);
+  const [headerBottom,setHeaderBottom]=useState(0);
   useLayoutEffect(() => {
     const el = element.current;
     if (!el) return;
@@ -71,6 +73,9 @@ export function RealMap({
       const panels = [...root.querySelectorAll<HTMLElement>("[data-map-obstruction], .sheet")];
       panels.forEach(p => { if (!observed.has(p)) { observed.add(p); observer.observe(p); } });
       const r = el.parentElement!.getBoundingClientRect();
+      const headers=[...root.querySelectorAll<HTMLElement>('[data-map-top-obstruction], .navbanner')];
+      headers.forEach(p=>{if(!observed.has(p)){observed.add(p);observer.observe(p)}});
+      setHeaderBottom(headers.length?Math.max(0,...headers.map(p=>p.getBoundingClientRect().bottom-r.top))+8:0);
       const tops = panels
         .map((p) => p.getBoundingClientRect())
         .filter(p => p.width > r.width * 0.5 && p.bottom >= r.bottom - 4 && p.top < r.bottom && p.top > r.top);
@@ -137,8 +142,18 @@ export function RealMap({
               maxZoom: 20,
               disableDefaultUI: true,
               clickableIcons: false,
+              headingInteractionEnabled: false,
+              tiltInteractionEnabled: false,
               gestureHandling: "greedy",
               backgroundColor: "#F7F4EC",
+              styles: [
+                {featureType:'landscape',stylers:[{color:'#F7F4EC'}]},
+                {featureType:'poi',elementType:'labels',stylers:[{visibility:'off'}]},
+                {featureType:'poi.park',elementType:'geometry',stylers:[{color:'#DCE6CD'}]},
+                {featureType:'water',elementType:'geometry',stylers:[{color:'#C5DDE5'}]},
+                {featureType:'road',elementType:'geometry',stylers:[{color:'#FFFFFF'}]},
+                {featureType:'road',elementType:'labels.text.fill',stylers:[{color:'#4B4945'}]},
+              ],
             },
           },
           () => resolveReady(),
@@ -203,17 +218,17 @@ export function RealMap({
         });
     };
   }, [id, cover, life.epoch, life.active, life.online]);
+  const paddingReady = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     if (!map) return;
     const h = element.current?.clientHeight ?? 600;
-    const available = Math.max(0, h - 160),
-      top = Math.min(inset.top, available * 0.6),
+    const top = Math.min(headerBottom || inset.top, Math.max(0,h-100)),
       bottom = Math.min(
         cover ? 60 : Math.max(70, inset.bottom),
-        available - top,
+        Math.max(20,h-top-80),
       );
-    void map.setPadding({ top, bottom, left: 24, right: 24 }).catch(() => {});
-  }, [map, inset.top, inset.bottom, cover]);
+    paddingReady.current = map.setPadding({ top, bottom, left: 24, right: 24 }).catch(() => {});
+  }, [map, inset.top, inset.bottom, cover, headerBottom]);
   const fitKey = (fit ?? []).map((p) => p.lat + "," + p.lng).join("|");
   useEffect(() => {
     if (!map || !fit?.length) return;
@@ -230,7 +245,10 @@ export function RealMap({
       northeast: ne,
       center: { lat: (sw.lat + ne.lat) / 2, lng: (sw.lng + ne.lng) / 2 },
     });
-    void map.fitBounds(bounds, 48).catch(() => {});
+    let canceled=false;
+    // Native bridge calls may execute concurrently; fit only after obstruction padding applies.
+    void paddingReady.current.then(()=>{if(!canceled)return map.fitBounds(bounds,32)}).catch(()=>{});
+    return ()=>{canceled=true};
     // Geometry controls framing; array identity changes while walking do not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, fitKey]);
@@ -243,31 +261,20 @@ export function RealMap({
       .catch(() => {})
       .then(async () => {
         if (canceled) return;
-        if (markers.current.length) await map.removeMarkers(markers.current);
-        if (lines.current.length) await map.removePolylines(lines.current);
-        markers.current = [];
-        lines.current = [];
+
         clicks.current.clear();
-        const list: Marker[] = pins.map((p) => ({
+        const list: (Marker & {quavi?:unknown})[] = await Promise.all(pins.map(async (p) => ({
           coordinate: p.ll,
           title: p.label ?? "",
           snippet: p.sub ?? "",
-          iconUrl: `map-icons/${p.kind}.png`,
-          iconSize: {
-            width: p.selected ? 38 : 28,
-            height: p.selected ? 52 : 39,
-          },
-          iconAnchor: { x: 0.5, y: 1 },
-          opacity: p.kind === "locked" ? 0.6 : 1,
+          ...await mapArt(p),
           zIndex: p.selected ? 10 : p.kind === "current" ? 8 : 2,
-        }));
+        })));
         if (you)
           list.push({
             coordinate: you,
             title: "You",
-            iconUrl: "map-icons/you.png",
-            iconSize: { width: 38, height: 52 },
-            iconAnchor: { x: 0.5, y: 1 },
+            ...await mapArt('you',youAvatar),
             zIndex: 20,
           });
         for (const coin of coins ?? [])
@@ -275,29 +282,15 @@ export function RealMap({
             list.push({
               coordinate: coin.ll,
               title: "Demo coin",
-              iconUrl: "map-icons/current.png",
-              iconSize: { width: 16, height: 22 },
-              opacity: 0.75,
+              ...await mapArt('coin'),
+              quavi: {...(await mapArt('coin')).quavi,key:'coin-'+coin.id},
             });
+        if(canceled)return;
         const ids = list.length ? await map.addMarkers(list) : [];
+        const removed=markers.current.filter(id=>!ids.includes(id));
+        if(removed.length)await map.removeMarkers(removed);
         markers.current = ids;
         pins.forEach((p, i) => clicks.current.set(ids[i], p.id));
-        const paths = [];
-        if (route && route.length > 1)
-          paths.push({
-            path: route,
-            strokeColor: "#1E1B16",
-            strokeWeight: 5,
-            strokeOpacity: 0.65,
-          });
-        if (doneRoute && doneRoute.length > 1)
-          paths.push({
-            path: doneRoute,
-            strokeColor: "#EE6A2C",
-            strokeWeight: 7,
-            strokeOpacity: 1,
-          });
-        if (paths.length) lines.current = await map.addPolylines(paths);
       })
       .catch(() => {
         if (!canceled)
@@ -306,7 +299,39 @@ export function RealMap({
     return () => {
       canceled = true;
     };
-  }, [map, pins, route, doneRoute, coins, you?.lat, you?.lng]);
+  }, [map, pins, route, doneRoute, coins, you?.lat, you?.lng, youAvatar]);
+  const routeKey=JSON.stringify([route,doneRoute]);
+  useEffect(()=>{
+    if(!map)return;
+    let canceled=false;
+    mutations.current=mutations.current.catch(()=>{}).then(async()=>{
+      if(canceled)return;
+      if(lines.current.length)await map.removePolylines(lines.current);
+      lines.current=[];
+        const paths: Polyline[] = [];
+        if (route && route.length > 1)
+          paths.push({
+            path: route,
+            strokeColor: "#1E1B16",
+            strokeWeight: 5,
+            strokeOpacity: Capacitor.isNativePlatform() ? 0.35 : 0,
+            tag: 'quavi-future-route',
+            icons: [{icon:{path:'M 0,0 0,0.1',strokeColor:'#1E1B16',strokeOpacity:0.35,strokeWeight:5},offset:'0',repeat:'12px'}],
+          });
+        if (doneRoute && doneRoute.length > 1)
+          paths.push({
+            path: doneRoute,
+            strokeColor: "#EE6A2C",
+            strokeWeight: 7,
+            strokeOpacity: 0.95,
+          });
+        if (paths.length) lines.current = await map.addPolylines(paths);
+
+    }).catch(()=>{if(!canceled)setError('Couldn’t update the walking route. Reopen this screen to retry.')});
+    return()=>{canceled=true};
+    // Actual geometry drives path updates, independently of GPS/pin rendering and zoom.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[map,routeKey]);
   useEffect(() => {
     if (map && you && followRef.current)
       void map

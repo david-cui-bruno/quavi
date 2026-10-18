@@ -12,7 +12,7 @@ import { Arrow, Btn, PinIcon, Screen$, Check, StatRow } from '../ui'
 
 function Search({ value, onChange, onClear, onBack, onSubmit }: { value: string; onChange?: (v: string) => void; onClear?: () => void; onBack?: () => void; onSubmit?: () => void }) {
   return (
-    <div className="abs row" style={{ left: 24, right: 24, top: 54, height: 56, borderRadius: 28, background: 'var(--white)', padding: '0 14px 0 8px', zIndex: 5, gap: 4, boxShadow: '0 4px 18px rgba(30,27,22,.16)' }}>
+    <div className="abs row" data-map-top-obstruction style={{ left: 24, right: 24, top: 'var(--screen-top, 54px)', height: 56, borderRadius: 28, background: 'var(--white)', padding: '0 14px 0 8px', zIndex: 5, gap: 4, boxShadow: '0 4px 18px rgba(30,27,22,.16)' }}>
       {onBack && <button className="hit44" onClick={onBack} aria-label="Back" style={{ flex: 'none' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 12H5M11 5l-7 7 7 7" /></svg></button>}
       <input aria-label="Search places" value={value} onChange={(e) => onChange?.(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onSubmit?.()} placeholder="Where to?" style={{ flex: 1, minWidth: 0, fontWeight: 500, fontSize: 15, paddingLeft: onBack ? 6 : 16 }} />
       {value && onClear && <button className="hit44" onClick={onClear} style={{ fontSize: 22, color: 'var(--ink-p)', flex: 'none' }} aria-label="Clear">×</button>}
@@ -55,8 +55,8 @@ export function Explore() {
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 360 }}>
         <RealMap pins={pins} route={route} coins={coins} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 200, bottom: 30 }} />
       </div>
-      <div className="hud-inline" style={{ position: 'absolute', left: 24, right: 24, top: 54, zIndex: 8 }}><GameHUD /></div>
-      <form className="abs row" onSubmit={(e) => { e.preventDefault(); submit() }} style={{ left: 24, right: 24, top: 114, height: 64, borderRadius: 32, background: 'var(--white)', padding: '0 20px 0 22px', zIndex: 8, gap: 12, boxShadow: '0 4px 18px rgba(30,27,22,.18)' }}>
+      <div className="hud-inline" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8 }}><GameHUD /></div>
+      <form data-map-top-obstruction className="abs row" onSubmit={(e) => { e.preventDefault(); submit() }} style={{ left: 24, right: 24, top: 'calc(var(--screen-top, 54px) + 60px)', height: 64, borderRadius: 32, background: 'var(--white)', padding: '0 20px 0 22px', zIndex: 8, gap: 12, boxShadow: '0 4px 18px rgba(30,27,22,.18)' }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
         <div className="col" style={{ flex: 1, minWidth: 0 }}>
           <label htmlFor="ex-where" style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Where to?</label>
@@ -191,7 +191,7 @@ export function RouteScreen() {
       <div style={{ position: 'relative', flex: 1, marginTop: -54, marginBottom: -108 }}>
         <RealMap pins={pins} route={dest ? (walk.route?.geometry ?? path) : undefined} fit={fit} inset={{ top: 190, bottom: 450 }} you={tr.pos} youAvatar={s.user.avatar} />
         <Search value={q} onChange={setQ} onClear={() => setQ('')} onBack={back} onSubmit={() => q.trim() && void run(q)} />
-        <div className="abs row" style={{ left: 24, right: 24, top: 116, height: 46, borderRadius: 23, background: 'var(--ink)', color: 'var(--paper)', padding: '0 22px', zIndex: 5, justifyContent: 'space-between' }}>
+        <div className="abs row" data-map-top-obstruction style={{ left: 24, right: 24, top: 'calc(var(--screen-top, 54px) + 62px)', height: 46, borderRadius: 23, background: 'var(--ink)', color: 'var(--paper)', padding: '0 22px', zIndex: 5, justifyContent: 'space-between' }}>
           <b style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>You → {dest?.name ?? q}</b>
           <span className="small" style={{ color: 'var(--yellow)', flex: 'none', marginLeft: 10 }}>{mins ? `${mins} min walk` : status === 'loading' ? 'Finding…' : '—'}</span>
         </div>

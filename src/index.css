@@ -28,7 +28,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body, #root { height: 100%; }
+html, body, #root { height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   font-family: var(--sans); color: var(--ink); background: #E7E1D1;
   -webkit-font-smoothing: antialiased; overflow: hidden;
@@ -58,11 +58,14 @@ input, textarea { font: inherit; color: inherit; border: 0; outline: 0; backgrou
 .statusbar.light { color: var(--paper); }
 
 /* Keep the original composition inside the iPhone's system safe areas. */
-.native-app { --native-bottom: env(safe-area-inset-bottom, 0px); }
+.native-app { --native-top: max(48px, env(safe-area-inset-top, 0px)); --screen-top: calc(var(--native-top) + 12px); --native-bottom: env(safe-area-inset-bottom, 0px); }
 .native-app .stage { padding: 0; }
 .native-app .phone { width: 100%; height: 100%; max-height: none; border-radius: 0; box-shadow: none; }
 .native-app .statusbar { display: none; }
-.native-app .screen { padding-top: max(54px, calc(env(safe-area-inset-top, 0px) + 12px)); }
+.native-app .screen { padding-top: var(--screen-top); }
+.native-app .screen.scroll { top: var(--native-top); padding-top: 12px; }
+.screen-safe-top { display: none; }
+.native-app .screen-safe-top { display: block; position: absolute; inset: 0 0 auto; height: var(--native-top); z-index: 40; pointer-events: none; }
 .native-app .tabbar { bottom: calc(18px + var(--native-bottom)); }
 .native-app .sheet { padding-bottom: calc(30px + var(--native-bottom)); }
 .native-app .qcard { padding-bottom: calc(24px + var(--native-bottom)); }
@@ -70,7 +73,7 @@ input, textarea { font: inherit; color: inherit; border: 0; outline: 0; backgrou
    Some fields use inline sizes; keep the large story-title input unchanged. */
 .native-app input:not(.h1), .native-app textarea { font-size: 16px !important; }
 .native-app.keyboard-open { --native-bottom: 0px; }
-.native-app.keyboard-open .screen { overflow-y: auto; }
+
 
 /* Demo partner offers follow the existing paper/yellow rewards surface. */
 .demo-rewards { background: var(--yellow-p); border-radius: 24px; padding: 20px 24px; margin-bottom: 14px; }
@@ -81,10 +84,10 @@ input, textarea { font: inherit; color: inherit; border: 0; outline: 0; backgrou
 /* ---------- screens ---------- */
 .screen {
   position: absolute; inset: 0; display: flex; flex-direction: column;
-  padding: 54px var(--gutter) 20px; overflow: hidden;
+  padding: 54px var(--gutter) 20px; overflow: hidden; min-width: 0; overscroll-behavior: none;
   animation: enter var(--motion-t3) var(--ease-enter) both;
 }
-.screen.scroll { overflow-y: auto; }
+.screen.scroll { overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; touch-action: pan-y; }
 /* keep scrolled content from colliding with the status bar */
 @media (min-width: 481px) { .screen.scroll.masked { -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 38px, #000 50px); mask-image: linear-gradient(to bottom, transparent 0, transparent 38px, #000 50px); } }
 .screen.flush { padding-left: 0; padding-right: 0; }
@@ -266,7 +269,7 @@ textarea { overflow: hidden; }
 
 /* ---------- game map ---------- */
 .gmap svg { position: absolute; inset: 0; }
-.hud { position: absolute; left: var(--gutter); right: var(--gutter); top: 54px; z-index: 8; display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--paper); border-radius: 30px; padding: 8px 10px 8px 8px; }
+.hud { position: absolute; left: var(--gutter); right: var(--gutter); top: var(--screen-top, 54px); z-index: 8; display: flex; align-items: center; gap: 10px; background: var(--ink); color: var(--paper); border-radius: 30px; padding: 8px 10px 8px 8px; }
 .hud-av { width: 42px; height: 42px; border-radius: 50%; background: var(--orange-p); overflow: hidden; display: grid; place-items: center; flex: none; padding-top: 8px; }
 .gmap .hud-av svg, .hud-av svg { position: static; }
 .hud-lv { flex: 1; min-width: 0; }
@@ -290,7 +293,7 @@ textarea { overflow: hidden; }
 .coin-g { animation: coinbob 1.6s ease-in-out infinite; }
 @keyframes coinbob { 50% { transform: translateY(-3px); } }
 .qcard { position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--paper); border-radius: 36px 36px 0 0; padding: 18px var(--gutter) 24px; }
-.status-pill { position: absolute; right: var(--gutter); top: 112px; z-index: 8; background: var(--paper); border-radius: 18px; padding: 8px 14px; font-size: 12px; font-weight: 700; display: inline-flex; gap: 6px; align-items: center; }
+.status-pill { position: absolute; right: var(--gutter); top: calc(var(--screen-top, 54px) + 58px); z-index: 8; background: var(--paper); border-radius: 18px; padding: 8px 14px; font-size: 12px; font-weight: 700; display: inline-flex; gap: 6px; align-items: center; }
 .dotlive { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); animation: pulse 1.4s ease-out infinite; }
 .task { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; padding: 12px 14px; border-radius: 24px; background: var(--soft); transition: background var(--motion-t2), transform var(--motion-t1); }
 .task:active { transform: scale(.98); }
@@ -405,7 +408,7 @@ button.pill.abs { padding: 0 16px; }
 @media (prefers-reduced-motion: reduce) { .mpin .ring, .mpin-you .pulse, .rcoin { animation: none !important; } }
 
 /* ---------- turn-by-turn banner ---------- */
-.navbanner { position: absolute; left: var(--gutter); right: var(--gutter); top: 112px; z-index: 8; display: flex; align-items: center; gap: 14px; background: var(--ink); color: var(--paper); border-radius: 28px; padding: 12px 14px 12px 12px; box-shadow: 0 4px 18px rgba(30,27,22,.28); }
+.navbanner { position: absolute; left: var(--gutter); right: var(--gutter); top: calc(var(--screen-top, 54px) + 58px); z-index: 8; display: flex; align-items: center; gap: 14px; background: var(--ink); color: var(--paper); border-radius: 28px; padding: 12px 14px 12px 12px; box-shadow: 0 4px 18px rgba(30,27,22,.28); }
 .navicon { width: 54px; height: 54px; border-radius: 50%; background: var(--yellow); color: var(--ink); display: grid; place-items: center; flex: none; }
 .navbig { font-weight: 700; font-size: 22px; letter-spacing: -.01em; line-height: 1.1; }
 .navtext { font-size: 14px; font-weight: 500; line-height: 1.25; margin-top: 2px; }
@@ -413,3 +416,19 @@ button.pill.abs { padding: 0 16px; }
 .navbtn { flex: none; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 22px; background: var(--ink-p); color: var(--paper); display: grid; place-items: center; font-weight: 700; font-size: 14px; text-decoration: none; }
 
 .city-picker input::placeholder { color: var(--ink-p); opacity: .9; }
+
+.screen > * { flex-shrink: 0; min-width: 0; }
+.screen > .grow { flex-shrink: 1; }
+.sheet { overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; }
+
+/* Original map motion on the browser renderer; iPhone uses matching native layers. */
+.quavi-art-body { filter: drop-shadow(0 1px 2px rgba(30,27,22,.3)); }
+.quavi-art-coin .quavi-art-body { animation: coinbob 1.6s ease-in-out infinite; }
+.quavi-art-pulse { display: block; border-radius: 50%; background: var(--yellow); opacity: .35; animation: pulse 2.4s ease-out infinite; }
+.quavi-art-current .quavi-art-pulse { animation-duration: 2.6s; }
+.quavi-art-paused .quavi-art-body, .quavi-art-paused .quavi-art-pulse { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .quavi-art-body, .quavi-art-pulse { animation: none !important; } }
+
+.active-map-chrome { position: absolute; top: calc(var(--screen-top, 54px) + 66px); left: var(--gutter); right: var(--gutter); z-index: 8; display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: none; }
+.active-map-chrome .navbanner { position: relative; top: auto; left: auto; right: auto; pointer-events: auto; }
+.active-map-chrome .status-pill { position: relative; top: auto; right: auto; align-self: flex-end; pointer-events: auto; }

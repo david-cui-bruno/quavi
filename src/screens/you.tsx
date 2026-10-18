@@ -1,3 +1,4 @@
+import { AppBuild } from '../AppBuild'
 import { AccountPanel } from '../AccountPanel'
 import { Photo } from '../CloudPhoto'
 import { useRef, useState } from 'react'
@@ -94,6 +95,7 @@ export function Profile() {
         <span className="small muted" style={{ fontWeight: 500 }}>{XP_PER_LEVEL - (s.game.xp % XP_PER_LEVEL)} XP to Level {levelOf(s.game.xp) + 1}</span>
       </div>
       <AccountPanel />
+      <AppBuild />
       <DemoRewards />
       <div className="card" style={{ borderRadius: 26, padding: 20, marginBottom: 10 }}>
         <div className="kicker">Badges</div>

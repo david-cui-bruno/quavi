@@ -188,12 +188,13 @@ export function Active() {
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 292 }}>
         <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}  doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={17} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
       </div>
-      <div className="row" style={{ position: 'absolute', left: 24, right: 24, top: 54, zIndex: 8, gap: 10 }}>
+      <div className="row" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8, gap: 10 }}>
         <button className="back" onClick={() => { tr.setWalking(false); reset('home') }} aria-label="Back to Home" style={{ background: 'var(--paper)' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12H5M11 5l-7 7 7 7" /></svg>
         </button>
         <div style={{ flex: 1 }}><GameHUDInline /></div>
       </div>
+      <div className="active-map-chrome" data-map-top-obstruction>
       {banner && (
         <div className="navbanner" role="status" aria-live="polite">
           <span className="navicon"><ManeuverIcon kind={banner.kind} modifier={banner.modifier} /></span>
@@ -207,7 +208,8 @@ export function Active() {
             : <button className="navbtn" onClick={() => setVoice((v) => !v)} aria-pressed={voice} aria-label={voice ? 'Turn off spoken directions' : 'Turn on spoken directions'}>{voice ? '🔊' : '🔇'}</button>}
         </div>
       )}
-      <button className="status-pill" style={{ top: banner ? 232 : 112 }} onClick={() => setGps(true)}><span className="dotlive" />{tr.mode === 'live' ? (tr.ready?'Tracking · My GPS':'GPS · Waiting for location') : 'Tracking · Demo walk'}</button>
+      <button className="status-pill" onClick={() => setGps(true)}><span className="dotlive" />{tr.mode === 'live' ? (tr.ready?'Tracking · My GPS':'GPS · Waiting for location') : 'Tracking · Demo walk'}</button>
+      </div>
       {float && <div className="xpfloat">{float}</div>}
 
       <div data-map-obstruction className="qcard fade-in" key={i}>

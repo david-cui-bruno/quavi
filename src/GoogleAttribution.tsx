@@ -37,11 +37,16 @@ export function GoogleAttribution({
   return (
     <div
       style={{
-        padding: "10px 10px 5px",
+        padding: "5px 7px",
         background: dark ? "#1F1F1F" : "#FFFFFF",
         color: dark ? "#FFFFFF" : "#1F1F1F",
         borderRadius: 8,
-        display: "inline-block",
+        display: "inline-flex",
+        alignItems: "center",
+        alignSelf: "flex-start",
+        flexWrap: "wrap",
+        gap: 7,
+        margin: "6px 0",
         maxWidth: "100%",
         fontSize: 12,
         fontFamily: "var(--sans)",
@@ -49,21 +54,20 @@ export function GoogleAttribution({
         lineHeight: 1.5,
       }}
     >
-      <span style={{ display: "block", marginBottom: 4 }}>
-        Hours &amp; walking
-      </span>
       <img
         src={`/google-maps-${dark ? "white" : "dark"}.svg`}
         alt="Google Maps"
         style={{
-          height: 18,
+          height: 16,
+          flexShrink: 0,
           width: "auto",
           display: "block",
           maxWidth: "100%",
         }}
       />
+      <span style={{fontSize:11}}>Hours &amp; walking</span>
       {providers.map((p) => (
-        <span key={p.displayName} style={{ display: "block", marginTop: 5 }}>
+        <span key={p.displayName} style={{ display: "inline" }}>
           {p.uri?.startsWith("https://") ? (
             <a href={p.uri} target="_blank" rel="noreferrer">
               {p.displayName}

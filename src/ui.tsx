@@ -149,6 +149,7 @@ export function Screen$({
       <main className={`screen${scroll ? ' scroll' : ''}${scroll && bg === 'paper' ? ' masked' : ''}${flush ? ' flush' : ''}${onDark(bg) ? ' dark' : ''}${dir === 'back' ? ' back-nav' : ''}`} style={{ background: BG[bg], paddingBottom: `calc(${tabs ? 108 : 20}px + var(--native-bottom, 0px))` }}>
         {children}
       </main>
+      <div aria-hidden="true" className="screen-safe-top" style={{background:BG[bg]}} />
       <div aria-hidden="true" className={`statusbar${light || onDark(bg) ? ' light' : ''}`}><span>9:41</span><span>▪▪▪ ▮</span></div>
       {tabs && <TabBar active={tabs} />}
     </>
