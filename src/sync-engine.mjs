@@ -21,7 +21,7 @@ export class SyncEngine {
       if (!this.conflict && this.cache.dirty) await this.flush()
     } catch (e) {
       if (this.closed) return
-      this.ready = true; this.onState(this.cache.state); this.status(e.status === 401 ? 'sign-in-required' : 'offline')
+      this.ready = true; this.onState(this.cache.state); this.status(e.status === 410 ? 'deleted' : e.status === 401 ? 'sign-in-required' : e.status >= 400 && e.status < 500 ? 'save-error' : 'offline')
       // Without a successful read, never overwrite an unknown remote revision.
       this.needsRead = true
     }
@@ -52,7 +52,7 @@ export class SyncEngine {
       this.status('saved')
     } catch (e) {
       if (e.status === 409) this.conflict = true
-      this.status(this.conflict ? 'conflict' : e.status === 401 ? 'sign-in-required' : 'offline')
+      this.status(this.conflict ? 'conflict' : e.status === 410 ? 'deleted' : e.status === 401 ? 'sign-in-required' : e.status >= 400 && e.status < 500 ? 'save-error' : 'offline')
     } finally { this.running = false }
   }
   async useCloud() {

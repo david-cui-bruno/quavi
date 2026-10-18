@@ -64,6 +64,7 @@ type Ctx = {
   loadCloud: () => Promise<void>
   importDemo: () => void
   logout: () => Promise<void>
+  deleteAccount: (clearDemo: boolean) => Promise<void>
   s: AppState
   update: (fn: (s: AppState) => AppState) => void
   route: Route
@@ -112,7 +113,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         request: (method, body) => api(user, '/state', method, body),
         prepare: photoUploader(user),
         onState: (state) => { if (ticket === generation) { stateRef.current = state; setS(state) } },
-        onStatus: (status) => { if (ticket === generation) setSyncStatus(status) },
+        onStatus: (status) => { if (ticket === generation) {
+          setSyncStatus(status)
+          if (status === 'deleted') { next.close(); localStorage.removeItem(`quavi.account.v1.${user.uid}`); setStack([{name:'welcome'}]); void signOut(auth) }
+        } },
       })
       engine.current = next
       void next.open().finally(() => {
@@ -142,6 +146,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!current || current.cache.revision !== 0 || current.cache.dirty) throw new Error('Import is only available for an empty account before its first save.')
     update(() => ({ ...load(), user: { ...load().user, authed: true } }))
   }, [update])
+  const deleteAccount = useCallback(async (clearDemo: boolean) => {
+    const user = auth.currentUser
+    if (!user) throw new Error('Sign in again before deleting your account.')
+    await api(user, '', 'DELETE', { confirm: 'DELETE' })
+    engine.current?.close(); clearPhotoCache()
+    localStorage.removeItem(`quavi.account.v1.${user.uid}`)
+    if (clearDemo) localStorage.removeItem(KEY)
+    await signOut(auth)
+    setStack([{ name: 'welcome' }])
+  }, [])
   const logout = useCallback(async () => { await signOut(auth); setStack([{ name: 'welcome' }]) }, [])
 
   const go = useCallback((name: Screen, params?: Record<string, unknown>) => {
@@ -174,8 +188,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<Ctx>(
-    () => ({ account, syncStatus, retrySync, loadCloud, importDemo, logout, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
-    [account, syncStatus, retrySync, loadCloud, importDemo, logout, s, update, stack, dir, go, back, reset, toast, toastOut, say, restart],
+    () => ({ account, syncStatus, retrySync, loadCloud, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
+    [account, syncStatus, retrySync, loadCloud, importDemo, logout, deleteAccount, s, update, stack, dir, go, back, reset, toast, toastOut, say, restart],
   )
   return <StoreCtx.Provider value={value}>{busy ? <div className="screen col center" role="status" style={{ minHeight: '100dvh', justifyContent: 'center' }}>Opening Quavi…</div> : children}</StoreCtx.Provider>
 }

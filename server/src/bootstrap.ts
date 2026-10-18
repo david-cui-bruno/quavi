@@ -7,6 +7,6 @@ try {
     REVOKE CREATE ON SCHEMA public FROM PUBLIC;
     GRANT CONNECT ON DATABASE quavi TO quavi_runtime;
     GRANT USAGE ON SCHEMA public TO quavi_runtime;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON user_state, media_objects TO quavi_runtime;`)
+    GRANT SELECT, INSERT, UPDATE, DELETE ON user_state, media_objects, account_deletions, request_quotas TO quavi_runtime;`)
   console.log('Runtime database permissions applied')
 } finally { await pool.end() }

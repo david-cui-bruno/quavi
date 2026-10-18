@@ -41,7 +41,7 @@ location and native notifications are not implemented by this shell.
 
 | Feature | Current implementation | Needed for a real release |
 | --- | --- | --- |
-| Accounts | Firebase sign-up/sign-in/sign-out, password recovery and verification email controls connected to Quavi dev | Complete account deletion, recent-login handling and email-delivery acceptance |
+| Accounts | Firebase sign-up/sign-in/sign-out, password recovery and verification email controls connected to Quavi dev | Email-delivery acceptance and extended account-lifecycle QA |
 | Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA, photo retry UX and orphan cleanup |
 | Friends and circle | Locally added names and bundled example stories | User lookup, friendship requests, shared feed, privacy controls |
 | Mood-based plans and captions | Preset openings, rules and text templates | City-aware recommendations and server-side generation |
@@ -84,7 +84,9 @@ services below still need implementation.
 | --- | --- | --- |
 | Done | iOS shell, safe areas, keyboard behavior, navigation fixes and demo partner rewards | App opens on the user's iPhone; simulator flows and reward tests pass |
 | Done: dev accounts and cloud saves | Firebase Auth + Cloud Run API + Cloud SQL PostgreSQL + private Cloud Storage in `quavi-dev-dc824`; real sign-in, recovery/verification controls, account caches, revision conflicts, explicit demo import and private photo transfer | Live two-account isolation, concurrent-write conflicts and real photo round trip pass; simulator signs in, imports demo data and restores it after clearing local storage |
-| **Next: account and data hardening** | Full account deletion across Auth/SQL/photos with retries; verify email delivery and recent-login flows; strengthen sync/photo retry UX, payload validation, per-user quotas, orphan cleanup and app attestation; deployment CI, budget/monitoring alerts and restore drill | Delete a populated test account without leftover active data; resume offline edits safely; failed uploads can recover; alert and backup restore tests pass |
+| Done: account deletion and data guards | Recent-password confirmation, durable deletion requests, immediate access blocking, scheduled Auth/SQL/photo cleanup, immutable verified photos, validated saves and shared account quotas | Emulator/PostgreSQL tests cover deletion retries and races. Live checks verify private uploads and immediate deletion blocking; final scheduled cleanup is tested with disposable accounts |
+| **In progress: city-aware detours** | Nearby real venues and location-based openings, keeping the prototype design; surface source freshness and unknown hours honestly | Validate different cities and sparse/no-result cases; do not substitute fictional West Village stops |
+| Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
 | City-aware detour engine | Replace fixed West Village plans and quest pins with nearby venues; validate opening hours, destination identity, travel time, preferences and age exclusions; generate grounded tasks/captions server-side; handle sparse/no results | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
 | Native outing experience | Validate foreground GPS, camera, native sharing, resume and permission-denied behavior; decide active-detour background location and arrival notifications; recover safely from offline/interrupted sessions | Complete a real outing on iPhone, including locking/resuming the phone under the selected tracking policy |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
@@ -114,6 +116,11 @@ On iPhone, open **Quavi → You → Log in or create an account** (or use the we
 screen). A new account starts separately from the demo. Before editing it, choose
 **You → Import this device’s demo → Import demo into account** to copy demo progress
 into that empty account. Existing cloud saves cannot be replaced by importing.
+Delete an account from **You → Your account → Delete account**, confirm your
+password, and explicitly choose whether to clear the separate local demo. Account
+access stops when accepted; cleanup retries in the background after upload links
+expire. The app explains recovery-copy retention before confirmation.
+
 Account edits save automatically; **You → Your account** shows saving/offline/conflict
 status. Signing out preserves each account’s separate pending cache and returns to
 the local demo. A conflict requires explicitly loading the cloud copy before saving
