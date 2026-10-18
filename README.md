@@ -41,10 +41,10 @@ location and native notifications are not implemented by this shell.
 
 | Feature | Current implementation | Needed for a real release |
 | --- | --- | --- |
-| Accounts | Firebase sign-up/sign-in/sign-out, password recovery and verification email controls connected to Quavi dev | Email-delivery acceptance and extended account-lifecycle QA |
-| Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA, photo retry UX and orphan cleanup |
+| Accounts | Firebase accounts, recovery/verification controls and confirmed account deletion connected to Quavi dev | Email-delivery acceptance and extended account-lifecycle QA |
+| Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA and richer photo retry/conflict resolution |
 | Friends and circle | Locally added names and bundled example stories | User lookup, friendship requests, shared feed, privacy controls |
-| Mood-based plans and captions | Preset openings, rules and text templates | City-aware recommendations and server-side generation |
+| Mood-based plans and captions | Signed-in nearby openings use worldwide Overture venues through the server; anonymous openings and captions keep scripted demo behavior | Live opening-hours/admission validation, grounded captions and stronger venue quality controls |
 | Explore | Live Photon search, Nominatim detours, OSM map tiles and walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
 | Location and arrival tasks | Browser foreground GPS or demo walking | Native device validation; background tracking if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
@@ -85,9 +85,9 @@ services below still need implementation.
 | Done | iOS shell, safe areas, keyboard behavior, navigation fixes and demo partner rewards | App opens on the user's iPhone; simulator flows and reward tests pass |
 | Done: dev accounts and cloud saves | Firebase Auth + Cloud Run API + Cloud SQL PostgreSQL + private Cloud Storage in `quavi-dev-dc824`; real sign-in, recovery/verification controls, account caches, revision conflicts, explicit demo import and private photo transfer | Live two-account isolation, concurrent-write conflicts and real photo round trip pass; simulator signs in, imports demo data and restores it after clearing local storage |
 | Done: account deletion and data guards | Recent-password confirmation, durable deletion requests, immediate access blocking, scheduled Auth/SQL/photo cleanup, immutable verified photos, validated saves and shared account quotas | Emulator/PostgreSQL tests cover deletion retries and races. Live checks verify private uploads and immediate deletion blocking; final scheduled cleanup is tested with disposable accounts |
-| **In progress: city-aware detours** | Nearby real venues and location-based openings, keeping the prototype design; surface source freshness and unknown hours honestly | Validate different cities and sparse/no-result cases; do not substitute fictional West Village stops |
+| Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
 | Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
-| City-aware detour engine | Replace fixed West Village plans and quest pins with nearby venues; validate opening hours, destination identity, travel time, preferences and age exclusions; generate grounded tasks/captions server-side; handle sparse/no results | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
+| **Next: detour reliability** | Add live venue/hours/admission validation and route/time revalidation, strengthen category quality, replace scripted captions with grounded generation, and test more regions, languages and sparse areas | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
 | Native outing experience | Validate foreground GPS, camera, native sharing, resume and permission-denied behavior; decide active-detour background location and arrival notifications; recover safely from offline/interrupted sessions | Complete a real outing on iPhone, including locking/resuming the phone under the selected tracking policy |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
 | Reliable demo reward loop | Move XP awards and one-time demo redemption to the backend; preserve badges/levels and migrate local demo data; maintain explicit demo labels | Duplicate requests and concurrent devices cannot award or spend the same reward twice; no cash or real discount is promised |
@@ -156,3 +156,23 @@ maestro test .maestro/ios-smoke.yaml
 - **Arrival tasks:** every stop has 3 tasks with XP (e.g. at Corner Coffee: order a pastry you've never tried, ask the barista what they'd order). They unlock automatically when you're within 70 m of the stop (`ARRIVE_RADIUS` in `src/data.ts`). Clearing all three earns a bonus, coins and a place badge.
 - **Tracking:** `src/tracking.tsx`. *Demo walk* fast-forwards a walker along the route; *My location* uses `navigator.geolocation.watchPosition`. **Limit:** a web page can't track in the background or when closed. That needs a native app (iOS "Always" location + region monitoring, Android foreground service + geofencing), e.g. by wrapping this UI in Capacitor and moving `tracking.tsx` to a background-geolocation plugin.
 - **Game map:** `src/GameMap.tsx`: XP/level HUD, your Quavi walking the trail, pulsing quest pins, collectible coins, ✓ stamps on cleared stops. Used on Active story and Explore.
+
+
+### Try city-aware detours
+
+Sign in, then **Home → Take a detour → choose a mood → Show me 3 openings**.
+Search for a city/neighborhood, choose the matching area, or use **Use my location**.
+Choose 30 minutes, one hour or two hours. The service returns up to three options
+with real venue IDs/coordinates; it returns an explicit no-results state when it
+cannot assemble three suitable stops. Choosing another city previews its route
+with the demo walker; using GPS enables foreground location tracking.
+
+Venue data is from Overture Maps, queried through Quavi’s GCP project and cached
+for 24 hours. The app displays the dataset update date and attribution. Operating
+status in this dataset means the business is listed as operating; it does **not**
+mean open right now. Live hours, entry restrictions, accessibility, admission/prices
+and safe pedestrian access remain unverified. Walking times are estimates; the
+existing walking directions service is used during navigation. Any-city coverage
+is a goal, with honest sparse/no-result states rather than fictional substitutions.
+Explore shows a signed-in account’s real recent detour stops; anonymous demo pins
+are labeled. Destination-search failures do not substitute a sample city for accounts.

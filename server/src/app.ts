@@ -7,6 +7,7 @@ import type pg from "pg";
 import { readState, writeState } from "./db.js";
 import { MAX_PHOTO_BYTES, type MediaSigner } from "./media.js";
 import { ownerHash, lockAccount, quota } from "./account.js";
+import { detourInput, planDetours, type VenueProvider } from "./detours.js";
 import { appStateSchema, inspectState } from "./state-schema.js";
 
 declare module "fastify" {
@@ -36,6 +37,7 @@ export async function createApp(options: {
   media?: MediaSigner;
   logger?: boolean;
   now?: () => number;
+  detours?: VenueProvider;
 }) {
   const app = Fastify({
     bodyLimit: 2 * 1024 * 1024,
@@ -63,12 +65,10 @@ export async function createApp(options: {
   });
   app.setErrorHandler((error, req, reply) => {
     if (error instanceof ZodError)
-      return reply
-        .code(400)
-        .send({
-          error: "Invalid request",
-          fields: error.issues.map((i) => i.path.join(".")),
-        });
+      return reply.code(400).send({
+        error: "Invalid request",
+        fields: error.issues.map((i) => i.path.join(".")),
+      });
     const code =
       error && typeof error === "object" && "statusCode" in error
         ? error.statusCode
@@ -76,14 +76,10 @@ export async function createApp(options: {
     const status =
       typeof code === "number" && code >= 400 && code < 500 ? code : 500;
     if (status === 500) req.log.error({ err: error }, "Request failed");
-    return reply
-      .code(status)
-      .send({
-        error:
-          status === 500
-            ? "Service temporarily unavailable"
-            : "Invalid request",
-      });
+    return reply.code(status).send({
+      error:
+        status === 500 ? "Service temporarily unavailable" : "Invalid request",
+    });
   });
   app.get("/healthz", async () => ({ status: "ok" }));
   app.get("/readyz", async (_req, reply) => {
@@ -184,28 +180,61 @@ export async function createApp(options: {
               .send({ error: "Sign in again before deleting your account." });
           }
           if ((options.now?.() ?? Date.now()) / 1000 - req.authTime > 300)
-            return reply
-              .code(401)
-              .send({
-                error:
-                  "Confirm your password again before deleting your account.",
-                code: "reauth_required",
-              });
+            return reply.code(401).send({
+              error:
+                "Confirm your password again before deleting your account.",
+              code: "reauth_required",
+            });
           await db.query(
             "INSERT INTO account_deletions(owner_hash,user_id) VALUES($1,$2)",
             [hash, req.uid],
           );
           await db.query("DELETE FROM user_state WHERE user_id=$1", [req.uid]);
         }
-        return reply
-          .code(202)
-          .send({
-            status: "deleting",
-            message:
-              "Account access is blocked. Cleanup will finish after upload links expire.",
-          });
+        return reply.code(202).send({
+          status: "deleting",
+          message:
+            "Account access is blocked. Cleanup will finish after upload links expire.",
+        });
       });
       api.get("/me", async (req) => ({ userId: req.uid }));
+      api.post("/me/detours", async (req, reply) => {
+        const input = detourInput.parse(req.body);
+        if (!options.detours)
+          return reply
+            .code(503)
+            .send({
+              error:
+                "City-aware detours are not available. Try again later or use the separate demo.",
+            });
+        if (!(await quota(req.db!, ownerHash(req.uid), "detours", 12, 86400)))
+          return reply
+            .code(429)
+            .send({ error: "Daily detour limit reached. Try again tomorrow." });
+        const db = req.db!;
+        req.db = null;
+        try {
+          await db.query("COMMIT");
+        } finally {
+          db.release();
+        }
+        const nearby = await options.detours.nearby(input.origin);
+        req.db = await options.pool.connect();
+        await req.db.query("BEGIN");
+        await lockAccount(req.db, req.uid);
+        if (
+          (
+            await req.db.query(
+              "SELECT 1 FROM account_deletions WHERE owner_hash=$1",
+              [ownerHash(req.uid)],
+            )
+          ).rowCount
+        )
+          return reply
+            .code(410)
+            .send({ error: "This account is being deleted." });
+        return planDetours(nearby, input);
+      });
       api.get(
         "/me/state",
         async (req) =>
@@ -224,20 +253,16 @@ export async function createApp(options: {
             [req.uid, refs],
           );
           if (owned.rowCount !== refs.length)
-            return reply
-              .code(400)
-              .send({
-                error: "Finish uploading your own photos before saving.",
-              });
+            return reply.code(400).send({
+              error: "Finish uploading your own photos before saving.",
+            });
         }
         const saved = await writeState(req.db!, req.uid, state, revision);
         if (!saved)
-          return reply
-            .code(409)
-            .send({
-              error:
-                "Changes were saved on another device. Reload before retrying.",
-            });
+          return reply.code(409).send({
+            error:
+              "Changes were saved on another device. Reload before retrying.",
+          });
         return saved;
       });
       api.post("/me/media", async (req, reply) => {

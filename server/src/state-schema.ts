@@ -41,6 +41,16 @@ const chapter = z
   .passthrough();
 const story = z
   .object({
+    origin: ll.optional(),
+    estimatedMinutes: z.number().int().min(1).max(1440).optional(),
+    source: z
+      .object({
+        provider: text,
+        updatedAt: z.iso.datetime(),
+        attributionURL: z.url().refine((v) => new URL(v).protocol === "https:"),
+      })
+      .strict()
+      .optional(),
     id: z.string().max(200),
     title: text,
     openingId: text,

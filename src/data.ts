@@ -19,7 +19,12 @@ export type Chapter = {
   /** what kind of place it is (café, park…), used to pick sidequests */
   kind?: string
 }
+export type PlaceSource = { provider: string; updatedAt: string; attributionURL: string }
+
 export type Opening = {
+  origin?: {lat:number;lng:number}
+  source?: PlaceSource
+  estimatedMinutes?: number
   id: string
   title: string
   tags: string
@@ -170,6 +175,9 @@ export const OPENINGS: Opening[] = [
 ]
 
 export type Story = {
+  origin?: {lat:number;lng:number}
+  source?: PlaceSource
+  estimatedMinutes?: number
   id: string
   title: string
   openingId: string
@@ -206,6 +214,7 @@ export function buildStory(o: Opening): Story {
     id: `${o.id}-${Date.now()}`,
     title: TITLES[o.id] ?? o.title,
     openingId: o.id,
+    origin: o.origin, source: o.source, estimatedMinutes: o.estimatedMinutes,
     premise: o.premise,
     chapters: o.chapters.map((c) => ({ ...c })),
     moments: {},
@@ -424,9 +433,9 @@ export function chapterMeta(s: Story, i: number): PlaceMeta {
 
 function baseMeta(s: Story, i: number): PlaceMeta {
   const c = s.chapters[i]
+  if (c.ll) return { lat: c.ll.lat, lng: c.ll.lng, badge: c.place.split(' ').slice(-1)[0] + ' Fan', tasks: categoryTasks(`${c.place} ${c.kind ?? ''}`) }
   const known = PLACE_META[c.place]
   if (known) return known
-  if (c.ll) return { lat: c.ll.lat, lng: c.ll.lng, badge: c.place.split(' ').slice(-1)[0] + ' Fan', tasks: categoryTasks(`${c.place} ${c.kind ?? ''}`) }
   const base = OPENINGS.find((o) => o.id === s.openingId)?.chapters[i]
   const b = (base && PLACE_META[base.place]) ?? Object.values(PLACE_META)[0]
   const h = [...c.place].reduce((a, ch) => a + ch.charCodeAt(0), 0)
@@ -440,7 +449,7 @@ function baseMeta(s: Story, i: number): PlaceMeta {
 
 /** Straight-line metres from where you start through every stop. */
 export function tripMeters(s: Story): number {
-  let prev = { lat: 40.7329, lng: -74.0031 }
+  let prev = s.origin ?? { lat: 40.7329, lng: -74.0031 }
   return s.chapters.reduce((sum, _c, i) => { const m = chapterMeta(s, i); const d = distance(prev, { lat: m.lat, lng: m.lng }); prev = { lat: m.lat, lng: m.lng }; return sum + d }, 0)
 }
 

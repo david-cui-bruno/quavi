@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flock, safeSurface } from '../brand/Persona'
-import { OPENINGS, PLACE_META, buildStory, categoryTasks, placeInfo, startStory, type Chapter, type Story } from '../data'
+import { OPENINGS, PLACE_META, chapterMeta, buildStory, categoryTasks, placeInfo, startStory, type Chapter, type Story } from '../data'
 import { distance, fmtDist, type LatLng } from '../geo'
 import { GameHUD, coinsFor } from '../GameMap'
 import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
@@ -35,24 +35,25 @@ function questTrip(): Trip {
 }
 
 export function Explore() {
-  const { go, say, update, s } = useStore()
+  const { go, say, update, s, account } = useStore()
   const tr = useTracking()
   const [q, setQ] = useState('')
   const submit = () => { if (q.trim()) go('route', { dest: q.trim() }) }
-  const surprise = () => { update((st) => ({ ...st, story: startStory(OPENINGS[Math.floor(Math.random() * 3)], st.user), chapter: 0 })); say('Surprise picked'); go('details') }
-  const questLL = (place: string) => ({ lat: PLACE_META[place].lat, lng: PLACE_META[place].lng })
-  const pins: RealPin[] = QUESTS.map((x) => ({ id: x.place, ll: questLL(x.place), kind: 'quest', label: x.place, quest: true, onClick: () => go('stop', { trip: questTrip(), sel: x.place }) }))
-  const route = useMemo(() => [START, ...QUESTS.slice(0, 3).map((x) => questLL(x.place))], [])
+  const surprise = () => { if (account) { go('mood'); return } update((st) => ({ ...st, story: startStory(OPENINGS[Math.floor(Math.random() * 3)], st.user), chapter: 0 })); say('Surprise picked'); go('details') }
+  const nearby = account ? (s.story?.source ? s.story.chapters.map((c,i)=>({place:c.place,persona:c.persona,ll:c.ll!,kind:c.kind??'Local spot',about:c.desc,tasks:chapterMeta(s.story!,i).tasks})) : []) : QUESTS.map(x=>({...x,ll:{lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng},kind:placeInfo(x.place).kind,about:placeInfo(x.place).about,tasks:PLACE_META[x.place].tasks}))
+  const currentTrip = ():Trip => { const found=nearby.map(x=>({id:x.place,name:x.place,ll:x.ll,kind:x.kind,about:x.about}));return {dest:found[found.length-1],quests:found.slice(0,-1)} }
+  const pins: RealPin[] = nearby.map(x=>({id:x.place,ll:x.ll,kind:'quest',label:x.place,quest:true,onClick:()=>go('stop',{trip:account?currentTrip():questTrip(),sel:x.place})}))
+  const route = useMemo(()=> account ? (s.story?.source ? [s.story.origin??tr.pos,...s.story.chapters.filter(c=>c.ll).map(c=>c.ll!)] : [tr.pos]) : [START,...QUESTS.slice(0,3).map(x=>({lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng}))],[account,s.story,tr.pos])
   const got = s.game.collected.explore ?? []
   const coins = useMemo(() => coinsFor(route, got), [route, got])
   const collect = useCallback((id: number) => update((st) => { const g = st.game.collected.explore ?? []; return g.includes(id) ? st : { ...st, game: { ...st.game, coins: st.game.coins + 1, collected: { ...st.game.collected, explore: [...g, id] } } } }), [update])
   useCoinCollect(tr.pos, coins, collect)
-  const ranked = [...QUESTS].map((x) => ({ ...x, d: distance(tr.pos, { lat: PLACE_META[x.place].lat, lng: PLACE_META[x.place].lng }) })).sort((a, b) => a.d - b.d)
+  const ranked = nearby.map((x) => ({ ...x, d: distance(tr.pos, x.ll) })).sort((a, b) => a.d - b.d)
   const quests = Object.keys(s.game.done).filter((k) => !k.endsWith('!')).length
   return (
     <Screen$ tabs="explore" flush>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 360 }}>
-        <RealMap pins={pins} route={route} coins={coins} you={tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 200, bottom: 30 }} />
+        <RealMap pins={pins} route={route} coins={coins} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 200, bottom: 30 }} />
       </div>
       <div className="hud-inline" style={{ position: 'absolute', left: 24, right: 24, top: 54, zIndex: 8 }}><GameHUD /></div>
       <form className="abs row" onSubmit={(e) => { e.preventDefault(); submit() }} style={{ left: 24, right: 24, top: 114, height: 64, borderRadius: 32, background: 'var(--white)', padding: '0 20px 0 22px', zIndex: 8, gap: 12, boxShadow: '0 4px 18px rgba(30,27,22,.18)' }}>
@@ -66,16 +67,17 @@ export function Explore() {
       </form>
       <div className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
         <div className="row" style={{ justifyContent: 'space-between', padding: '0 24px' }}>
-          <div><div className="kicker">Quests nearby</div><h2 className="h1 h-xs" style={{ margin: '2px 0 0' }}>What’s around the corner?</h2></div>
+          <div><div className="kicker">{account ? 'Recent detour stops' : 'Demo quests nearby'}</div><h2 className="h1 h-xs" style={{ margin: '2px 0 0' }}>What’s around the corner?</h2></div>
           <span className="pill" style={{ background: 'var(--yellow)' }}>{quests} cleared</span>
         </div>
         <div className="chips scroll" style={{ gap: 10, margin: '12px 0', padding: '0 24px' }}>
+          {account && !ranked.length && <p className="small" style={{padding:'10px 0'}}>Choose an area to find real nearby stops.</p>}
           {ranked.map((x, i) => {
-            const m = PLACE_META[x.place]
+            const m = x
             const bgn = safeSurface(flock(x.persona, 'Orange'), (['yellow-p', 'orange-p', 'ink-p'] as const)[i % 3])
             const bg = `var(--${bgn})`
             return (
-              <button key={x.place} className="tile" onClick={() => go('stop', { trip: questTrip(), sel: x.place })} style={{ flex: 'none', width: 140, height: 124, padding: 0, background: bg, color: bgn === 'ink-p' || bgn === 'ink' ? 'var(--paper)' : 'var(--ink)' }}>
+              <button key={x.place} className="tile" onClick={() => go('stop', { trip: account ? currentTrip() : questTrip(), sel: x.place })} style={{ flex: 'none', width: 140, height: 124, padding: 0, background: bg, color: bgn === 'ink-p' || bgn === 'ink' ? 'var(--paper)' : 'var(--ink)' }}>
                 <div className="abs" style={{ right: 16, bottom: 16 }}><PinIcon size={30} color={bgn === 'orange-p' ? '#1E1B16' : '#EE6A2C'} /></div>
                 <div className="h1" style={{ position: 'absolute', left: 18, top: 18, right: 40, fontSize: 16, lineHeight: 1.05 }}>{x.place}</div>
                 <span className="xp" style={{ position: 'absolute', left: 18, bottom: 40, color: 'var(--ink)' }}>{m.tasks.length} quests</span>
@@ -112,7 +114,7 @@ function tripStory(stops: Found[], origin: LatLng): Story {
     prev = f.ll
     return { title: f.name, place: f.name, meta: `${f.name} · ${i === stops.length - 1 ? 'your destination' : '20 min'}`, mins: 20, desc: f.about, walk, persona: duckFor(f.kind, i), color: 'Orange', alts: [], at: [24 + i * 28, 62 - i * 16], ll: f.ll, kind: f.kind }
   })
-  return { ...base, id: `trip-${Date.now()}`, title: stops.length > 1 ? `On the way to ${dest.name}` : `To ${dest.name}`, premise: stops.length > 1 ? `Heading to ${dest.name}, with a detour on the way.` : `Heading to ${dest.name}.`, chapters, status: 'active' }
+  return { ...base, id: `trip-${Date.now()}`, origin, title: stops.length > 1 ? `On the way to ${dest.name}` : `To ${dest.name}`, premise: stops.length > 1 ? `Heading to ${dest.name}, with a detour on the way.` : `Heading to ${dest.name}.`, chapters, status: 'active' }
 }
 
 /** Up to two detours that are close to the path and different from each other. */
@@ -131,9 +133,9 @@ function along(p: LatLng, a: LatLng, b: LatLng) {
 }
 
 export function RouteScreen() {
-  const { s, route, go, back } = useStore()
+  const { s, route, go, back, account } = useStore()
   const tr = useTracking()
-  const origin = useRef(tr.pos).current
+  const [origin] = useState(tr.pos)
   const typed = String(route.params?.dest ?? 'Washington Square Park')
   const [q, setQ] = useState(typed)
   const [dest, setDest] = useState<Found | null>(null)
@@ -158,9 +160,10 @@ export function RouteScreen() {
       if (!ac.signal.aborted) setLooking(false)
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      setDest(SAMPLE_DEST); setQuests(sampleQuests()); setStatus('offline'); setLooking(false)
+      if(!account){setDest(SAMPLE_DEST);setQuests(sampleQuests())}
+      setStatus('offline');setLooking(false)
     }
-  }, [])
+  }, [account,origin,s.user.age21])
   useEffect(() => { void run(typed); return () => abort.current?.abort() }, [run, typed])
   // until you pick for yourself, the two nearest different detours are already on your route
   useEffect(() => { if (!touched.current) setPicked(bestDetours(quests)) }, [quests])
@@ -194,13 +197,13 @@ export function RouteScreen() {
         </div>
         <div className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '22px 0 112px', zIndex: 6 }}>
           <div style={{ padding: '0 24px' }}>
-            <div className="kicker">{status === 'notfound' ? 'No match' : status === 'offline' ? 'Offline · sample stops' : 'Where you’re going'}</div>
+            <div className="kicker">{status === 'notfound' ? 'No match' : status === 'offline' ? (account ? 'Place search unavailable' : 'Offline · sample stops') : 'Where you’re going'}</div>
             <h2 className="h1 h-s" style={{ margin: '4px 0 2px' }}>
-              {status === 'loading' ? 'Finding your place…' : status === 'notfound' ? 'Try another name.' : dest?.name}
+              {status === 'loading' ? 'Finding your place…' : status === 'notfound' ? 'Try another name.' : status === 'offline' && account && !dest ? 'Try again online.' : dest?.name}
             </h2>
             <p className="body muted" style={{ marginBottom: 12 }}>
               {status === 'notfound' ? 'I couldn’t find that near you. Try the shop’s name and street.'
-                : status === 'loading' ? 'Looking it up on the map.'
+                : status === 'loading' ? 'Looking it up on the map.' : status === 'offline' && account ? 'Search or nearby suggestions are unavailable. Try the search again; no sample destinations were substituted.'
                 : [dest?.kind, dest?.address].filter(Boolean).join(' · ')}
             </p>
             {dest && stops.length > 0 && <p className="small" style={{ fontWeight: 500, margin: '-4px 0 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>You → {stops.map((f) => f.name).join(' → ')} → {dest.name} · {mins} min{extra > 0 ? ` (+${extra} for detours)` : ''}</p>}
@@ -228,7 +231,7 @@ export function RouteScreen() {
 export function Stop() {
   const { s: appState, route, back, go, update, say } = useStore()
   const tr = useTracking()
-  const origin = useRef(tr.pos).current
+  const [origin] = useState(tr.pos)
   const trip = useMemo<Trip>(() => {
     const t = route.params?.trip as Trip | undefined
     return t ?? { dest: SAMPLE_DEST, quests: sampleQuests() }

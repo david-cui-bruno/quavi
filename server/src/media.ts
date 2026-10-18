@@ -71,11 +71,9 @@ export function cloudStorageSigner(
       if (finalKey !== key) {
         await adapter.verify(key, contentType, bytes);
         try {
-          await bucket
-            .file(key)
-            .copy(bucket.file(finalKey), {
-              preconditionOpts: { ifGenerationMatch: 0 },
-            });
+          await bucket.file(key).copy(bucket.file(finalKey), {
+            preconditionOpts: { ifGenerationMatch: 0 },
+          });
         } catch (error) {
           if ((error as { code?: number }).code !== 412) throw error;
         }
@@ -99,6 +97,10 @@ export function cloudStorageSigner(
     },
     async remove(key) {
       await bucket.file(key).delete({ ignoreNotFound: true });
+      if (key.startsWith("pending/"))
+        await bucket
+          .file(key.replace(/^pending\//, "users/"))
+          .delete({ ignoreNotFound: true });
     },
     async removeOwner(owner) {
       for (const prefix of ["users", "pending"])
@@ -108,14 +110,12 @@ export function cloudStorageSigner(
         });
     },
     async read(key) {
-      const [url] = await bucket
-        .file(key)
-        .getSignedUrl({
-          version: "v4",
-          action: "read",
-          expires: Date.now() + 5 * 60 * 1000,
-          responseDisposition: "attachment",
-        });
+      const [url] = await bucket.file(key).getSignedUrl({
+        version: "v4",
+        action: "read",
+        expires: Date.now() + 5 * 60 * 1000,
+        responseDisposition: "attachment",
+      });
       return url;
     },
   };

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { distance, stepToward, type LatLng } from './geo'
+import { useStore } from './store'
 
 export type TrackMode = 'demo' | 'live'
 type Perm = 'unknown' | 'granted' | 'denied' | 'unsupported'
@@ -29,8 +30,9 @@ export const useTracking = () => useContext(TrackCtx)
 const MODE_KEY = 'quavi.track.mode'
 
 export function TrackingProvider({ children }: { children: ReactNode }) {
+  const { s } = useStore()
   const [mode, setModeState] = useState<TrackMode>(() => (localStorage.getItem(MODE_KEY) as TrackMode) || 'demo')
-  const [pos, setPos] = useState<LatLng>(START)
+  const [pos, setPos] = useState<LatLng>(() => s.story?.origin ?? START)
   const [accuracy, setAccuracy] = useState<number | undefined>()
   const [perm, setPerm] = useState<Perm>(() => ('geolocation' in navigator ? 'unknown' : 'unsupported'))
   const [walking, setWalking] = useState(false)

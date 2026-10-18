@@ -1,6 +1,8 @@
+import { CityPicker } from '../CityPicker'
+import { useTracking } from '../tracking'
 import { useEffect, useState } from 'react'
 import { BODY_PLAIN, Persona, flock, safeSurface, type Colorway } from '../brand/Persona'
-import { FRIEND_STORIES, MOODS, OPENINGS, noteLines, startStory, type Story } from '../data'
+import { FRIEND_STORIES, MOODS, OPENINGS, noteLines, startStory, type Story, type Opening } from '../data'
 import { useStore } from '../store'
 import { Arrow, Badge, BackBtn, BG, Btn, Check, Persona$, RatingDucks, Round, SURFACE, Screen$, Sheet, StatRow, onDark, type Bg } from '../ui'
 
@@ -43,7 +45,7 @@ export function SaveSheet({ story, onClose }: { story: Story; onClose: () => voi
       })}
       {adding ? (
         <div className="field row2" style={{ margin: '8px 0 10px' }}>
-          <div><label htmlFor="list-name">LIST NAME</label><input id="list-name" autoComplete="off" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addList()} placeholder="Rainy days" /></div>
+          <div><label htmlFor="list-name">LIST NAME</label><input id="list-name" maxLength={80} autoComplete="off" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addList()} placeholder="Rainy days" /></div>
           <button style={{ fontWeight: 700, fontSize: 13 }} onClick={addList}>Add</button>
         </div>
       ) : (
@@ -140,41 +142,52 @@ export function Home() {
 const MOOD_TO_OPENING: Record<string, string> = { bailed: 'cozy', closed: 'lucky', mood: 'lucky', weather: 'cozy', late: 'bold' }
 
 export function Openings() {
-  const { s, update, go } = useStore()
+  const { s, update, go, account } = useStore()
+  const tracking = useTracking()
+  const [choices,setChoices] = useState<Opening[]>(account ? [] : OPENINGS)
+  const [liveOrigin,setLiveOrigin] = useState(false)
+  const [notice,setNotice] = useState('')
   const [sel, setSel] = useState(OPENINGS.findIndex((o) => o.id === MOOD_TO_OPENING[s.mood ?? 'bailed']))
   const [order, setOrder] = useState([0, 1, 2])
   const start = (idx: number) => {
-    const o = OPENINGS[idx]
+    const o = choices[idx]
+    if(!o)return
+    if(o.origin){tracking.setMode(liveOrigin?'live':'demo');tracking.teleport(o.origin)}
     update((st) => ({ ...st, story: startStory(o, st.user), chapter: 0 }))
     go('writing')
   }
   return (
     <Screen$ bg="yellow">
+      <div className="col" style={{flex:1,minHeight:0,overflowY:'auto',paddingBottom:4}}>
       <BackBtn />
-      <div className="kicker" style={{ marginTop: 14 }}>Three ways tonight could go</div>
+      <div className="kicker" style={{ marginTop: 14 }}>{account ? 'A few ways tonight could go' : 'Three ways tonight could go'}</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Pick your<br />opening.</h1>
+      {account ? <CityPicker onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}} /> : <p className="small" style={{marginBottom:14}}>These are demo openings in West Village. <button style={{textDecoration:'underline',minHeight:44}} onClick={()=>go('login')}>Log in for nearby places</button></p>}
+      {notice&&<p role="status" className="small" style={{marginBottom:12}}>{notice}</p>}
       <div className="col stagger" style={{ gap: 14 }}>
-        {order.map((oi) => {
-          const o = OPENINGS[oi]
+        {order.filter(i=>choices[i]).map((oi) => {
+          const o = choices[oi]
           const bg = safeSurface(flock(o.persona, o.color), SURFACE[o.bg] as 'paper') as Bg
           const dark = onDark(bg)
           const on = sel === oi
           return (
-            <button key={o.id} onClick={() => setSel(oi)} className="tile fade-in" style={{ background: BG[bg], height: 112, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
+            <button key={o.id} onClick={() => setSel(oi)} className="tile fade-in" style={{ background: BG[bg], minHeight: 132, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
               <div className="h1" style={{ fontSize: 25 }}>{o.title}</div>
               <div className="small" style={{ fontWeight: 500 }}>{o.tags}</div>
-              <div className="small" style={{ fontWeight: 700, color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
-              <div className="pcs" style={{ right: 14, bottom: -26 }}><Persona spec={flock(o.persona, o.color)} size={96} /></div>
+              <div className="small" style={{ fontWeight: 700, maxWidth:o.source?'calc(100% - 72px)':undefined, overflowWrap:'anywhere', color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
+              <div className="pcs" style={{ right: 14, bottom: o.source?4:-26 }}><Persona spec={flock(o.persona, o.color)} size={o.source?60:96} /></div>
               {on && <span className="tick" style={{ left: 'auto', right: 14, top: 14, bottom: 'auto' }}><Check /></span>}
             </button>
           )
         })}
       </div>
       <div className="grow" />
-      <Btn kind="secondary" onClick={() => start(sel)}>Go with this one</Btn>
+      {choices[0]?.source&&<p className="small" style={{margin:'12px 0'}}>Places: <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a> · snapshot {new Date(choices[0].source.updatedAt).toLocaleDateString()}. Hours unverified.</p>}
+      <Btn kind="secondary" disabled={!choices.length} onClick={() => start(sel)}>Go with this one</Btn>
       <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
-        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => start(Math.floor(Math.random() * 3))}>Pick for me</button>
-        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => { setOrder((o) => [o[1], o[2], o[0]]); }}>Show me different openings</button>
+        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} disabled={!choices.length} onClick={() => start(Math.floor(Math.random() * choices.length))}>Pick for me</button>
+        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => { setOrder((o) => o.length ? [...o.slice(1),o[0]] : o); }}>Show me different openings</button>
+      </div>
       </div>
     </Screen$>
   )
@@ -191,7 +204,7 @@ export function Writing() {
     return () => [a, b, c, d].forEach(window.clearTimeout)
   }, [go])
   const lines = [
-    `Found ${s.story?.chapters.length ?? 3} places that are still open`,
+    s.story?.source ? `Found ${s.story.chapters.length} nearby places · hours unverified` : 'Previewing three demo stops · hours not checked',
     `Checked your mood: “${(MOODS.find((m) => m.id === s.mood)?.label ?? 'dressed up').toLowerCase()}”`,
     'Picking the twist…',
   ]

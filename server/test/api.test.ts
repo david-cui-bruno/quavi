@@ -472,3 +472,14 @@ test('the state contract accepts prototype stories, shared samples and preferenc
   const {appStateSchema}=await import('../src/state-schema.js')
   for(const opening of OPENINGS) assert.doesNotThrow(()=>appStateSchema.parse({...state('Maya'),story:buildStory(opening),shelf:FRIEND_STORIES}))
 })
+
+test('city routes require identity and a configured provider and never return demo fallback on failure',async()=>{
+  const input={origin:{lat:48.8566,lng:2.3522},label:'Paris',interests:['cozy'],minutes:60}
+  assert.equal((await app.inject({method:'POST',url:'/v1/me/detours',payload:input})).statusCode,401)
+  assert.equal((await app.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:input})).statusCode,503)
+  const real=await createApp({pool,auth,origins:[],detours:{async nearby(origin){return{updatedAt:new Date().toISOString(),venues:['coffee_shop','bookstore','park','museum'].map((kind,i)=>({id:String(i),name:'Place '+i,kind,ll:{lat:origin.lat+i*.001,lng:origin.lng},confidence:.95,status:'open'}))}}}})
+  try{
+    const r=await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:input});assert.equal(r.statusCode,200);assert.ok(r.json().openings.length);assert.match(r.json().notes[0],/unverified/)
+    assert.equal((await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:{...input,origin:{lat:999,lng:0}}})).statusCode,400)
+  }finally{await real.close()}
+})

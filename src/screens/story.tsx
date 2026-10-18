@@ -57,12 +57,13 @@ export function Details() {
         <BackBtn onClick={() => reset('home')} />
         <button className="chip" onClick={() => setSave(true)} aria-label="Save this plan to a list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>Save for later</button>
       </div>
+      {story.source&&<p className="small" style={{marginTop:14}}>Real nearby venues from <a href={story.source.attributionURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a>. Hours, access and prices unverified; walking times are estimates.</p>}
       <div className="kicker" style={{ marginTop: 14 }}>Your plan for tonight</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 12px' }}>{story.title.split(' ').slice(0, 2).join(' ')}<br />{story.title.split(' ').slice(2).join(' ')}</h1>
       <div style={{ display: 'flex', margin: '4px 0 14px', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
         {([
-          [prefs.time === '60 min' ? `${total(story)} min` : prefs.time, 'Time'],
-          [{ Free: '$0–5', '$ Low': '$12–20', '$$ Treat myself': '$40+' }[story.prefs?.spend ?? 'Free'] ?? '$0–5', 'Spend'],
+          [story.source ? `~${story.estimatedMinutes ?? total(story)} min` : prefs.time === '60 min' ? `${total(story)} min` : prefs.time, 'Time'],
+          [story.source ? 'Check prices' : { Free: '$0–5', '$ Low': '$12–20', '$$ Treat myself': '$40+' }[story.prefs?.spend ?? 'Free'] ?? '$0–5', 'Spend'],
           [`${(tripMeters(story) / 1609).toFixed(1)} mi`, story.prefs?.move ?? 'Walking'],
         ] as const).map(([value, label], k) => (
           <div key={label} style={{ flex: 1, paddingLeft: k ? 16 : 0, borderLeft: k ? '1px solid rgba(30,27,22,.14)' : 'none' }}>
@@ -96,7 +97,7 @@ export function Details() {
         <Sheet label="Adjust the plan" onClose={() => setAdjust(false)}>
           <div className="kicker">A few small tweaks</div>
           <h2 className="h1 h-s" style={{ margin: '4px 0 12px' }}>Make it your kind of day.</h2>
-          {groups.map(([label, key, opts]) => (
+          {groups.filter(([,key])=>!story.source||key==='who').map(([label, key, opts]) => (
             <div key={key} style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>{label}</div>
               <div className="chips">{opts.map((o) => <Chip key={o} on={prefs[key] === o} onClick={() => setPrefs((p) => ({ ...p, [key]: o }))}>{o}</Chip>)}</div>
@@ -268,7 +269,7 @@ function ShareSheet({ story, caps, onClose }: { story: Story; caps: string[]; on
       <h2 className="h1 h-s" style={{ margin: '4px 0 10px' }}>{story.title}</h2>
       <div className="field" style={{ height: 'auto', padding: '14px 24px', borderRadius: 24, marginBottom: 12 }}>
         <label>A NOTE TO YOUR FRIENDS (OPTIONAL)</label>
-        <textarea aria-label="Intro to your friends" rows={2} value={story.intro ?? ''} placeholder="You will not believe who I met…" onChange={(e) => setStory((s) => ({ ...s, intro: e.target.value }))} style={{ width: '100%', fontWeight: 500, fontSize: 15, resize: 'none' }} />
+        <textarea maxLength={4000} aria-label="Intro to your friends" rows={2} value={story.intro ?? ''} placeholder="You will not believe who I met…" onChange={(e) => setStory((s) => ({ ...s, intro: e.target.value }))} style={{ width: '100%', fontWeight: 500, fontSize: 15, resize: 'none' }} />
       </div>
       <div className="col" style={{ gap: 12, marginBottom: 14 }}>
         {story.chapters.map((c, i) => (
@@ -323,7 +324,7 @@ export function Tell() {
                 </div>
                 <div className="col" style={{ flex: 1 }}>
                   <span className="kicker">Chapter {i + 1} · {c.place}</span>
-                  <textarea aria-label={`Caption for chapter ${i + 1}`} rows={2} value={caps[i] ?? ''} onChange={(e) => setStory((s0) => { const n = [...(s0.captions.length ? s0.captions : caps)]; n[i] = e.target.value; return { ...s0, captions: n } })} className="h1" style={{ fontSize: 16, lineHeight: 1.1, resize: 'none', width: '100%' }} />
+                  <textarea maxLength={4000} aria-label={`Caption for chapter ${i + 1}`} rows={2} value={caps[i] ?? ''} onChange={(e) => setStory((s0) => { const n = [...(s0.captions.length ? s0.captions : caps)]; n[i] = e.target.value; return { ...s0, captions: n } })} className="h1" style={{ fontSize: 16, lineHeight: 1.1, resize: 'none', width: '100%' }} />
                 </div>
               </div>
               {doneTasks.length > 0 && (
@@ -334,7 +335,7 @@ export function Tell() {
                       <div key={t.id} className="quote">
                         <b>{t.text}</b>
                         {isPhotoTask(t) && story.taskPhotos?.[k] && <Photo src={story.taskPhotos[k]} alt={`Photo: ${t.text}`} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 14, margin: '6px 0' }} />}
-                        <textarea aria-label={`Your words for ${t.text}`} rows={2} value={story.taskNotes?.[k] ?? ''} placeholder={notePrompt(t)} onChange={(e) => setStory((s0) => ({ ...s0, taskNotes: { ...(s0.taskNotes ?? {}), [k]: e.target.value } }))} style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, fontWeight: 500 }} />
+                        <textarea maxLength={4000} aria-label={`Your words for ${t.text}`} rows={2} value={story.taskNotes?.[k] ?? ''} placeholder={notePrompt(t)} onChange={(e) => setStory((s0) => ({ ...s0, taskNotes: { ...(s0.taskNotes ?? {}), [k]: e.target.value } }))} style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, fontWeight: 500 }} />
                       </div>
                     )
                   })}

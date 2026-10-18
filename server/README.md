@@ -49,6 +49,9 @@ from that verified token; there are no client-selectable owner IDs in the API.
 
 | Route | Behavior |
 | --- | --- |
+| `DELETE /v1/me` | Recent-authenticated, confirmed and retryable account deletion; returns 202 after access is blocked |
+| `POST /v1/me/detours` | Authenticated nearby route generation with per-account/project quotas and explicit no-result behavior |
+| `POST /v1/me/media/:id/complete` | Verifies a staged image and finalizes an immutable private photo |
 | `GET /v1/me` | Returns the verified Firebase user ID |
 | `GET /v1/me/state` | Reads only this user's private document; returns revision 0 and null state for a new account |
 | `PUT /v1/me/state` | Accepts `{state: {...}, revision: number}`; saves only if the expected revision matches; returns 409 on a conflict |
@@ -74,7 +77,7 @@ region `us-central1`, billing Framewise Health Main (ending DE54D6).
 | Resource | Configuration |
 | --- | --- |
 | Cloud Run `quavi-api` | `https://quavi-api-532892298664.us-central1.run.app`; 0–3 instances, 1 CPU / 512 MiB, concurrency 20, pool max 5, readiness/liveness probes |
-| Artifact Registry `quavi` | Image `us-central1-docker.pkg.dev/quavi-dev-dc824/quavi/api:dev-v2`; Cloud Build builds in Google Cloud |
+| Artifact Registry `quavi` | Image `us-central1-docker.pkg.dev/quavi-dev-dc824/quavi/api:city-v5`; Cloud Build builds in Google Cloud |
 | Cloud SQL `quavi-dev-db` | PostgreSQL 16 Enterprise, db-g1-small, 10 GiB SSD, deletion protection, daily backups (08:00 UTC, retain 7), point-in-time recovery |
 | Database `quavi` | `quavi_migrator` owns schema; `quavi_runtime` has DML only on app tables, no schema creation, role/database creation or migration-table access |
 | Migration job `quavi-migrate` | Runs migrations then `dist/bootstrap.js` with a separate migration identity |
@@ -150,7 +153,7 @@ account edits are cached, but uncached private photos need a connection. Conflic
 resolution currently offers an explicit cloud-copy replacement; merging divergent
 local edits is not implemented. Initial cloud reads and token refresh need internet.
 
-Friends/circle remain local demo data, recommendation generation is scripted,
+Friends/circle remain local demo data, captions remain scripted,
 background location is unimplemented, and XP/rewards are client-controlled demo
 values. These are separate roadmap stages, not services supplied by this deploy.
 
@@ -190,3 +193,41 @@ not a trusted financial or XP ledger.
 When deploying future API versions, also update the maintenance image to the same
 commit so cleanup follows the current schema. Use `gcloud run jobs update
 quavi-maintenance --project=quavi-dev-dc824 --region=us-central1 --image=...`.
+
+
+## City-aware detours
+
+`POST /v1/me/detours` accepts an origin `{lat,lng}`, area label, interests, optional
+mood/age21 and 30/60/120 minute duration. Firebase identity, lifecycle checks and
+SQL quotas are enforced. A slow provider lookup releases the account transaction,
+then rechecks the deletion tombstone before responding. No-route and provider-error
+responses never fall back to demo venues.
+
+The provider queries the spatially clustered public BigQuery table
+`bigquery-public-data.overture_maps.place`, using the API service account’s BigQuery
+Job User permission. It filters operating status/confidence, uses strict venue
+categories and applies age/name exclusions, uniqueness, distance/time and preference
+ranking. Specific coordinates take precedence over any prototype name match.
+`operating_status=open` is not live opening hours; every route states hours/access/
+prices are unverified. The app shows Overture attribution and the table update date.
+A dataset older than 90 days is rejected. Live hours, pedestrian/access validation,
+category accuracy and international acceptance remain the next detour stage.
+
+Public venue caches contain coarse area keys (about 1 km), venue records and source
+metadata, with a 24-hour TTL; precise request GPS and user identities are not stored
+in this cache. Origin coordinates are saved only as part of the user’s chosen story.
+Provider SQL uses parameters, a 20 GiB maximum-bytes-billed ceiling and a 20-second
+job timeout. Shared limits are 12 generation requests/account/day and 100 uncached
+provider lookups/project/day, including failed provider attempts. Cache versioning
+invalidates older category mappings. No browser Maps key or public Overpass backend
+is needed. API logs redact request bodies and authorization headers.
+
+`CITY_DETOURS_ENABLED=true` enables the provider. `venue_cache` is an additive
+migration; runtime DML is granted by bootstrap. The deployment script updates both
+migration and maintenance images before serving the matching API version. The
+separate public Photon geocoder, OSM tiles and walking directions provider still
+need production service agreements or replacements before public launch.
+
+Sources: [Overture Places](https://docs.overturemaps.org/guides/places/),
+[attribution/licensing](https://docs.overturemaps.org/attribution/),
+[BigQuery public data](https://docs.cloud.google.com/bigquery/public-data).

@@ -161,7 +161,7 @@ export function Active() {
     else update((st) => ({ ...st, chapter: st.chapter + 1 }))
   }
 
-  const route = useMemo(() => [START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas])
+  const route = useMemo(() => [story.origin ?? START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas, story.origin])
   const reached = i + (arrived ? 1 : 0)
   // the street route to this stop, then straight lines to the stops after it
   const legRoute = useMemo(() => [...(nav.route ? nav.route.geometry : [tr.pos, target]), ...metas.slice(i + 1).map((m) => ({ lat: m.lat, lng: m.lng }))], [nav.route, i, metas]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -285,7 +285,7 @@ export function Active() {
                         </>
                       )}
                       {!isPhotoTask(t) && <div className="kicker" style={{ marginBottom: 6 }}>In your words · shared with friends</div>}
-                      <textarea
+                      <textarea maxLength={4000}
                         aria-label={`In your own words: ${t.text}`}
                         rows={Math.min(7, Math.max(3, Math.ceil((story.taskNotes?.[nk] ?? '').length / 32)))}
                         value={story.taskNotes?.[nk] ?? ''}
