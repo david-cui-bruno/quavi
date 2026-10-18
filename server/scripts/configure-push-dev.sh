@@ -15,7 +15,7 @@ gcloud run jobs "$verb" quavi-push --project="$project" --region="$region" \
  --set-secrets=DATABASE_URL=quavi-runtime-database-url:1,APNS_PRIVATE_KEY=quavi-apns-private-key:1 \
  --set-env-vars="GOOGLE_CLOUD_PROJECT=$project,APNS_KEY_ID=$APNS_KEY_ID,APNS_TEAM_ID=R45248279P" \
  --command=node --args=dist/push-worker.js --tasks=1 --parallelism=1 \
- --max-retries=1 --task-timeout=300 --cpu=1 --memory=256Mi --quiet
+ --max-retries=1 --task-timeout=300 --cpu=1 --memory=512Mi --quiet
 scheduler="quavi-scheduler@$project.iam.gserviceaccount.com"
 gcloud run jobs add-iam-policy-binding quavi-push --project="$project" --region="$region" \
  --member="serviceAccount:$scheduler" --role=roles/run.invoker --quiet >/dev/null
