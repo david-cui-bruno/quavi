@@ -560,8 +560,8 @@ notice revocation, private-outing retention and republish prevention. Native SE
 checks cover Home unread badge → inbox → Friends → acceptance, story notice →
 private story/report, and staff queue → reported text/photo → removal → resolved
 queue. The 35-command onboarding/demo capture flow also passes. Disposable accounts
-are blocked for deletion; cold-launch session clearing and credential cleanup are
-recorded at completion.
+are blocked for deletion; native cold launch returns to Welcome and private
+credential/flow files were removed.
 
 Signed **1.0 (14)** is verified **Testing** in Quavi Development, with beta notes
 saved. Physical push receipt/permission/tap/logout acceptance remains outstanding.
