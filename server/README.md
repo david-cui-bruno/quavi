@@ -208,10 +208,13 @@ The provider queries the spatially clustered public BigQuery table
 Job User permission. It filters operating status/confidence, uses strict venue
 categories and applies age/name exclusions, uniqueness, distance/time and preference
 ranking. Specific coordinates take precedence over any prototype name match.
-`operating_status=open` is not live opening hours; every route states hours/access/
-prices are unverified. The app shows Overture attribution and the table update date.
-A dataset older than 90 days is rejected. Live hours, current access validation,
-category accuracy and international acceptance remain the next detour stage.
+`operating_status=open` is not live opening hours. Missing status is retained as
+`unknown`, while known temporary/permanent closures are excluded. This optional
+field is absent for much international data; requiring `open` discarded valid
+candidates. Google clients separately check reported hours for arrival and stay.
+The app shows Overture attribution and the table update date. A dataset older than
+90 days is rejected. Current access validation, category accuracy and broader
+international acceptance remain roadmap work.
 
 Public venue caches contain coarse area keys (about 1 km), venue records and source
 metadata, with a 24-hour TTL; precise request GPS and user identities are not stored
@@ -219,18 +222,20 @@ in this cache. Origin coordinates are saved only as part of the user’s chosen 
 Provider SQL uses parameters, a 20 GiB maximum-bytes-billed ceiling and a 20-second
 job timeout. Shared limits are 12 generation requests/account/day and 100 uncached
 provider lookups/project/day, including failed provider attempts. Cache versioning
-invalidates older category mappings. No browser Maps key or public Overpass backend
-is needed. API logs redact request bodies and authorization headers.
+invalidates older category/status mappings (`overture-v3`). The independent venue
+query does not use a public Overpass backend. API logs redact request bodies and authorization headers.
 
 `CITY_DETOURS_ENABLED=true` enables the provider. `venue_cache` is an additive
 migration; runtime DML is granted by bootstrap. The deployment script updates both
 migration and maintenance images before serving the matching API version. The
-separate public Photon geocoder, OSM tiles and walking directions provider still
-need production service agreements or replacements before public launch.
+separate public Photon/Nominatim search services still need production service
+agreements or replacements before public launch. Google clients use the map and
+walking providers described below; older clients retain the original map path.
 
 Sources: [Overture Places](https://docs.overturemaps.org/guides/places/),
 [attribution/licensing](https://docs.overturemaps.org/attribution/),
-[BigQuery public data](https://docs.cloud.google.com/bigquery/public-data).
+[BigQuery public data](https://docs.cloud.google.com/bigquery/public-data),
+[optional operating status](https://docs.overturemaps.org/schema/reference/places/place/).
 
 
 ### Walking feasibility checks
