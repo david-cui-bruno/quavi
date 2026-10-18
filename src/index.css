@@ -474,3 +474,6 @@ button.pill.abs { padding: 0 16px; }
 .circle-field select { min-height:44px; font:inherit; border-radius:16px; padding:10px; color:var(--ink); background:var(--paper); }
 .circle-field.field { height:auto; padding:16px 24px; }
 .circle-preview { margin:20px 0 24px; display:flex; flex-direction:column; gap:10px; }
+
+.circle-form .field > span { font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--ink-p); }
+.circle-identity > .chip { margin-top:10px; }

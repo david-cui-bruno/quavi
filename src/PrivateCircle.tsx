@@ -119,6 +119,7 @@ export function SocialFriends() {
     { data, command } = useSocial(),
     [query, setQuery] = useState(""),
     [handle, setHandle] = useState(""),
+    [editingHandle, setEditingHandle] = useState(false),
     [people, setPeople] = useState<Person[] | null>(null),
     [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
@@ -181,37 +182,49 @@ export function SocialFriends() {
             <p className="small muted">
               Give this to a friend. Only your name and handle appear in lookup.
             </p>
-            <form
-              className="circle-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void act("handle", () =>
-                  command("/profile", "PUT", {
-                    handle: handle.trim().replace(/^@/, "").toLowerCase(),
-                  }),
-                );
-              }}
+            <button
+              className="chip"
+              onClick={() => setEditingHandle((v) => !v)}
             >
-              <label className="field">
-                <span>CHANGE YOUR HANDLE</span>
-                <input
-                  aria-label="New friend handle"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  autoComplete="off"
-                  value={handle}
-                  maxLength={24}
-                  placeholder="e.g. david_wanders"
-                  onChange={(e) => setHandle(e.target.value)}
-                />
-              </label>
-              <button className="chip" disabled={!!busy || !handle.trim()}>
-                Save handle
-              </button>
-            </form>
-            <p className="small muted">
-              3–24 letters, numbers or underscores. Start with a letter.
-            </p>
+              {editingHandle ? "Cancel handle change" : "Change handle"}
+            </button>
+            {editingHandle && (
+              <>
+                <form
+                  className="circle-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void act("handle", async () => {
+                      await command("/profile", "PUT", {
+                        handle: handle.trim().replace(/^@/, "").toLowerCase(),
+                      });
+                      setEditingHandle(false);
+                      setHandle("");
+                    });
+                  }}
+                >
+                  <label className="field">
+                    <span>CHANGE YOUR HANDLE</span>
+                    <input
+                      aria-label="New friend handle"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      autoComplete="off"
+                      value={handle}
+                      maxLength={24}
+                      placeholder="e.g. david_wanders"
+                      onChange={(e) => setHandle(e.target.value)}
+                    />
+                  </label>
+                  <button className="chip" disabled={!!busy || !handle.trim()}>
+                    Save handle
+                  </button>
+                </form>
+                <p className="small muted">
+                  3–24 letters, numbers or underscores. Start with a letter.
+                </p>
+              </>
+            )}
           </div>
           <form
             className="circle-form"
@@ -480,12 +493,44 @@ export function PrivateStory() {
         </>
       ) : (
         <>
-          <p className="small" style={{ marginTop: 18 }}>
-            {shown.owner.name} · @{shown.owner.handle} · Friends only
-          </p>
-          <h1 className="h1 h-l" style={{ margin: "8px 0 18px" }}>
-            {shown.story.title}
-          </h1>
+          <div className="row" style={{ gap: 12, margin: "18px 0 12px" }}>
+            <PersonFace person={shown.owner} />
+            <div style={{ minWidth: 0 }}>
+              <b>{shown.owner.name}’s story</b>
+              <p className="small muted" style={{ overflowWrap: "anywhere" }}>
+                @{shown.owner.handle} · Friends only
+              </p>
+            </div>
+          </div>
+          <div
+            className="clip"
+            style={{
+              position: "relative",
+              borderRadius: 32,
+              minHeight: 190,
+              background: "var(--orange-p)",
+              padding: "24px 108px 24px 24px",
+              marginBottom: 18,
+              flex: "none",
+            }}
+          >
+            <h1
+              className="h1 h-s"
+              style={{
+                position: "relative",
+                zIndex: 1,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {shown.story.title}
+            </h1>
+            <div
+              aria-hidden="true"
+              style={{ position: "absolute", right: 0, bottom: -34 }}
+            >
+              <Persona spec={flock("Pip", "Yellow")} size={140} />
+            </div>
+          </div>
           {shown.story.intro && <p className="it">{shown.story.intro}</p>}
           {shown.story.chapters.map((c, i) => (
             <section className="circle-preview" key={i}>
