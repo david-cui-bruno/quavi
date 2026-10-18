@@ -560,11 +560,7 @@ export const XP_PER_LEVEL = 120
 export const levelOf = (xp: number) => 1 + Math.floor(xp / XP_PER_LEVEL)
 export const levelProgress = (xp: number) => (xp % XP_PER_LEVEL) / XP_PER_LEVEL
 export const LEVEL_NAMES = ['Hatchling', 'Wanderer', 'Pathfinder', 'Detourist', 'Cartographer', 'Legend']
-/** Rewards: every 1,000 XP earns $3 to spend at the side quests you visit. */
-export const XP_PER_REWARD = 1000
-export const REWARD_USD = 3
-export const rewardUsd = (xp: number) => Math.floor(xp / XP_PER_REWARD) * REWARD_USD
-/** Because XP turns into real money, one trip can only ever pay out this much. */
+/** Prototype balancing: limit the XP awarded per detour. Rewards have no cash value. */
 export const TRIP_XP_CAP = 25
 /** A task's share of the trip's 25 XP, weighted by how big the task used to be. */
 export function taskXp(s: Story, t: Task): number {

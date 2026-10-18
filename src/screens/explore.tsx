@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flock, safeSurface } from '../brand/Persona'
-import { OPENINGS, PLACE_META, buildStory, categoryTasks, placeInfo, rewardUsd, startStory, type Chapter, type Story } from '../data'
+import { OPENINGS, PLACE_META, buildStory, categoryTasks, placeInfo, startStory, type Chapter, type Story } from '../data'
 import { distance, fmtDist, type LatLng } from '../geo'
 import { GameHUD, coinsFor } from '../GameMap'
 import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
@@ -229,7 +229,6 @@ export function Stop() {
   const { s: appState, route, back, go, update, say } = useStore()
   const tr = useTracking()
   const origin = useRef(tr.pos).current
-  const xpNow = appState.game.xp
   const trip = useMemo<Trip>(() => {
     const t = route.params?.trip as Trip | undefined
     return t ?? { dest: SAMPLE_DEST, quests: sampleQuests() }
@@ -270,7 +269,7 @@ export function Stop() {
               <div className="clip" style={{ background: 'var(--yellow-p)', borderRadius: 28, minHeight: 138, position: 'relative', margin: '10px 0', padding: '20px 24px' }}>
                 <p className="body" style={{ width: 188, fontWeight: 500, fontSize: 14 }}>{c.about}</p>
                 {c.address && <p className="small muted" style={{ width: 188, marginTop: 8 }}>{c.address}</p>}
-                {rewardUsd(xpNow) > 0 && <p className="small" style={{ width: 188, marginTop: 8, fontWeight: 700 }}>You have ${rewardUsd(xpNow)} in rewards to use here.</p>}
+                <p className="small" style={{ width: 188, marginTop: 8, fontWeight: 500 }}>Find demo partner rewards in You. No real discount is available at this stop.</p>
                 <div className="abs" style={{ right: 28, top: 22 }}><PinIcon size={64} /></div>
               </div>
               <StatRow style={{ marginBottom: 12 }} size={18} stats={[[`+${extraMins(c)} min`, 'Detour'], [String(tasks.length), 'Sidequests']]} />
