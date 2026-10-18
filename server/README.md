@@ -438,3 +438,11 @@ Search/request quotas are 30 per hour; reports 10 per day, in addition to accoun
 request limits. Pair advisory locks serialize relationship mutations across API
 instances. Unique handles/publication rows keep retries safe. Runtime DML grants
 are explicit; no new cloud permissions or public storage are introduced.
+
+Deployed October 18, 2026 to `quavi-api-00014-flw` (100% development traffic),
+backend source `4a50dfd`; migration 007 succeeded. 74 backend and 32 client tests
+pass. Live disposable-account checks cover private real-photo delivery and denial,
+UI publication/request plus native recipient acceptance, block/unblock, unshare,
+revoked open-story clearing and native report submission. Test accounts are blocked
+for scheduled deletion and private credential files removed. Reports/moderation
+remain manual development operations; no push notifications were introduced.

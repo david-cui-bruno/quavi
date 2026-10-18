@@ -434,3 +434,19 @@ concurrent accept/block and duplicate publication. Request/search/report quotas
 bound abuse. Account deletion cascades profiles, relationships, blocks, posts and
 reports. Push notifications, a moderation dashboard, pagination and wider-beta
 social acceptance remain work. Outdoor iPhone/offline checks remain user-deferred.
+
+Verification for this phase: **74 backend tests and 32 client tests** pass, both
+TypeScript builds pass, iPhone 17/SE builds succeed and the 25-command SE smoke
+flow still passes. Three disposable live accounts verified UI publication/request,
+recipient acceptance on iPhone, private story/photo delivery, unrelated-account and
+pending denial, owner-media isolation, blocking, unblock without restored access,
+re-request/acceptance and unshare revocation. The open iPhone story cleared after
+revocation; a cold relaunch reopened the current authorized post. Native reporting
+recorded a private report successfully. Temporary accounts were blocked for
+scheduled deletion and credential files removed after acceptance.
+
+Development revision `quavi-api-00014-flw` serves all traffic from backend source
+`4a50dfd`; migration 007 completed. Mobile layout refinements are in `0a5ecf4`.
+Signed **1.0 (11)** archive is ready, but upload currently needs the Mac unlocked
+so Xcode can access the saved Apple account. **1.0 (10)** remains the latest
+verified TestFlight build until that upload is completed.
