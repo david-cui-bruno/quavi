@@ -74,11 +74,12 @@ export function extractOutings(state) {
 export function profileOnly(state) {
   return {
     ...state,
+    demoRedemptions:[],
     story: undefined,
     chapter: 0,
     shelf: [],
     library: {},
-    game: { ...state.game, done: {}, collected: {}, tripXp: {} },
+    game: { ...state.game, xp:0,coins:0,streak:0,badges:[],done: {}, collected: {}, tripXp: {} },
   };
 }
 /** One IndexedDB transaction checkpoints base records and their retry journal together, including offline photos. */
@@ -143,7 +144,7 @@ export class OutingSync {
       onStatus,
       uuid,
     });
-    this.cache = { version: 1, records: [], pending: [], selected: null };
+    this.cache = { version: 1, records: [], pending: [], pendingRewards: [], selected: null };
     this.checkpoint = Promise.resolve();
     this.closed = false;
     this.loaded = false;
@@ -265,13 +266,14 @@ export class OutingSync {
       records.find((r) => ["active", "paused"].includes(r.status));
     return {
       ...state,
+      demoRedemptions:this.cache.rewards?.redemptions??[],
       story: current ? storyOf(current) : undefined,
       chapter: current?.chapter ?? 0,
       shelf: records.filter((r) => r.inShelf).map(storyOf),
       library: Object.fromEntries(
         records.filter((r) => r.inLibrary).map((r) => [r.id, storyOf(r)]),
       ),
-      game: { ...state.game, done, collected, tripXp },
+      game: { ...state.game, ...(this.cache.rewards?{xp:this.cache.rewards.xp,coins:this.cache.rewards.coins,streak:this.cache.rewards.streak,badges:this.cache.rewards.badges}:{}), done, collected, tripXp },
     };
   }
   edit(before, next) {
@@ -379,6 +381,7 @@ export class OutingSync {
     const result = await this.request("GET");
     if (this.closed) return;
     this.cache.records = result.outings;
+    if(result.rewards)this.cache.rewards=result.rewards;
     this.cache.pending = this.cache.pending.filter(
       (item) =>
         !item.legacy || !result.outings.some((r) => r.id === item.op.outingId),
@@ -462,7 +465,8 @@ export class OutingSync {
           (x) => x.op.operationId === item.op.operationId,
         );
         try {
-          const record = await this.request("POST", queued.op);
+          const {rewardState,...record} = await this.request("POST", queued.op);
+          if(rewardState)this.cache.rewards=rewardState;
           if (this.closed) return;
           this.cache.records = this.cache.records
             .filter((r) => r.id !== record.id)
@@ -482,10 +486,21 @@ export class OutingSync {
           throw e;
         }
       }
+      for(const item of [...(this.cache.pendingRewards??[])]){
+        if(this.closed||!this.available())break;
+        try{
+          const rewards=await this.request('REDEEM',item);if(this.closed)return;
+          this.cache.rewards=rewards;this.cache.pendingRewards=this.cache.pendingRewards.filter(x=>x.operationId!==item.operationId);this.cache.rewardError=undefined;
+          await this.save();this.emit();
+        }catch(error){
+          if([400,409,422].includes(error.status)){this.cache.pendingRewards=this.cache.pendingRewards.filter(x=>x.operationId!==item.operationId);this.cache.rewardError=error.message;await this.save();this.emit()}
+          else throw error;
+        }
+      }
       this.report(
         this.cache.pending.some((x) => x.conflict)
           ? "conflict"
-          : this.cache.pending.length
+          : this.cache.pending.length || this.cache.pendingRewards?.length
             ? "offline"
             : "saved",
       );
@@ -505,6 +520,12 @@ export class OutingSync {
     } finally {
       this.running = false;
     }
+  }
+  redeem(offerId){
+    if((this.cache.pendingRewards??[]).some(x=>x.offerId===offerId)||this.cache.rewards?.redemptions.some(x=>x.offerId===offerId))return;
+    this.cache.pendingRewards??=[];this.cache.rewardError=undefined;
+    this.cache.pendingRewards.push({operationId:this.uuid(),offerId});
+    void this.save().then(()=>{this.emit();void this.flush()}).catch(()=>{});this.emit();
   }
   async resolve(choice) {
     if (this.running) throw new Error("Wait for the current save to finish.");

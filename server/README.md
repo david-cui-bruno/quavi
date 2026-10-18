@@ -374,10 +374,30 @@ is stored, and transient Google facts are scrubbed from durable content.
 The client atomically checkpoints its account-scoped IndexedDB records/outbox,
 uploads photos, checkpoints prepared references, then sends the operation. A
 conflict retains the local projection, blocks that outing only and supports
-explicit cloud/local resolution. Profile snapshot syncing stays separate; XP and
-demo balances remain client demo values pending the reward-ledger phase. Media
+explicit cloud/local resolution. Profile snapshot syncing stays separate. The reward-ledger phase below supersedes
+client-owned demo balances. Media
 maintenance checks outing references before removing an orphan.
 
 Verification includes the actual shipped JavaScript journal calling Fastify and
 PostgreSQL through simulated offline transport and lost responses. Physical iPhone
 airplane-mode photo capture, forced relaunch and lock/resume remain acceptance work.
+
+## Server-owned demo rewards (migration 006)
+
+`GET /v1/me/rewards` returns confirmed balances. `POST
+/v1/me/rewards/redemptions` accepts a stable UUID operationId and a known offerId.
+New clients send `X-Quavi-Rewards: 1`; outing operations return the authoritative
+rewardState. Existing account locks serialize awards and spending across API
+instances. Runtime access to ledger/plan/request tables is append-only; deletion
+cascades from the private account record.
+
+Legacy totals are snapshotted at migration for display, never spendable credit.
+Known task plans award at most 25 XP per outing / 100 per UTC day, and at most
+100 coins per UTC day. Only confirmed XP generates earned demo tokens. Tasks and
+arrival are self-reported participation, not anti-fraud proof for real funding.
+Activated accounts reject writes from older clients. Upgrade all tester phones;
+rolling back only the client does not undo account activation.
+
+Verification: 63 backend tests and 30 client tests, including the shipped offline
+journal against the API, concurrent spending, duplicate task awards, forged totals,
+legacy migration, deletion and address-disambiguated Explore selection.

@@ -1,3 +1,4 @@
+import {PlaceSearch} from '../PlaceSearch'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flock, safeSurface } from '../brand/Persona'
 import { OPENINGS, PLACE_META, chapterMeta, buildStory, categoryTasks, placeInfo, startStory, type Chapter, type Story } from '../data'
@@ -10,15 +11,6 @@ import { START, useTracking } from '../tracking'
 import { useStore } from '../store'
 import { Arrow, Btn, PinIcon, Screen$, Check, StatRow } from '../ui'
 
-function Search({ value, onChange, onClear, onBack, onSubmit }: { value: string; onChange?: (v: string) => void; onClear?: () => void; onBack?: () => void; onSubmit?: () => void }) {
-  return (
-    <div className="abs row" data-map-top-obstruction style={{ left: 24, right: 24, top: 'var(--screen-top, 54px)', height: 56, borderRadius: 28, background: 'var(--white)', padding: '0 14px 0 8px', zIndex: 5, gap: 4, boxShadow: '0 4px 18px rgba(30,27,22,.16)' }}>
-      {onBack && <button className="hit44" onClick={onBack} aria-label="Back" style={{ flex: 'none' }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 12H5M11 5l-7 7 7 7" /></svg></button>}
-      <input aria-label="Search places" value={value} onChange={(e) => onChange?.(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onSubmit?.()} placeholder="Where to?" style={{ flex: 1, minWidth: 0, fontWeight: 500, fontSize: 15, paddingLeft: onBack ? 6 : 16 }} />
-      {value && onClear && <button className="hit44" onClick={onClear} style={{ fontSize: 22, color: 'var(--ink-p)', flex: 'none' }} aria-label="Clear">×</button>}
-    </div>
-  )
-}
 
 const QUESTS = [
   { place: 'Corner Coffee', persona: 'Pip' },
@@ -38,33 +30,25 @@ export function Explore() {
   const { go, say, update, s, account } = useStore()
   const tr = useTracking()
   const [q, setQ] = useState('')
-  const submit = () => { if (q.trim()) go('route', { dest: q.trim() }) }
+  const choose = (place:Found) => go('route',{dest:place.name,selectedPlace:place})
   const surprise = () => { if (account) { go('mood'); return } update((st) => ({ ...st, story: startStory(OPENINGS[Math.floor(Math.random() * 3)], st.user), chapter: 0 })); say('Surprise picked'); go('details') }
   const nearby = account ? (s.story?.source ? s.story.chapters.map((c,i)=>({place:c.place,persona:c.persona,ll:c.ll!,kind:c.kind??'Local spot',about:c.desc,tasks:chapterMeta(s.story!,i).tasks})) : []) : QUESTS.map(x=>({...x,ll:{lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng},kind:placeInfo(x.place).kind,about:placeInfo(x.place).about,tasks:PLACE_META[x.place].tasks}))
   const currentTrip = ():Trip => { const found=nearby.map(x=>({id:x.place,name:x.place,ll:x.ll,kind:x.kind,about:x.about}));return {dest:found[found.length-1],quests:found.slice(0,-1)} }
   const pins: RealPin[] = nearby.map(x=>({id:x.place,ll:x.ll,kind:'quest',label:x.place,quest:true,onClick:()=>go('stop',{trip:account?currentTrip():questTrip(),sel:x.place})}))
   const route = useMemo(()=> account ? (s.story?.source ? [s.story.origin??tr.pos,...s.story.chapters.filter(c=>c.ll).map(c=>c.ll!)] : [tr.pos]) : [START,...QUESTS.slice(0,3).map(x=>({lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng}))],[account,s.story,tr.pos])
   const got = s.game.collected.explore ?? []
-  const coins = useMemo(() => coinsFor(route, got), [route, got])
-  const collect = useCallback((id: number) => update((st) => { const g = st.game.collected.explore ?? []; return g.includes(id) ? st : { ...st, game: { ...st.game, coins: st.game.coins + 1, collected: { ...st.game.collected, explore: [...g, id] } } } }), [update])
+  const coins = useMemo(() => account?[]:coinsFor(route, got), [account,route,got])
+  const collect = useCallback((id: number) => account?undefined:update((st) => { const g = st.game.collected.explore ?? []; return g.includes(id) ? st : { ...st, game: { ...st.game, coins: st.game.coins + 1, collected: { ...st.game.collected, explore: [...g, id] } } } }), [update,account])
   useCoinCollect(tr.pos, coins, collect)
   const ranked = nearby.map((x) => ({ ...x, d: distance(tr.pos, x.ll) })).sort((a, b) => a.d - b.d)
   const quests = Object.keys(s.game.done).filter((k) => !k.endsWith('!')).length
   return (
     <Screen$ tabs="explore" flush>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 360 }}>
+      <div className="explore-map" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 360 }}>
         <RealMap pins={pins} route={route} coins={coins} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 200, bottom: 30 }} />
       </div>
       <div className="hud-inline" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8 }}><GameHUD /></div>
-      <form data-map-top-obstruction className="abs row" onSubmit={(e) => { e.preventDefault(); submit() }} style={{ left: 24, right: 24, top: 'calc(var(--screen-top, 54px) + 60px)', height: 64, borderRadius: 32, background: 'var(--white)', padding: '0 20px 0 22px', zIndex: 8, gap: 12, boxShadow: '0 4px 18px rgba(30,27,22,.18)' }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
-        <div className="col" style={{ flex: 1, minWidth: 0 }}>
-          <label htmlFor="ex-where" style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Where to?</label>
-          <input id="ex-where" aria-label="Where to?" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type a place, get detours on the way" style={{ fontWeight: 500, fontSize: 15, width: '100%' }} />
-        </div>
-        {q ? <button type="button" onClick={() => setQ('')} aria-label="Clear" style={{ fontSize: 22, color: 'var(--ink-p)' }}>×</button> : null}
-        {q.trim() && <button type="submit" className="round ink" style={{ width: 40, height: 40 }} aria-label="Find detours"><Arrow size={18} /></button>}
-      </form>
+      <PlaceSearch value={q} onChange={setQ} onChoose={choose} near={tr.mode==='live'?tr.pos:START} explore />
       <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
         <div className="row" style={{ justifyContent: 'space-between', padding: '0 24px' }}>
           <div><div className="kicker">{account ? 'Recent detour stops' : 'Demo quests nearby'}</div><h2 className="h1 h-xs" style={{ margin: '2px 0 0' }}>What’s around the corner?</h2></div>
@@ -146,16 +130,17 @@ export function RouteScreen() {
   const touched = useRef(false)
   const abort = useRef<AbortController | null>(null)
 
-  const run = useCallback(async (query: string) => {
+  const run = useCallback(async (query: string, selected?:Found) => {
     abort.current?.abort()
     const ac = new AbortController()
     abort.current = ac
     setStatus('loading'); setDest(null); setQuests([]); setLooking(false); setPicked([]); touched.current = false
     try {
-      const hits = await searchPlace(query.trim(), origin, ac.signal)
+      const hits = selected ? [selected] : await searchPlace(query.trim(), origin, ac.signal)
       if (ac.signal.aborted) return
       if (!hits.length) { setStatus('notfound'); return }
-      setDest(hits[0]); setStatus('ready'); setLooking(true)
+      if(!selected){setStatus('notfound');setLooking(false);return}
+      setDest(selected); setStatus('ready'); setLooking(true)
       await sideQuestsAlong(origin, hits[0].ll, hits[0].name, (batch) => setQuests((prev) => [...prev, ...batch].sort((x, y) => (x.off ?? 0) - (y.off ?? 0)).slice(0, 8)), ac.signal, s.user.age21 === false)
       if (!ac.signal.aborted) setLooking(false)
     } catch (e) {
@@ -164,7 +149,7 @@ export function RouteScreen() {
       setStatus('offline');setLooking(false)
     }
   }, [account,origin,s.user.age21])
-  useEffect(() => { void run(typed); return () => abort.current?.abort() }, [run, typed])
+  useEffect(() => { void run(typed,route.params?.selectedPlace as Found|undefined); return () => abort.current?.abort() }, [run, typed])
   // until you pick for yourself, the two nearest different detours are already on your route
   useEffect(() => { if (!touched.current) setPicked(bestDetours(quests)) }, [quests])
 
@@ -190,7 +175,7 @@ export function RouteScreen() {
     <Screen$ tabs="explore" flush>
       <div style={{ position: 'relative', flex: 1, marginTop: -54, marginBottom: -108 }}>
         <RealMap pins={pins} route={dest ? (walk.route?.geometry ?? path) : undefined} fit={fit} inset={{ top: 190, bottom: 450 }} you={tr.pos} youAvatar={s.user.avatar} />
-        <Search value={q} onChange={setQ} onClear={() => setQ('')} onBack={back} onSubmit={() => q.trim() && void run(q)} />
+        <PlaceSearch value={q} onChange={setQ} onChoose={hit=>{setQ(hit.name);void run(hit.name,hit)}} near={origin} onBack={back} />
         <div className="abs row" data-map-top-obstruction style={{ left: 24, right: 24, top: 'calc(var(--screen-top, 54px) + 62px)', height: 46, borderRadius: 23, background: 'var(--ink)', color: 'var(--paper)', padding: '0 22px', zIndex: 5, justifyContent: 'space-between' }}>
           <b style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>You → {dest?.name ?? q}</b>
           <span className="small" style={{ color: 'var(--yellow)', flex: 'none', marginLeft: 10 }}>{mins ? `${mins} min walk` : status === 'loading' ? 'Finding…' : '—'}</span>
@@ -254,7 +239,7 @@ export function Stop() {
     <Screen$ tabs="explore" flush>
       <div style={{ position: 'relative', flex: 1, marginTop: -54, marginBottom: -108 }}>
         <RealMap pins={pins} route={added ? [origin, c.ll, trip.dest.ll] : [origin, trip.dest.ll]} fit={[origin, trip.dest.ll, ...trip.quests.map((f) => f.ll)]} inset={{ top: 130, bottom: 430 }} you={tr.pos} youAvatar={appState.user.avatar} />
-        <Search value={trip.dest.name} onBack={back} />
+        <div className="abs row" style={{left:24,right:24,top:'var(--screen-top,54px)',background:'var(--white)',borderRadius:28,padding:8,zIndex:5}}><button className="hit44" onClick={back} aria-label="Back"><span style={{display:'inline-flex',transform:'rotate(180deg)'}}><Arrow size={20}/></span></button><b>{trip.dest.name}</b></div>
         <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '20px 24px 112px', zIndex: 6 }}>
           {added ? (
             <>

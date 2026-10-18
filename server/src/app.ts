@@ -1,3 +1,4 @@
+import {ensureRewards,rewardsActive,rewardState,redeem} from "./rewards.js";
 import { ensureOutings, listOutings, applyOutingOperation } from "./outings.js";
 import { legalPage } from "./legal.js";
 import { randomUUID } from "node:crypto";
@@ -66,7 +67,7 @@ export async function createApp(options: {
   await app.register(cors, {
     origin: options.origins,
     methods: ["GET", "PUT", "POST", "DELETE"],
-    allowedHeaders: ["Authorization", "Content-Type", "X-Quavi-Maps", "X-Quavi-Outings"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Quavi-Maps", "X-Quavi-Outings", "X-Quavi-Rewards"],
   });
   app.addHook("onSend", async (_req, reply) => {
     reply.header("Cache-Control", "no-store");
@@ -206,6 +207,7 @@ export async function createApp(options: {
             "INSERT INTO account_deletions(owner_hash,user_id) VALUES($1,$2)",
             [hash, req.uid],
           );
+          await db.query("DELETE FROM reward_accounts WHERE user_id=$1", [req.uid]);
           await db.query("DELETE FROM outings WHERE user_id=$1", [req.uid]);
           await db.query("DELETE FROM outing_accounts WHERE user_id=$1", [req.uid]);
           await db.query("DELETE FROM user_state WHERE user_id=$1", [req.uid]);
@@ -378,18 +380,33 @@ export async function createApp(options: {
             hours,
           };
         });
-      api.get("/me/outings", async req => ({outings:await listOutings(req.db!,req.uid)}));
-      api.post("/me/outings/operations", async req => applyOutingOperation(req.db!,req.uid,req.body));
-      api.get(
-        "/me/state",
-        async (req) =>
-          (await readState(req.db!, req.uid)) ?? {
-            state: null,
-            revision: 0,
-            updatedAt: null,
-          },
-      );
+      const upgraded=async(req:any,reply:any)=>{
+        if(req.headers['x-quavi-rewards']==='1'){await ensureOutings(req.db,req.uid);await ensureRewards(req.db,req.uid,true);return true}
+        if(await rewardsActive(req.db,req.uid)){reply.code(409).send({error:'Update Quavi to sync server-owned rewards.'});return false}
+        return true
+      };
+      api.get('/me/outings',async req=>{
+        const outings=await listOutings(req.db!,req.uid);
+        if(req.headers['x-quavi-rewards']!=='1')return {outings};
+        await ensureRewards(req.db!,req.uid,true);
+        const sums=await req.db!.query('SELECT outing_id,sum(xp_delta)::integer AS xp FROM reward_ledger WHERE user_id=$1 GROUP BY outing_id',[req.uid]);
+        return {outings:outings.map(r=>({...r,tripXp:sums.rows.find(x=>x.outing_id===r.id)?.xp??0})),rewards:await rewardState(req.db!,req.uid)}
+      });
+      api.post('/me/outings/operations',async(req,reply)=>{
+        if(!await upgraded(req,reply))return;
+        const result=await applyOutingOperation(req.db!,req.uid,req.body);
+        return req.headers['x-quavi-rewards']==='1'?{...result,rewardState:await rewardState(req.db!,req.uid)}:result
+      });
+      api.get('/me/rewards',async req=>{await ensureOutings(req.db!,req.uid);await ensureRewards(req.db!,req.uid,true);return rewardState(req.db!,req.uid)});
+      api.post('/me/rewards/redemptions',async req=>{await ensureOutings(req.db!,req.uid);return redeem(req.db!,req.uid,req.body)});
+      api.get('/me/state',async req=>{
+        const stored=await readState(req.db!,req.uid);
+        if(!stored)return {state:null,revision:0,updatedAt:null};
+        if(await rewardsActive(req.db!,req.uid)){const rewards=await rewardState(req.db!,req.uid);stored.state={...stored.state,demoRedemptions:rewards.redemptions,game:{...(stored.state.game as object),xp:rewards.xp,coins:rewards.coins,streak:rewards.streak,badges:rewards.badges}}}
+        return stored
+      });
       api.put("/me/state", async (req, reply) => {
+        if(!await upgraded(req,reply))return;
         const { state, revision } = stateInput.parse(
             scrubGoogleContent(req.body),
           ),
@@ -407,6 +424,7 @@ export async function createApp(options: {
         if(req.headers['x-quavi-outings']==='1')await ensureOutings(req.db!,req.uid);
         else if((await req.db!.query('SELECT 1 FROM outing_accounts WHERE user_id=$1',[req.uid])).rowCount)
           return reply.code(409).send({error:'Update Quavi before saving this account. Outings now sync separately.'});
+        if(await rewardsActive(req.db!,req.uid)){const rewards=await rewardState(req.db!,req.uid);state.demoRedemptions=rewards.redemptions;Object.assign(state.game,{xp:rewards.xp,coins:rewards.coins,streak:rewards.streak,badges:rewards.badges})}
         const saved = await writeState(
           req.db!,
           req.uid,

@@ -18,7 +18,7 @@ import { MomentSheet, useStory } from './story'
 
 export function Active() {
   useLiveHoursClock()
-  const { s, update, go, reset, say, syncStatus, outingStatus } = useStore()
+  const { s, update, go, reset, say, syncStatus, outingStatus, account } = useStore()
   const tr = useTracking()
   const life = useRuntime()
   const [story, setStory] = useStory()
@@ -128,6 +128,12 @@ export function Active() {
 
   const complete = (id: string, xp: number) => {
     if (!arrived) return
+    if(account){
+      const checking=!done.includes(id)
+      update(st=>({...st,game:{...st.game,done:{...st.game.done,[key]:checking?[...(st.game.done[key]??[]),id]:(st.game.done[key]??[]).filter(x=>x!==id)}}}))
+      flash(checking?'Task saved · XP pending confirmation':'Unchecked · earned XP stays')
+      return
+    }
     if (done.includes(id)) {
       // tapping a finished task again unchecks it (XP you already earned stays, and the trip cap still applies)
       update((st) => ({ ...st, game: { ...st.game, done: { ...st.game.done, [key]: (st.game.done[key] ?? []).filter((x) => x !== id) } } }))
@@ -148,9 +154,9 @@ export function Active() {
     update((st) => {
       const got = st.game.collected[story.id] ?? []
       if (got.includes(id)) return st
-      return { ...st, game: { ...st.game, coins: st.game.coins + 1, collected: { ...st.game.collected, [story.id]: [...got, id] } } }
+      return { ...st, game: { ...st.game, coins: st.game.coins + (account?0:1), collected: { ...st.game.collected, [story.id]: [...got, id] } } }
     })
-  }, [update, story.id])
+  }, [update, story.id,account])
 
   const photoInput = useRef<HTMLInputElement>(null)
   const photoKey = useRef('')
@@ -235,7 +241,7 @@ export function Active() {
         <div className="row" style={{ marginTop: 12, justifyContent: 'center', gap: 18 }}>
           <button className="small" style={{ fontWeight: 700 }} onClick={() => setMoment(true)}>＋ Add a moment</button>
           <button className="small" style={{ fontWeight: 700 }} onClick={() => setPreview(true)}>About this stop</button>
-          <button className="small" style={{ fontWeight: 700 }} onClick={() => go('swap', { i })}>Rewrite chapter</button>
+          <button className="small" style={{ fontWeight: 700 }} disabled={!!account&&(done.length>0||tripEarned>0)} onClick={() => go('swap', { i })}>Rewrite chapter</button>
         </div>
       </div>
 

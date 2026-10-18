@@ -64,6 +64,10 @@ function load(): AppState {
 
 type Ctx = {
   account: User | null
+  rewards: {confirmedXp:number;legacyXp:number;balance:number;dailyRemaining?:number;dailyLimit?:number}|null
+  pendingRewards: string[]
+  rewardError: string
+  redeemReward: (offerId:string)=>void
   outingStatus: OutingStatus | 'demo'
   resolveOuting: (choice: 'cloud' | 'local') => Promise<void>
   syncStatus: SyncStatus | 'demo'
@@ -149,7 +153,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // A known account cache can open offline; unknown accounts wait for their own remote state.
       if (!runtime.get().online && knownCache) enterAccount(next.cache.state)
       const outing = new OutingSync({uid:user.uid,storage:disk,
-        request:(method,body)=>api(user,method==='GET'?'/outings':'/outings/operations',method,body),
+        request:(method,body)=>api(user,method==='GET'?'/outings':method==='REDEEM'?'/rewards/redemptions':'/outings/operations',method==='REDEEM'?'POST':method,body),
         prepare:photoUploader(user),available:()=>runtime.get().active&&runtime.get().online,
         onChange:()=>{if(ticket===generation&&outingsReady){const view=outing.project(next.cache.state);stateRef.current=view;setS(view)}},
         onStatus:status=>{if(ticket===generation){setOutingStatus(status);if(status==='deleted'){void disk.remove(user.uid);void signOut(auth)}}},
@@ -231,8 +235,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<Ctx>(
-    () => ({ account, syncStatus, outingStatus, resolveOuting, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
-    [account, syncStatus, outingStatus, resolveOuting, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, stack, dir, go, back, reset, toast, toastOut, say, restart],
+    () => ({ account, rewards:outings.current?.cache.rewards??null,pendingRewards:(outings.current?.cache.pendingRewards??[]).map((x:{offerId:string})=>x.offerId),rewardError:outings.current?.cache.rewardError??'',redeemReward:(offerId:string)=>outings.current?.redeem(offerId),syncStatus, outingStatus, resolveOuting, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
+    [account,syncStatus,outingStatus,resolveOuting,retrySync,loadCloud,canImportDemo,importDemo,logout,deleteAccount,s,update,stack,dir,go,back,reset,toast,toastOut,say,restart],
   )
   const loadFailed = ['offline','sign-in-required','save-error','storage-full'].includes(syncStatus)
   const loadMessage = syncStatus === 'storage-full' ? 'Free up device storage, then try loading your account again.' : syncStatus === 'sign-in-required' ? 'Sign in again to load your account.' : 'Connect to load your account before continuing.'
