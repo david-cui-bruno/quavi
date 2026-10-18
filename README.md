@@ -48,7 +48,7 @@ location and native notifications are not implemented by this shell.
 | Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
 | Location and arrival tasks | Native iPhone foreground GPS or browser GPS, explicit demo walking, accuracy/freshness gates and resume checks | Outdoor device acceptance; background tracking only if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
-| XP, coins and demo partner rewards | Local XP, fictional offers, locked/unlocked states and persistent simulated redemptions | Server-authoritative reward history and sync; real partners/funding are deferred |
+| XP, coins and demo partner rewards | Signed-in server ledger, confirmed XP, offline commands and one-time fictional offers; anonymous local demo | Stronger participation evidence, real partners and funding are deferred |
 | Operations | Cloud Run dev deployment, Secret Manager, limited runtime DB privileges, Cloud SQL backups/PITR, private bucket | CI, production environment, alerts/budgets, restore drill, release/signing setup |
 
 Product direction: preserve all prototype features on iPhone and support any city.
@@ -90,10 +90,10 @@ See **You** for the installed version/build number.
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
 name is necessary because Apple reported that “Quavi” is already in use.
-**1.0 (9)** is verified **Testing** in Quavi Development on October 18, 2026.
+**1.0 (10)** is verified **Testing** in Quavi Development on October 18, 2026.
 Open TestFlight on the accepted tester's iPhone, tap **Update**, and confirm
-**1.0 (9)** in You. Update every device using a migrated account: old builds'
-whole-document writes cannot replace independent outing records. Earlier builds
+**1.0 (10)** in You. Update every device using a migrated account: old builds'
+whole-document writes cannot replace independent outing records or server-owned rewards. Earlier builds
 remain listed as release history, not a safe persistence rollback. App Store
 publication and external tester review remain separate release steps.
 
@@ -392,3 +392,12 @@ The selected result's coordinates are retained. Search uses the existing
 cancellation, explicit empty/error states and keyboard navigation. Production
 search availability, provider budgets and a managed/self-hosted option remain
 operations work. Outdoor offline/lock/resume acceptance remains user-deferred.
+
+Live development verification passed against `quavi-api-00013-sbf` (source
+`197a5bd`): deterministic task XP, duplicate replay, one-time welcome sample,
+insufficient funds and forged profile totals. A fresh signed-in UI session showed
+the confirmed 12 XP and synced demo receipt. The disposable account was then
+blocked for deletion and its temporary credentials removed. Native iPhone SE
+verification confirms address suggestions fit above the keyboard and selecting
+Springfield Park opens the New York destination. Signed archive/upload 1.0 (10)
+succeeded; **1.0 (10)** is verified **Testing** in Quavi Development.

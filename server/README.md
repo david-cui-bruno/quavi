@@ -401,3 +401,9 @@ rolling back only the client does not undo account activation.
 Verification: 63 backend tests and 30 client tests, including the shipped offline
 journal against the API, concurrent spending, duplicate task awards, forged totals,
 legacy migration, deletion and address-disambiguated Explore selection.
+
+Deployed October 18, 2026 to `quavi-api-00013-sbf`, serving all development traffic
+from source `197a5bd`. Migration `006_rewards.sql` completed. Live disposable-account
+checks verify task XP, duplicate replay, one-time welcome, insufficient funds,
+forged totals and deletion blocking; signed-in UI shows the same confirmed XP and
+receipt. Physical outdoor/offline acceptance remains deferred by the user.
