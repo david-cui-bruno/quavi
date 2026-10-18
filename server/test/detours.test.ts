@@ -115,3 +115,13 @@ test('obvious non-venue business names are excluded even when the source categor
  const result=planDetours({...raw,venues:[office,...raw.venues]},input)
  for(const route of result.openings)assert.ok(route.chapters.every(c=>c.placeId!=='office'))
 })
+
+
+test("missing catalog operating status remains eligible without an open-hours claim", () => {
+  const result = planDetours({ ...raw, venues: raw.venues.map(v => ({ ...v, status: "unknown" })) }, input);
+  assert.ok(result.openings.length > 0);
+  for (const opening of result.openings) {
+    assert.match(opening.tags, /hours unverified/);
+    assert.ok(opening.chapters.every(c => !c.meta.includes("reported open")));
+  }
+});

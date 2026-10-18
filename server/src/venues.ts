@@ -20,7 +20,7 @@ export function overtureProvider(
           lat: Math.round(origin.lat * 100) / 100,
           lng: Math.round(origin.lng * 100) / 100,
         },
-        key = `overture-v2:${center.lat}:${center.lng}`;
+        key = `overture-v3:${center.lat}:${center.lng}`;
       const db = await pool.connect();
       try {
         await db.query("BEGIN");
@@ -58,7 +58,7 @@ export function overtureProvider(
     addresses.list[SAFE_OFFSET(0)].element.locality AS locality
     FROM \`bigquery-public-data.overture_maps.place\`
     WHERE ST_DWITHIN(geometry,ST_GEOGPOINT(@lng,@lat),2800)
-    AND confidence>=0.8 AND operating_status='open' AND names.primary IS NOT NULL
+    AND confidence>=0.8 AND (operating_status IS NULL OR operating_status='open') AND names.primary IS NOT NULL
     AND (basic_category IN UNNEST(@categories) OR taxonomy.primary IN UNNEST(@categories))
     AND NOT REGEXP_CONTAINS(COALESCE(taxonomy.primary,''),r'(^|_)(bar|pub|casino|nightclub|adult)($|_)')
     ORDER BY ST_DISTANCE(geometry,ST_GEOGPOINT(@lng,@lat)) LIMIT 240`,
@@ -79,7 +79,7 @@ export function overtureProvider(
             ll: { lat: Number(r.lat), lng: Number(r.lng) },
             locality: r.locality ? String(r.locality) : undefined,
             confidence: Number(r.confidence),
-            status: String(r.operating_status),
+            status: r.operating_status == null ? "unknown" : String(r.operating_status),
           })),
         };
         await db.query(

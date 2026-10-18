@@ -44,8 +44,8 @@ location and native notifications are not implemented by this shell.
 | Accounts | Firebase accounts, recovery/verification controls and confirmed account deletion connected to Quavi dev | Email-delivery acceptance and extended account-lifecycle QA |
 | Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA and richer photo retry/conflict resolution |
 | Friends and circle | Locally added names and bundled example stories | User lookup, friendship requests, shared feed, privacy controls |
-| Mood-based plans and captions | Signed-in nearby openings use worldwide Overture venues through the server; anonymous openings and captions keep scripted demo behavior | Live opening-hours/admission validation, grounded captions and stronger venue quality controls |
-| Explore | Live Photon search, Nominatim detours, OSM map tiles and walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
+| Mood-based plans and captions | Signed-in nearby openings use worldwide Overture venues through the server; anonymous openings and captions keep scripted demo behavior | Admission/access validation, grounded captions and stronger venue quality controls |
+| Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
 | Location and arrival tasks | Browser foreground GPS or demo walking | Native device validation; background tracking if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
 | XP, coins and demo partner rewards | Local XP, fictional offers, locked/unlocked states and persistent simulated redemptions | Server-authoritative reward history and sync; real partners/funding are deferred |
@@ -169,10 +169,11 @@ with the demo walker; using GPS enables foreground location tracking.
 
 Venue data is from Overture Maps, queried through Quavi’s GCP project and cached
 for 24 hours. The app displays the dataset update date and attribution. Operating
-status in this dataset means the business is listed as operating; it does **not**
-mean open right now. Live hours, entry restrictions, accessibility, admission/prices
-and safe pedestrian access remain unverified. Walking times are estimates; the
-existing walking directions service is used during navigation. Any-city coverage
+status, when present, describes continued operation rather than current opening hours.
+Missing catalog status remains unknown; it does not imply a closure. Google checks
+reported hours for the planned arrival and stay, with unknown hours labeled explicitly.
+Entry restrictions, accessibility, admission/prices and current street conditions
+remain unverified. Signed-in walking times and directions use Google Routes. Any-city coverage
 is a goal, with honest sparse/no-result states rather than fictional substitutions.
 Explore shows a signed-in account’s real recent detour stops; anonymous demo pins
 are labeled. Destination-search failures do not substitute a sample city for accounts.
