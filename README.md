@@ -95,7 +95,7 @@ assigned to the group. Install the TestFlight app on iPhone using the owner's
 Apple account, then open Quavi's invitation/listing. The map-motion update,
 **1.0 (5)**, is verified **Testing** in Quavi Development on October 18.
 Open TestFlight on the accepted tester’s iPhone and tap **Update** for Quavi;
-confirm **1.0 (5)** in You. Build 4 remains available as a fallback. App Store publication and external tester review remain separate release steps.
+confirm **1.0 (8)** in You. The account setup, visual and compact-phone bug-pass update, **1.0 (8)**, is verified **Testing** in Quavi Development on October 18. Builds 4 and 5 remain available as fallbacks; intermediate builds 6 and 7 are unassigned. App Store publication and external tester review remain separate release steps.
 
 ### Map fidelity
 
@@ -146,6 +146,33 @@ flow is `.maestro/onboarding-small-phone.yaml` and must run on a disposable simu
 Outdoor GPS/arrival, physical lock/resume and airplane-mode photo recovery still
 need physical-device acceptance. Friends and authoritative reward services remain
 roadmap work; this pass does not make those prototype features server-backed.
+
+## System design discussion after the bug pass
+
+Current implementation: React/TypeScript runs in the Capacitor iPhone shell;
+Google Maps artwork and GPS use native integrations. Firebase Authentication
+identifies accounts. A Fastify API on Cloud Run stores revisioned private account
+snapshots in Cloud SQL and photos in private Cloud Storage. Overture supplies the
+venue catalog; Google supplies transient reported hours and walking geometry.
+
+Recommended discussion order, before adding more prototype features:
+
+1. **Outing state and offline sync.** Split profile/preferences, outing progress and
+   media metadata into separately versioned records. Define the conflict rule for
+   two devices, offline completion and deletion; retain a durable retry queue.
+2. **Server-owned rewards.** Award XP and spend demo rewards through idempotent
+   server commands and an append-only ledger. Decide which arrival/task evidence
+   is sufficient, and keep merchant rewards explicitly simulated.
+3. **Social access.** Model accepted friendships, story visibility and blocking on
+   the server, with authorization checks on every feed/media request.
+4. **Mobile boundary.** Keep the existing hybrid UI for the first beta while
+   measuring gesture, accessibility and lifecycle problems. Decide any further
+   native migration from those results, preserving the original design.
+5. **Operations.** Separate dev/staging/production, automate deployment, monitor
+   failed sync/provider calls, exercise database restore, and set provider budgets.
+
+These are proposed next decisions, not services already implemented. Physical
+outing acceptance should happen alongside this design work before a wider beta.
 
 ## Build roadmap
 
