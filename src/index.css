@@ -432,3 +432,17 @@ button.pill.abs { padding: 0 16px; }
 .active-map-chrome { position: absolute; top: calc(var(--screen-top, 54px) + 66px); left: var(--gutter); right: var(--gutter); z-index: 8; display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: none; }
 .active-map-chrome .navbanner { position: relative; top: auto; left: auto; right: auto; pointer-events: auto; }
 .active-map-chrome .status-pill { position: relative; top: auto; right: auto; align-self: flex-end; pointer-events: auto; }
+
+/* Keep live routes in the prototype's title/character rhythm. */
+.live-opening .opening-title { max-width: calc(100% - 40px); padding-right: 8px; }
+.live-opening > .small { max-width: calc(100% - 60px); }
+.route-notes { margin: 10px 0 16px; font-size: 13px; line-height: 1.45; }
+.route-notes summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
+.route-notes summary::after { content: '+'; margin-left: auto; font-size: 20px; }
+.route-notes[open] summary::after { content: '−'; }
+.route-notes p { margin: 0 0 10px; color: var(--ink-p); }
+.route-notes a { color: inherit; text-underline-offset: 3px; }
+.active-map-header .hud { padding: 6px 8px; }
+.active-map-header .hud-av { width: 36px; height: 36px; }
+.active-map-chrome .navicon { width: 44px; height: 44px; }
+.active-map-chrome .navbig { font-size: 20px; }

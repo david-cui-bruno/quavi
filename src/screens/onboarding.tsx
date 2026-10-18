@@ -114,7 +114,7 @@ export function About() {
   const [who, setWho] = useState<'Solo' | 'With friends'>(s.user.who ?? 'Solo')
   const ready = name.trim().length > 0 && age21 !== undefined
   const save = () => {
-    update((st) => ({ ...st, user: { ...st.user, name: name.trim(), age21, who } }))
+    update((st) => ({ ...st, user: { ...st.user, name: name.trim(), age21, who, ...(!editing ? {onboarding: 'interests' as const} : {}) } }))
     if (editing) back()
     else go('interests')
   }
@@ -149,6 +149,7 @@ export function About() {
 
 export function Interests() {
   const { s, update, go } = useStore()
+  const next = () => { update(st => ({...st,user:{...st.user,onboarding:'customize'}})); go('customize') }
   const toggle = (id: string) =>
     update((st) => ({ ...st, user: { ...st.user, interests: st.user.interests.includes(id) ? st.user.interests.filter((x) => x !== id) : [...st.user.interests, id] } }))
   return (
@@ -173,8 +174,8 @@ export function Interests() {
       </div>
       <div className="grow" />
       <div className="row" style={{ justifyContent: 'space-between', marginTop: 20 }}>
-        <button className="small muted" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => { update((st) => ({ ...st, user: { ...st.user, interests: [] } })); go('customize') }}>I’m open to anything</button>
-        <Round size={56} onClick={() => go('customize')} />
+        <button className="small muted" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => { update((st) => ({ ...st, user: { ...st.user, interests: [], onboarding: 'customize' } })); go('customize') }}>I’m open to anything</button>
+        <Round size={56} onClick={next} />
       </div>
     </Screen$>
   )
@@ -198,7 +199,7 @@ function currentOf(spec: AvatarSpec, slot: Slot) {
 }
 
 export function Customize() {
-  const { s, update, go, back, route } = useStore()
+  const { s, update, reset, back, route } = useStore()
   const editing = route.params?.editing === true
   const [slot, setSlot] = useState<Slot>('headwear')
   const spec = s.user.avatar
@@ -246,7 +247,7 @@ export function Customize() {
         </div>
       </div>
       <div className="grow" />
-      <Btn onClick={() => (editing ? back() : go('home'))}>{editing ? 'Save' : 'Looks like me'}</Btn>
+      <Btn onClick={() => { if (editing) back(); else { update(st=>({...st,user:{...st.user,onboarding:'complete'}})); reset('home') } }}>{editing ? 'Save' : 'Looks like me'}</Btn>
     </Screen$>
   )
 }

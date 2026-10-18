@@ -99,6 +99,7 @@ export const appStateSchema = z
   .object({
     user: z
       .object({
+        onboarding: z.enum(["about", "interests", "customize", "complete"]).optional(),
         name: z.string().max(24),
         avatar,
         interests: z

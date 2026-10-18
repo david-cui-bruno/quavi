@@ -169,7 +169,7 @@ export function Openings() {
       <div className="kicker" style={{ marginTop: 14 }}>{account ? 'A few ways tonight could go' : 'Three ways tonight could go'}</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Pick your<br />opening.</h1>
       {account ? <CityPicker onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}} /> : <p className="small" style={{marginBottom:14}}>These are demo openings in West Village. <button style={{textDecoration:'underline',minHeight:44}} onClick={()=>go('login')}>Log in for nearby places</button></p>}
-      {notice&&<p role="status" className="small" style={{marginBottom:12}}>{notice}</p>}
+      {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p><p>Check prices, entrances and local conditions before you go.</p></details>}
       <div className="col stagger" style={{ gap: 14 }}>
         {order.filter(i=>choices[i]).map((oi) => {
           const o = choices[oi]
@@ -177,16 +177,17 @@ export function Openings() {
           const dark = onDark(bg)
           const on = sel === oi
           return (
-            <button key={o.id} onClick={() => setSel(oi)} className="tile fade-in" style={{ background: BG[bg], minHeight: 132, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
-              <div className="h1" style={{ fontSize: 25 }}>{o.title}</div>
-              <div className="small" style={{ fontWeight: 500 }}>{o.walking?.provider==='Google Maps'?`Nearby · approx. ${o.estimatedMinutes} min · ${o.chapters.every(c=>hoursLabel(c.hours)==='Reported open for your visit')?'reported open for your visit':'some hours unknown'}`:o.tags}</div>{o.walking?.provider==='Google Maps'&&<GoogleAttribution dark={dark} hours={o.chapters.map(c=>c.hours)}/>}
-              <div className="small" style={{ fontWeight: 700, maxWidth:o.source?'calc(100% - 72px)':undefined, overflowWrap:'anywhere', color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
-              <div className="pcs" style={{ right: 14, bottom: o.source?4:-26 }}><Persona spec={flock(o.persona, o.color)} size={o.source?60:96} /></div>
+            <button key={o.id} onClick={() => setSel(oi)} className={`tile opening-tile fade-in${o.source ? " live-opening" : ""}`} style={{ background: BG[bg], minHeight: o.source ? 150 : 112, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
+              <div className="h1 opening-title" style={{ fontSize: 25 }}>{o.title}</div>
+              <div className="small" style={{ fontWeight: 500 }}>{o.walking?.provider==='Google Maps'?`~${o.estimatedMinutes} min · ${o.chapters.every(c=>hoursLabel(c.hours)==='Reported open for your visit')?'reported open':'some hours unknown'}`:o.tags}</div>
+              <div className="small" style={{ fontWeight: 700, maxWidth:o.source?'calc(100% - 70px)':undefined, overflowWrap:'anywhere', color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
+              <div className="pcs" style={{ right: 14, bottom: o.source?-14:-26 }}><Persona spec={flock(o.persona, o.color)} size={96} /></div>
               {on && <span className="tick" style={{ left: 'auto', right: 14, top: 14, bottom: 'auto' }}><Check /></span>}
             </button>
           )
         })}
       </div>
+      {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
       <div className="grow" />
       {choices[0]?.source&&<p className="small" style={{margin:'12px 0'}}>Places: <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a> · snapshot {new Date(choices[0].source.updatedAt).toLocaleDateString()}. Venue catalog only.</p>}
       <Btn kind="secondary" disabled={!choices.length} onClick={() => start(sel)}>Go with this one</Btn>
