@@ -73,6 +73,39 @@ Every offer and redemption screen is labeled demo-only and non-redeemable.
 
 Run the reward eligibility and redemption tests with `npm test` (Node.js 22.18+).
 
+## iPhone beta
+
+The beta supports real use against the Quavi development backend. Choose
+**Log in or create an account**, finish your profile, then search an area or use
+GPS to generate a nearby detour. Follow its checked walking route and add notes
+and photos. Tracking pauses when the app is locked or backgrounded and checks
+again when you return. Availability and coverage can still be incomplete.
+
+**Explore the demo** remains available for the scripted West Village experience.
+Demo partners, discounts, coins, XP and social examples are not real merchant
+rewards or a completed social service. Do not navigate to invented demo venues.
+See **You** for the installed version/build number.
+
+App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
+bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
+title is necessary because Apple reported that “Quavi” is already in use. App
+Store publication and external tester review remain separate release steps.
+
+### Map fidelity
+
+Google Maps replaced the prototype’s OpenStreetMap base after the provider
+choice. The original Quavi vectors now render locally over Google: customized
+user avatar, colored/selected silhouettes, visible place-name pills, circular
+coins, dotted future route and orange completed route. Google attribution stays
+visible above cards. Generated PNG markers and Google route/place responses are
+memory-only. The pinned plugin patch adds local PNG support and native dotted
+strokes; `npm ci` reapplies it and rejects unsupported SDK source changes.
+
+The underlying cartography differs from OpenStreetMap. Pulse rings currently
+render as static highlights, and coin bobbing plus overlapping/edge-clipped label refinement
+remain visual polish work. Compare against the original prototype before calling
+the map fully 1-to-1.
+
 ## Build roadmap
 
 Keep all prototype features and its visual identity; target iPhone first and

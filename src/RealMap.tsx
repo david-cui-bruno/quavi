@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { GoogleMap, LatLngBounds, type Marker } from "@capacitor/google-maps";
+import { GoogleMap, LatLngBounds, type Marker, type Polyline } from "@capacitor/google-maps";
 import type { AvatarSpec } from "./brand/Persona";
 import { distance, type LatLng } from "./geo";
 import {useRuntime} from './runtime'
+import {mapArt} from "./map-art";
 import mapsConfig from "./maps-config.json";
 export type PinKind =
   | "quest"
@@ -33,7 +34,7 @@ export function RealMap({
   fit,
   inset = { top: 180, bottom: 340 },
   you,
-  youAvatar: _youAvatar,
+  youAvatar,
   follow = false,
   zoomOnYou = 16,
   controlsTop = 176,
@@ -56,6 +57,8 @@ export function RealMap({
     latest = useRef({ pins, you, fit, inset, zoomOnYou });
   latest.current = { pins, you, fit, inset, zoomOnYou };
   const [cover, setCover] = useState(0);
+  const [mapZoom, setMapZoom] = useState(zoomOnYou);
+  const far=mapZoom < 16.25;
   useLayoutEffect(() => {
     const el = element.current;
     if (!el) return;
@@ -139,6 +142,14 @@ export function RealMap({
               clickableIcons: false,
               gestureHandling: "greedy",
               backgroundColor: "#F7F4EC",
+              styles: [
+                {featureType:'landscape',stylers:[{color:'#F7F4EC'}]},
+                {featureType:'poi',elementType:'labels',stylers:[{visibility:'off'}]},
+                {featureType:'poi.park',elementType:'geometry',stylers:[{color:'#DCE6CD'}]},
+                {featureType:'water',elementType:'geometry',stylers:[{color:'#C5DDE5'}]},
+                {featureType:'road',elementType:'geometry',stylers:[{color:'#FFFFFF'}]},
+                {featureType:'road',elementType:'labels.text.fill',stylers:[{color:'#4B4945'}]},
+              ],
             },
           },
           () => resolveReady(),
@@ -173,6 +184,7 @@ export function RealMap({
         });
         await m.setOnCameraIdleListener((e) => {
           zoom.current = e.zoom;
+          setMapZoom(Math.round(e.zoom*4)/4);
         });
         await m.setOnMarkerClickListener((e) => {
           const pin = latest.current.pins.find(
@@ -203,6 +215,7 @@ export function RealMap({
         });
     };
   }, [id, cover, life.epoch, life.active, life.online]);
+  const paddingReady = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     if (!map) return;
     const h = element.current?.clientHeight ?? 600;
@@ -212,7 +225,7 @@ export function RealMap({
         cover ? 60 : Math.max(70, inset.bottom),
         available - top,
       );
-    void map.setPadding({ top, bottom, left: 24, right: 24 }).catch(() => {});
+    paddingReady.current = map.setPadding({ top, bottom, left: 104, right: 104 }).catch(() => {});
   }, [map, inset.top, inset.bottom, cover]);
   const fitKey = (fit ?? []).map((p) => p.lat + "," + p.lng).join("|");
   useEffect(() => {
@@ -230,7 +243,10 @@ export function RealMap({
       northeast: ne,
       center: { lat: (sw.lat + ne.lat) / 2, lng: (sw.lng + ne.lng) / 2 },
     });
-    void map.fitBounds(bounds, 48).catch(() => {});
+    let canceled=false;
+    // Native bridge calls may execute concurrently; fit only after obstruction padding applies.
+    void paddingReady.current.then(()=>{if(!canceled)return map.fitBounds(bounds,12)}).catch(()=>{});
+    return ()=>{canceled=true};
     // Geometry controls framing; array identity changes while walking do not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, fitKey]);
@@ -248,26 +264,20 @@ export function RealMap({
         markers.current = [];
         lines.current = [];
         clicks.current.clear();
-        const list: Marker[] = pins.map((p) => ({
+        const list: Marker[] = await Promise.all(pins.map(async (p) => ({
           coordinate: p.ll,
           title: p.label ?? "",
           snippet: p.sub ?? "",
-          iconUrl: `map-icons/${p.kind}.png`,
-          iconSize: {
-            width: p.selected ? 38 : 28,
-            height: p.selected ? 52 : 39,
-          },
+          ...await mapArt(p,undefined,far),
           iconAnchor: { x: 0.5, y: 1 },
-          opacity: p.kind === "locked" ? 0.6 : 1,
           zIndex: p.selected ? 10 : p.kind === "current" ? 8 : 2,
-        }));
+        })));
         if (you)
           list.push({
             coordinate: you,
             title: "You",
-            iconUrl: "map-icons/you.png",
-            iconSize: { width: 38, height: 52 },
-            iconAnchor: { x: 0.5, y: 1 },
+            ...await mapArt('you',youAvatar),
+            iconAnchor: { x: 0.5, y: 0.88 },
             zIndex: 20,
           });
         for (const coin of coins ?? [])
@@ -275,27 +285,29 @@ export function RealMap({
             list.push({
               coordinate: coin.ll,
               title: "Demo coin",
-              iconUrl: "map-icons/current.png",
-              iconSize: { width: 16, height: 22 },
-              opacity: 0.75,
+              ...await mapArt('coin'),
+              iconAnchor: {x:0.5,y:0.5},
             });
+        if(canceled)return;
         const ids = list.length ? await map.addMarkers(list) : [];
         markers.current = ids;
         pins.forEach((p, i) => clicks.current.set(ids[i], p.id));
-        const paths = [];
+        const paths: Polyline[] = [];
         if (route && route.length > 1)
           paths.push({
             path: route,
             strokeColor: "#1E1B16",
             strokeWeight: 5,
-            strokeOpacity: 0.65,
+            strokeOpacity: Capacitor.isNativePlatform() ? 0.35 : 0,
+            tag: 'quavi-future-route',
+            icons: [{icon:{path:'M 0,0 0,0.1',strokeColor:'#1E1B16',strokeOpacity:0.35,strokeWeight:5},offset:'0',repeat:'12px'}],
           });
         if (doneRoute && doneRoute.length > 1)
           paths.push({
             path: doneRoute,
             strokeColor: "#EE6A2C",
             strokeWeight: 7,
-            strokeOpacity: 1,
+            strokeOpacity: 0.95,
           });
         if (paths.length) lines.current = await map.addPolylines(paths);
       })
@@ -306,7 +318,7 @@ export function RealMap({
     return () => {
       canceled = true;
     };
-  }, [map, pins, route, doneRoute, coins, you?.lat, you?.lng]);
+  }, [map, pins, route, doneRoute, coins, you?.lat, you?.lng, youAvatar, far, mapZoom]);
   useEffect(() => {
     if (map && you && followRef.current)
       void map

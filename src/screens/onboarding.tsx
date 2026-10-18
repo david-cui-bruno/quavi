@@ -43,8 +43,8 @@ export function Welcome() {
           ))}
         </div>
       </div>
-      <Btn kind="secondary" onClick={() => go('about')}>Explore the demo</Btn>
-      <button className="center small" style={{ fontWeight: 700, fontSize: 14, marginTop: 14, height: 24 }} onClick={() => go('login')}>Log in or create an account</button>
+      <Btn kind="secondary" onClick={() => go('login')}>Log in or create an account</Btn>
+      <button className="center small" style={{ fontWeight: 700, fontSize: 14, marginTop: 10, minHeight: 44 }} onClick={() => go('about')}>Explore the demo</button>
     </Screen$>
   )
 }
