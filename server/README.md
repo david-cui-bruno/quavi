@@ -1,0 +1,157 @@
+# Quavi API foundation
+
+Selected stack: Firebase Authentication, TypeScript/Fastify on Cloud Run,
+PostgreSQL on Cloud SQL, and a private Cloud Storage bucket. This account/save API is deployed to Quavi dev and connected to the iPhone app.
+The separate anonymous demo remains local; importing it into an empty account
+requires an explicit confirmation.
+
+## Run locally
+
+Requires Node.js 24, Docker, and two terminals. The local auth emulator does not
+contact a real Firebase project. The example password is for local Docker only.
+
+```sh
+cd server
+npm ci
+cp .env.example .env
+docker compose -p quavi-dev up -d --wait
+npm run migrate
+npm run emulators
+```
+
+In a second terminal, run `cd server && npm run dev`. The API listens on
+`http://127.0.0.1:8080`; `/healthz` is a liveness check and `/readyz` checks the
+database. Stop only these development services with Ctrl-C and
+`docker compose -p quavi-dev stop`. Do not use `down -v` unless you intend to erase
+the local demo database.
+
+## Verify
+
+With PostgreSQL and the auth emulator running:
+
+```sh
+npm run build
+npm test
+npm audit --omit=dev
+```
+
+Tests create temporary emulator accounts and use real PostgreSQL. They check
+authentication, separate-account isolation, identity injection attempts,
+concurrent/stale writes, durability across API instances, photo ownership and
+constraints, disabled users, and production emulator guards. Photo signing is
+replaced by a test adapter; real GCS upload/download must be verified after deploy.
+
+## API
+
+All `/v1` routes require `Authorization: Bearer <Firebase ID token>`. The Admin
+SDK verifies the token and checks disabled/revoked sessions. Identity always comes
+from that verified token; there are no client-selectable owner IDs in the API.
+
+| Route | Behavior |
+| --- | --- |
+| `GET /v1/me` | Returns the verified Firebase user ID |
+| `GET /v1/me/state` | Reads only this user's private document; returns revision 0 and null state for a new account |
+| `PUT /v1/me/state` | Accepts `{state: {...}, revision: number}`; saves only if the expected revision matches; returns 409 on a conflict |
+| `POST /v1/me/media` | Accepts `{contentType, bytes}`; returns an owner-scoped upload form valid for ten minutes; supports JPEG/PNG/WebP up to 8 MiB |
+| `GET /v1/me/media/:id` | Returns a five-minute download URL only for a photo owned by this user |
+
+State is capped at 2 MiB per request. Use media objects for photos, not base64
+photo payloads in state. The document is a first persistence adapter for the
+existing prototype; social sharing will introduce separate story/friendship
+resources. XP and demo-redemption values inside this document are **client demo
+data**, not server-authoritative awards or a financial ledger.
+
+Clients must keep each account's offline cache separate, capture revisions when
+reading, and show a conflict rather than blindly retrying an outdated save.
+Existing anonymous demo data must be imported only after the user chooses to
+attach it to an account. Do not automatically merge another account's local data.
+
+## Deployed development environment
+
+Deployed October 18, 2026, in project `quavi-dev-dc824` (number `532892298664`),
+region `us-central1`, billing Framewise Health Main (ending DE54D6).
+
+| Resource | Configuration |
+| --- | --- |
+| Cloud Run `quavi-api` | `https://quavi-api-532892298664.us-central1.run.app`; 0–3 instances, 1 CPU / 512 MiB, concurrency 20, pool max 5, readiness/liveness probes |
+| Artifact Registry `quavi` | Image `us-central1-docker.pkg.dev/quavi-dev-dc824/quavi/api:dev-v2`; Cloud Build builds in Google Cloud |
+| Cloud SQL `quavi-dev-db` | PostgreSQL 16 Enterprise, db-g1-small, 10 GiB SSD, deletion protection, daily backups (08:00 UTC, retain 7), point-in-time recovery |
+| Database `quavi` | `quavi_migrator` owns schema; `quavi_runtime` has DML only on app tables, no schema creation, role/database creation or migration-table access |
+| Migration job `quavi-migrate` | Runs migrations then `dist/bootstrap.js` with a separate migration identity |
+| Private bucket | `quavi-dev-dc824-private-media`; uniform access, public-access prevention; signed uploads and reads; native/local-development CORS |
+| Authentication | Firebase email/password; SDK initializes with persistence and without popup/redirect dependencies for the Capacitor webview |
+| Secrets | `quavi-migration-database-url:1`, `quavi-runtime-database-url:1`; runtime and migration identities access only their respective DB secret |
+
+The database accepts Cloud SQL connector connections only, with encryption and no
+authorized public client networks. Cloud Run uses its Cloud SQL socket. The runtime
+identity has Cloud SQL Client, Firebase Auth Viewer, bucket-scoped Object User,
+access to the runtime secret and permission to sign URLs as itself. No downloaded
+service-account key is used.
+
+The HTTP transport is public so mobile clients can connect; **all `/v1` routes
+still require a verified Firebase token**. Cloud Run uses `--no-invoker-iam-check`,
+the supported public-service setting when organization domain-restricted IAM
+prevents granting `allUsers` the Invoker role. No organization policy was changed.
+Health endpoints return status only; the storage bucket remains private.
+
+Public client configuration lives in `src/cloud-config.json`. Its API key is an
+application identifier restricted to `identitytoolkit.googleapis.com` and
+`securetoken.googleapis.com`; it is not an authorization credential for SQL, GCS
+or the Quavi API. The app uses production Firebase authentication for **development
+accounts**; emulator configuration is never deployed.
+
+## Update this deployment
+
+From `server/`, after local tests pass:
+
+```sh
+./scripts/deploy-dev.sh
+```
+
+The script builds an image tagged with the current Git commit, updates and executes
+the existing migration job, then deploys the API with explicit project/region,
+pinned Secret Manager versions and instance caps. It assumes the resources and IAM
+listed above already exist. Only the migration identity can change the schema.
+Review migrations before deploying; avoid running migrations concurrently. The
+migration runner also uses a PostgreSQL advisory lock and immutable checksums.
+
+After a frontend change, run `npm run ios:sync` from the repository root and rebuild
+the app. Changing Cloud Run code alone does not require reinstalling the app.
+The container runs as a non-root user and excludes local environment files.
+
+## Deployed acceptance and limits
+
+Verified with disposable real Firebase accounts:
+
+- Readiness succeeds and missing/forged credentials are rejected.
+- Account A's save is invisible to B; concurrent revision writes yield one success
+  and one 409, rather than overwriting each other.
+- A real signed GCS upload downloads byte-for-byte, native-origin CORS succeeds,
+  another account receives 404 and an unsigned object read is denied.
+- Runtime SQL privileges were checked directly: no elevated role membership,
+  database/role/schema creation or migration-table access.
+- The iOS simulator signs in through the actual SDK/API, explicitly imports its
+  demo and restores the saved profile after clearing its local app data.
+- The signed backend-connected development app was installed on David's iPhone.
+  Opening the app and checking personal-account behavior on that phone remains a
+  user acceptance step; simulator results do not stand in for physical-device QA.
+
+Root `npm test` covers rewards plus account-cache isolation, offline recovery,
+conflicts, edits during slow uploads and sign-out races. Server `npm test` runs
+against the isolated local Auth emulator and PostgreSQL. Both production dependency
+audits are clean; existing Capacitor/Firebase CLI development-tool advisories are
+separate from shipped runtime dependencies.
+
+## Next slice
+
+Implement full account deletion (Auth, SQL, media and retry behavior), verify email
+recovery/verification delivery, improve sync/photo retry UX, enforce production
+payload validation and per-user quotas, clean orphan uploads, add app attestation,
+and configure deployment CI, alerting/budgets and a backup restore drill. Offline
+account edits are cached, but uncached private photos need a connection. Conflict
+resolution currently offers an explicit cloud-copy replacement; merging divergent
+local edits is not implemented. Initial cloud reads and token refresh need internet.
+
+Friends/circle remain local demo data, recommendation generation is scripted,
+background location is unimplemented, and XP/rewards are client-controlled demo
+values. These are separate roadmap stages, not services supplied by this deploy.

@@ -1,3 +1,4 @@
+import { Photo } from '../CloudPhoto'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BODY_PLAIN, Persona, flock } from '../brand/Persona'
 import { ARRIVE_RADIUS, NOTE_STARTERS, chapterMeta, levelName, levelOf, notePrompt, placeInfo, isPhotoTask, TRIP_XP_CAP, taskXp } from '../data'
@@ -277,7 +278,7 @@ export function Active() {
                           <button className="clip" onClick={() => { photoKey.current = nk; photoInput.current?.click() }} aria-label={story.taskPhotos?.[nk] ? 'Replace your photo' : 'Add your photo'}
                             style={{ position: 'relative', width: '100%', height: story.taskPhotos?.[nk] ? 180 : 96, borderRadius: 18, background: 'var(--paper)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
                             {story.taskPhotos?.[nk]
-                              ? <><img src={story.taskPhotos[nk]} alt="Your photo for this stop" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /><span className="pill" style={{ position: 'absolute', right: 10, bottom: 10, background: 'var(--paper)' }}>Replace</span></>
+                              ? <><Photo src={story.taskPhotos[nk]} alt="Your photo for this stop" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /><span className="pill" style={{ position: 'absolute', right: 10, bottom: 10, background: 'var(--paper)' }}>Replace</span></>
                               : <><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>Add your photo</>}
                           </button>
                           <div className="kicker" style={{ marginBottom: 6 }}>A line about it (optional)</div>

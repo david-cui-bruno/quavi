@@ -1,0 +1,10 @@
+{
+  "firebase": {
+    "projectId": "quavi-dev-dc824",
+    "appId": "1:532892298664:web:8aa4d9167198f46369c19d",
+    "apiKey": "AIzaSyDjiX0mGOJrNSgxV-Zitn5hg60i-0AMc9w",
+    "authDomain": "quavi-dev-dc824.firebaseapp.com",
+    "messagingSenderId": "532892298664"
+  },
+  "apiUrl": "https://quavi-api-532892298664.us-central1.run.app"
+}
