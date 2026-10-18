@@ -1,6 +1,8 @@
 import { scrubGoogleContent } from "./google-retention.mjs";
 const clone = (v) => structuredClone(v);
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const liveKey = (story) => JSON.stringify([story.origin, story.chapters.map(c=>[c.place,c.ll,c.kind,c.aliases,c.mins])]);
+const fresh = (check) => { const age=Date.now()-Date.parse(check?.checkedAt); return age>=0&&age<=300000; };
 const object = (v) => v && typeof v === "object" && !Array.isArray(v);
 const plain = (r) => {
   const { revision: _revision, updatedAt: _updatedAt, ...value } = r;
@@ -146,6 +148,7 @@ export class OutingSync {
     });
     this.cache = { version: 1, records: [], pending: [], pendingRewards: [], selected: null };
     this.checkpoint = Promise.resolve();
+    this.liveStories = new Map();
     this.closed = false;
     this.loaded = false;
     this.status = "pending";
@@ -239,8 +242,14 @@ export class OutingSync {
       done = {},
       collected = {},
       tripXp = {};
-    const storyOf = (r) => ({
+    const storyOf = (r) => {
+      const live=this.liveStories.get(r.id);
+      const same=live&&liveKey(live)===liveKey(r.story);
+      const route=same&&fresh(live.walking);
+      return ({
       ...r.story,
+      ...(route?{walking:live.walking,estimatedMinutes:live.estimatedMinutes}:{}),
+      chapters:r.story.chapters.map((c,i)=>same&&fresh(live.chapters[i]?.hours)?{...c,hours:live.chapters[i].hours}:c),
       outingPhase: r.status,
       ...(r.status === "completed"
         ? { status: "done" }
@@ -248,6 +257,7 @@ export class OutingSync {
           ? { status: "active" }
           : {}),
     });
+    };
     for (const r of records) {
       for (const [key, on] of Object.entries(r.tasks)) {
         if (!on) continue;
@@ -277,6 +287,10 @@ export class OutingSync {
     };
   }
   edit(before, next) {
+    // Keep live provider evidence in this account session only; journal/SQL stay scrubbed.
+    for(const story of [...Object.values(next.library),...next.shelf,...(next.story?[next.story]:[])]) {
+      if(story.walking||story.chapters.some(c=>c.hours))this.liveStories.set(story.id,clone(story));
+    }
     const old = new Map(extractOutings(before).map((r) => [r.id, r])),
       existing = new Map(this.view().map((r) => [r.id, plain(r)]));
     this.cache.selected = next.story?.id ?? null;
@@ -565,6 +579,7 @@ export class OutingSync {
   }
   close() {
     this.closed = true;
+    this.liveStories.clear();
     clearTimeout(this.timer);
   }
 }

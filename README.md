@@ -222,7 +222,7 @@ production partner verification and the reliability stages below still need impl
 | Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
 | Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
 | Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
-| Done: detour reliability implementation pass | Category/service-area checks, catalog-localized name aliases, bounded walking/closed-stop replacements, rendered-path validation, whole-visit hours, entry links and note/arrival-grounded captions | 85 backend and 35 client tests cover mismatches, substitutions, provider failures, holiday/closing boundaries, geometry, authenticated Start checks, retention and caption evidence |
+| Done: detour reliability implementation pass | Category/service-area checks, catalog-localized name aliases, bounded walking/closed-stop replacements, rendered-path validation, whole-visit hours, entry links and note/arrival-grounded captions | 85 backend and 36 client tests cover mismatches, substitutions, provider failures, holiday/closing boundaries, geometry, authenticated Start checks, retention and caption evidence |
 | Remaining: real-world detour acceptance | Verify actual entrances, admission/tickets and accessibility; expand multilingual and sparse-area acceptance using real outings | Complete outings in multiple regions and record coverage, closed-stop replacement and access failures; entry is never inferred from open hours |
 | Done: foreground outing recovery foundation | Native while-in-use GPS, accuracy/freshness gates, explicit denied-location recovery, lock/background pause, transient checks after resume/reconnect and every five minutes, cached account startup and read-before-retry sync | Unit tests cover stale/inaccurate fixes, watch cancellation, session invalidation, autosave stability, offline replay and sync conflicts; simulator GPS, screen lock/resume and permission-denied flows pass |
 | Done: independent outing records and offline journal | Private per-outing records/revisions, lifecycle, one-time legacy migration, IndexedDB retry journal, field-level conflicts, idempotent operation receipts, photo-reference retention and deletion | API/PostgreSQL tests exercise cold offline replay, lost acknowledgement, concurrent fields, conflicts, account isolation and deletion; physical-device acceptance remains below |
@@ -453,7 +453,7 @@ is verified **Testing** in **Quavi Development** on October 18, 2026. Beta testi
 notes are saved. Open TestFlight → Update and confirm 1.0 (11) in You. All phones
 participating in the private circle should update before testing together.
 
-### Detour reliability pass — build 12
+### Detour reliability pass — build 13
 
 Venue verification now checks the expected kind against Google's returned types
 and excludes identified non-visit/service-area businesses. Catalog-provided local
@@ -485,7 +485,23 @@ conversations or feelings, and existing edited captions are retained on reopenin
 Anonymous scripted demo captions remain separate. This uses deterministic evidence
 rules and needs no new AI provider or secret. Further AI styling is optional later.
 
-Verification: 85 backend tests, 35 client tests and both TypeScript builds pass.
+Fresh Google hours, venue links and walking estimates now survive account sync
+projections in memory for up to five minutes. They are invalidated when the stop
+identity changes and never enter the durable outing journal or cold-start cache.
+A regression reproduces the previous Details handoff loss, then verifies session
+retention, expiry, changed-route invalidation and storage exclusion.
+
+Verification: 85 backend tests, 36 client tests and both TypeScript builds pass.
+The backend is deployed to Quavi dev revision `quavi-api-00015-qb2` from `a758dbf`.
+Live checks in New York, San Francisco and Tokyo each returned two network-checked
+three-stop offers within one hour; each fresh authenticated Start check passed,
+with no stop reported closed or identified unsuitable. This is provider acceptance,
+not proof of physical entry. The BigQuery alias query validates within the existing
+20 GiB request cap. iPhone 17/SE builds and the 25-command SE onboarding/demo smoke
+pass. A separate native SE live-city flow verifies matching-area selection, the
+same 60-minute walking estimate after sync, current venue links, unknown entry,
+and Start. Build 12 was uploaded but not assigned to testers; build 13 includes
+the session-only handoff fix.
 Physical entry/ticket/accessibility checks, outdoor GPS and offline/lock-resume
 acceptance remain outstanding; the user-deferred physical checks are not claimed
 complete by this implementation pass.

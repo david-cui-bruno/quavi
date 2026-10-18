@@ -469,10 +469,14 @@ fails. Drawn step geometry must connect to each leg and stay consistent with its
 reported length. Dated/truncated opening periods cannot be overridden by optimistic
 next-change timestamps. Admission, tickets and accessible entrances remain unknown.
 
-85 backend / 35 client tests pass, including authenticated detour-check rejection,
+85 backend / 36 client tests pass, including authenticated detour-check rejection,
 multilingual aliases, ambiguous identity, unsuitable types, bounded route recovery,
 provider failure, geometry, holiday/closing boundaries, transient retention and
-actual caption-caller evidence. Live dev/native verification is recorded after
-deployment. Production entry validation and physical multi-region acceptance remain
+actual caption-caller evidence and session-only live-check retention across sync.
+Deployed revision `quavi-api-00015-qb2` serves source `a758dbf`. Authenticated live
+checks in New York, San Francisco and Tokyo each returned two checked three-stop
+offers within 60 minutes and passed a fresh Start recheck. Native SE area selection,
+Details/entry links and Start also pass. No physical admission is claimed.
+Production entry validation and physical multi-region acceptance remain
 separate work. Reference: [Google Place resource](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places)
 and [Overture Places](https://docs.overturemaps.org/guides/places/).
