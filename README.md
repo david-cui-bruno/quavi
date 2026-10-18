@@ -90,9 +90,9 @@ See **You** for the installed version/build number.
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
 name is necessary because Apple reported that “Quavi” is already in use.
-**1.0 (11)** is verified **Testing** in Quavi Development on October 18, 2026.
+**1.0 (13)** is verified **Testing** in Quavi Development on October 18, 2026.
 Open TestFlight on the accepted tester's iPhone, tap **Update**, and confirm
-**1.0 (11)** in You. Update every device using a migrated account: old builds'
+**1.0 (13)** in You. Update every device using a migrated account: old builds'
 whole-document writes cannot replace independent outing records or server-owned rewards. Earlier builds
 remain listed as release history, not a safe persistence rollback. App Store
 publication and external tester review remain separate release steps.
@@ -509,3 +509,9 @@ complete by this implementation pass.
 Provider references: [Google Place fields](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places),
 [Place Details field masks](https://developers.google.com/maps/documentation/places/web-service/place-details)
 and [Overture Places semantics](https://docs.overturemaps.org/guides/places/).
+
+Signed **1.0 (13)** is verified **Testing** in Quavi Development on October 18,
+2026, with reliability beta notes saved. Build 12 remains unassigned. Open
+TestFlight → Update and confirm 1.0 (13) in You. The disposable QA account was
+blocked for deletion, private credential files removed, and native cold launch
+verified return to the welcome screen.
