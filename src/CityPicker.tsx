@@ -24,6 +24,7 @@ export function CityPicker({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [minutes, setMinutes] = useState(60);
+  const [selection,setSelection] = useState<{label:string;minutes:number}|null>(null);
   const find = async (
     origin: { lat: number; lng: number },
     label: string,
@@ -42,7 +43,7 @@ export function CityPicker({
         minutes,
         age21: s.user.age21,
       });
-      if(result.openings.length) update(st=>({...st,user:{...st.user,neighborhood:label}}));
+      if(result.openings.length) { update(st=>({...st,user:{...st.user,neighborhood:label}})); setSelection({label,minutes}); }
       onResults(result, live);
     } catch (e) {
       setError(accountError(e));
@@ -50,10 +51,16 @@ export function CityPicker({
       setBusy(false);
     }
   };
+  if (selection) return <section className="city-picker" aria-label="Detour starting point" style={{margin:'8px 0 16px'}}>
+    <button className="field row" onClick={()=>setSelection(null)} style={{width:'100%',textAlign:'left',gap:12,flexDirection:'row',alignItems:'center',padding:'14px 20px'}} aria-label="Change detour starting point">
+      <div style={{flex:1,minWidth:0}}><span className="kicker" style={{display:'block',fontSize:11,marginBottom:3}}>Starting in</span><b style={{fontSize:16,overflowWrap:'anywhere'}}>{selection.label} · {selection.minutes===60?'1 hour':selection.minutes===120?'2 hours':'30 minutes'}</b></div>
+      <span style={{fontSize:13,fontWeight:700}}>Change</span>
+    </button>
+  </section>
   return (
     <section className="city-picker" aria-label="Find nearby detours" style={{ margin: "8px 0 16px" }}>
       <p className="small" style={{ marginBottom: 10 }}>
-        Choose where to start. We’ll check reported hours for your arrival and the walking route. Prices and entry requirements still need checking.
+        Choose your starting point. We’ll find a few nearby detours.
       </p>
       <div className="field">
         <label htmlFor="detour-city">CITY OR NEIGHBORHOOD</label>

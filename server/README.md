@@ -5,6 +5,10 @@ PostgreSQL on Cloud SQL, and a private Cloud Storage bucket. This account/save A
 The separate anonymous demo remains local; importing it into an empty account
 requires an explicit confirmation.
 
+The optional `user.onboarding` step is accepted by dev revision
+`quavi-api-00011-js8` (source `3d564a5`). Older saves without this field remain valid;
+no SQL migration is needed for the optional profile property.
+
 ## Run locally
 
 Requires Node.js 24, Docker, and two terminals. The local auth emulator does not

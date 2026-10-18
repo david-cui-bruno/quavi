@@ -149,6 +149,8 @@ export function RealMap({
               styles: [
                 {featureType:'landscape',stylers:[{color:'#F7F4EC'}]},
                 {featureType:'poi',elementType:'labels',stylers:[{visibility:'off'}]},
+                {featureType:'transit',elementType:'labels',stylers:[{visibility:'off'}]},
+                {featureType:'road',elementType:'labels.icon',stylers:[{visibility:'off'}]},
                 {featureType:'poi.park',elementType:'geometry',stylers:[{color:'#DCE6CD'}]},
                 {featureType:'water',elementType:'geometry',stylers:[{color:'#C5DDE5'}]},
                 {featureType:'road',elementType:'geometry',stylers:[{color:'#FFFFFF'}]},
@@ -352,7 +354,7 @@ export function RealMap({
   return (
     <div
       className="rmap-wrap"
-      style={{ ["--ctl-top" as string]: `${controlsTop}px` }}
+      style={{ ["--ctl-top" as string]: `${controlsTop}px`, ["--map-header-bottom" as string]: `${headerBottom}px`, ["--map-cover" as string]: `${cover}px` }}
     >
       <capacitor-google-map
         ref={element}

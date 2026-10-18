@@ -30,6 +30,7 @@ export function AccountPanel() {
     retrySync,
     loadCloud,
     importDemo,
+    canImportDemo,
     logout,
     deleteAccount,
     go,
@@ -82,7 +83,7 @@ export function AccountPanel() {
                 </Btn>
               </>
             )}
-            {syncStatus === "empty" && (
+            {canImportDemo && (
               <Btn
                 kind="soft"
                 disabled={busy}

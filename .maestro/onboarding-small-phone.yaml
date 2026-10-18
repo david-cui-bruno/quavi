@@ -1,0 +1,45 @@
+# Run only on a disposable Quavi QA simulator; this resets that simulator's app sandbox.
+appId: com.quavi.app
+name: Small iPhone onboarding reaches Home
+---
+- launchApp:
+    clearState: true
+- tapOn: "Explore the demo"
+- tapOn: "What should we call you?"
+- inputText: "Small Phone QA"
+- tapOn: "Not yet"
+- tapOn: "Continue"
+- scrollUntilVisible:
+    element: "Next"
+    direction: DOWN
+- tapOn: "Next"
+- scrollUntilVisible:
+    element: "Looks like me"
+    direction: DOWN
+- tapOn: "Looks like me"
+- assertVisible: "Take a detour"
+- tapOn: "Take a detour"
+- scrollUntilVisible:
+    element: "Show me 3 openings"
+    direction: DOWN
+- tapOn: "Show me 3 openings"
+- scrollUntilVisible:
+    element: "Go with this one"
+    direction: DOWN
+- tapOn: "Go with this one"
+- extendedWaitUntil:
+    visible: "YOUR PLAN FOR TONIGHT"
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Start this story"
+    direction: DOWN
+- assertVisible: "Start this story"
+- tapOn: "Start this story"
+- scrollUntilVisible:
+    element: "Let’s go"
+    direction: DOWN
+- tapOn: "Let’s go"
+- extendedWaitUntil:
+    visible: "YOU’VE ARRIVED"
+    timeout: 10000
+- assertVisible: "Skip tasks"

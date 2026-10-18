@@ -87,7 +87,7 @@ input, textarea { font: inherit; color: inherit; border: 0; outline: 0; backgrou
   padding: 54px var(--gutter) 20px; overflow: hidden; min-width: 0; overscroll-behavior: none;
   animation: enter var(--motion-t3) var(--ease-enter) both;
 }
-.screen.scroll { overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; touch-action: pan-y; }
+.screen.scroll { overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; touch-action: auto; }
 /* keep scrolled content from colliding with the status bar */
 @media (min-width: 481px) { .screen.scroll.masked { -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 38px, #000 50px); mask-image: linear-gradient(to bottom, transparent 0, transparent 38px, #000 50px); } }
 .screen.flush { padding-left: 0; padding-right: 0; }
@@ -383,7 +383,7 @@ button.pill.abs { padding: 0 16px; }
 .rmap .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; border-radius: 50%; background: var(--paper); color: var(--ink); border: 0; margin-bottom: 8px; font-size: 22px; box-shadow: 0 1px 6px rgba(30,27,22,.18); }
 .rmap .leaflet-bar a:hover { background: var(--ink); color: var(--paper); }
 .rmap .leaflet-control-attribution { font-size: 10px; background: rgba(247,244,236,.8); border-radius: 8px; margin: 0 0 8px 8px; padding: 1px 6px; }
-.rmap-locate { position: absolute; right: 16px; top: calc(var(--ctl-top, 176px) + 112px); z-index: 5; width: 44px; height: 44px; border-radius: 50%; background: var(--paper); color: var(--ink); display: grid; place-items: center; box-shadow: 0 1px 6px rgba(30,27,22,.18); }
+.rmap-locate { position: absolute; right: 16px; top: min(max(var(--ctl-top, 176px), var(--map-header-bottom, 0px)), calc(100% - var(--map-cover, 0px) - 56px)); z-index: 5; width: 44px; height: 44px; border-radius: 50%; background: var(--paper); color: var(--ink); display: grid; place-items: center; box-shadow: 0 1px 6px rgba(30,27,22,.18); }
 .rmap-locate.on { background: var(--ink); color: var(--yellow); }
 .rpin-wrap { background: none; border: 0; }
 /* silhouette pins */
@@ -419,7 +419,7 @@ button.pill.abs { padding: 0 16px; }
 
 .screen > * { flex-shrink: 0; min-width: 0; }
 .screen > .grow { flex-shrink: 1; }
-.sheet { overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; }
+.sheet { overflow-x: hidden; overscroll-behavior: contain; touch-action: auto; }
 
 /* Original map motion on the browser renderer; iPhone uses matching native layers. */
 .quavi-art-body { filter: drop-shadow(0 1px 2px rgba(30,27,22,.3)); }
@@ -432,3 +432,25 @@ button.pill.abs { padding: 0 16px; }
 .active-map-chrome { position: absolute; top: calc(var(--screen-top, 54px) + 66px); left: var(--gutter); right: var(--gutter); z-index: 8; display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: none; }
 .active-map-chrome .navbanner { position: relative; top: auto; left: auto; right: auto; pointer-events: auto; }
 .active-map-chrome .status-pill { position: relative; top: auto; right: auto; align-self: flex-end; pointer-events: auto; }
+
+/* Keep live routes in the prototype's title/character rhythm. */
+.live-opening .opening-title { max-width: calc(100% - 40px); padding-right: 8px; }
+.live-opening > .small { max-width: calc(100% - 60px); }
+.route-notes { margin: 10px 0 16px; font-size: 13px; line-height: 1.45; }
+.route-notes summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
+.route-notes summary::after { content: '+'; margin-left: auto; font-size: 20px; }
+.route-notes[open] summary::after { content: '−'; }
+.route-notes p { margin: 0 0 10px; color: var(--ink-p); }
+.route-notes a { color: inherit; text-underline-offset: 3px; }
+.active-map-header .hud { padding: 6px 8px; }
+.active-map-header .hud-av { width: 36px; height: 36px; }
+.active-map-chrome .navicon { width: 44px; height: 44px; }
+.active-map-chrome .navbig { font-size: 20px; }
+
+@media (max-height: 740px) { .rmap-locate { right: auto; left: 24px; } }
+
+@media (max-height: 740px) {
+  .native-app { --active-map-bottom: 260px; }
+  .qcard .active-stop-summary { display: none; }
+  .active-stop-stats > div { padding: 6px 0 !important; margin-bottom: 6px !important; }
+}

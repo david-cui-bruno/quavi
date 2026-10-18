@@ -538,3 +538,14 @@ test('monthly provider counters survive ordinary quota cleanup until the month e
   await cleanupQuotas(pool);const rows=await pool.query('SELECT category,used FROM request_quotas WHERE owner_hash=$1',[owner]);assert.deepEqual(rows.rows,[{category:'google-places',used:499}]);
  }finally{await pool.query('DELETE FROM request_quotas WHERE owner_hash=$1',[owner])}
 });
+
+test('account onboarding progress accepts only known setup steps and keeps old saves valid', async () => {
+  const {appStateSchema}=await import('../src/state-schema.js')
+  assert.doesNotThrow(()=>appStateSchema.parse(state('Returning')))
+  for(const onboarding of ['about','interests','customize','complete']) {
+    const value=state('New'); Object.assign(value.user,{onboarding})
+    assert.doesNotThrow(()=>appStateSchema.parse(value))
+  }
+  const value=state('New');Object.assign(value.user,{onboarding:'skip-everything'})
+  assert.throws(()=>appStateSchema.parse(value))
+})

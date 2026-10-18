@@ -185,10 +185,10 @@ export function Active() {
 
   return (
     <Screen$ bg="paper" flush>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 292 }}>
-        <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}  doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={17} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 'var(--active-map-bottom, 292px)' }}>
+        <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}  doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={16.5} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
       </div>
-      <div className="row" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8, gap: 10 }}>
+      <div className="row active-map-header" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8, gap: 10 }}>
         <button className="back" onClick={() => { tr.setWalking(false); reset('home') }} aria-label="Back to Home" style={{ background: 'var(--paper)' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12H5M11 5l-7 7 7 7" /></svg>
         </button>
@@ -218,8 +218,8 @@ export function Active() {
           <span className="pill" style={{ background: arrived ? 'var(--yellow)' : 'var(--soft)' }}>{tr.mode==='live'&&!tr.ready?'Location needed':!recovery.ready?'Walking checks paused':arrived?'✦ You’re here':nav.route?`${fmtMeters(nav.route.distance)} · ${Math.ceil(nav.route.duration/60)} min walk`:story.source?'Route not checked':`${fmtDist(dist)} · ${getThere(dist)}`} </span>
         </div>
         <h1 className="h1" style={{ fontSize: 28, margin: '4px 0 8px' }}>{c.title}</h1>
-        <p className="small muted" style={{ marginBottom: 10 }}>{c.place} · {c.desc}</p>
-        <StatRow style={{ marginBottom: 12 }} size={18} stats={[[`${done.length}/${meta.tasks.length}`, 'Tasks'], [`${tripEarned}/${TRIP_XP_CAP}`, 'Trip XP'], [`${c.mins} min`, 'Here']]} />
+        <p className="small muted active-stop-summary" style={{ marginBottom: 10 }}>{c.place} · {c.desc}</p>
+        <div className="active-stop-stats"><StatRow style={{ marginBottom: 12 }} size={18} stats={[[`${done.length}/${meta.tasks.length}`, 'Tasks'], [`${tripEarned}/${TRIP_XP_CAP}`, 'Trip XP'], [`${c.mins} min`, 'Here']]} /></div>
         {syncStatus==='storage-full'&&<p role="alert" className="small" style={{marginBottom:10}}>Device storage is full. Keep Quavi open and free up space; your latest changes may not be saved.</p>}
         {!recovery.ready&&<p className="small" role="status" style={{marginBottom:10}}>{recovery.phase==='offline'?'Saved on this device. Reconnect to refresh directions and hours.':recovery.phase==='location'?tr.locationError||'Waiting for a fresh position. Arrival tasks stay paused.':recovery.message||'Refreshing your outing before continuing.'}</p>}
         <div className="row">

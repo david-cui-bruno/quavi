@@ -68,8 +68,6 @@ export function Details() {
         <BackBtn onClick={() => reset('home')} />
         <button className="chip" onClick={() => setSave(true)} aria-label="Save this plan to a list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>Save for later</button>
       </div>
-      {story.source&&<p className="small" style={{marginTop:14}}>Venue catalog: <a href={story.source.attributionURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a>. Check prices and entry requirements. Reported hours are refreshed before starting.</p>}
-      {story.source&&<><GoogleAttribution hours={story.chapters.map(c=>c.hours)}/><p className="small">Walking directions may be missing sidewalks or pedestrian paths. Check local signs and conditions.</p></>}
       <div className="kicker" style={{ marginTop: 14 }}>Your plan for tonight</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 12px' }}>{story.title.split(' ').slice(0, 2).join(' ')}<br />{story.title.split(' ').slice(2).join(' ')}</h1>
       <div style={{ display: 'flex', margin: '4px 0 14px', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
@@ -86,6 +84,15 @@ export function Details() {
       </div>
       <RoutePreview chapters={story.chapters} />
       <p className="it" style={{ fontSize: 18, margin: '12px 2px' }}>“{story.premise}”</p>
+      {story.source&&<>
+        <GoogleAttribution hours={story.chapters.map(c=>c.hours)}/>
+        <details className="route-notes"><summary>Hours, prices &amp; route details</summary>
+          <p>Reported hours are refreshed before starting. Check prices and entry requirements.</p>
+          <p>Walking directions may be missing sidewalks or pedestrian paths. Check local signs and conditions.</p>
+          <p>Venue catalog: <a href={story.source.attributionURL} target="_blank" rel="noreferrer">Overture Maps</a>.</p>
+        </details>
+      </>}
+
       <div className="col" style={{ gap: 6 }}>
         {story.chapters.map((c, i) => {
           const bg: Bg[] = ['yellow-p', 'orange-p', 'ink-p']

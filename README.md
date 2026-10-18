@@ -95,7 +95,7 @@ assigned to the group. Install the TestFlight app on iPhone using the owner's
 Apple account, then open Quavi's invitation/listing. The map-motion update,
 **1.0 (5)**, is verified **Testing** in Quavi Development on October 18.
 Open TestFlight on the accepted tester’s iPhone and tap **Update** for Quavi;
-confirm **1.0 (5)** in You. Build 4 remains available as a fallback. App Store publication and external tester review remain separate release steps.
+confirm **1.0 (8)** in You. The account setup, visual and compact-phone bug-pass update, **1.0 (8)**, is verified **Testing** in Quavi Development on October 18. Builds 4 and 5 remain available as fallbacks; intermediate builds 6 and 7 are unassigned. App Store publication and external tester review remain separate release steps.
 
 ### Map fidelity
 
@@ -120,6 +120,59 @@ is reapplied by `npm ci` and rejects unsupported source changes. Client regressi
 coverage exercises the actual map component: zoom in/out and cloned autosave
 props preserve marker/path identity; removing a stop removes only that marker.
 Physical outdoor acceptance remains on the roadmap.
+
+### Account setup and October 18 bug pass
+
+New accounts start at About you with blank identity/age fields and zero XP, coins,
+streak and badges. Setup saves an account-specific step through interests and avatar
+customization. Returning completed profiles open Home; a stale online device reads
+its cloud state before selecting that entry screen. Known accounts can open offline;
+unknown offline accounts show retry/log-out recovery instead of being treated as new.
+Existing profiles without a step marker retain their completed behavior when they
+already have a name and age answer. Anonymous demo progress stays separate, and demo
+import remains an explicit action before account detour activity has been saved.
+
+The visual pass restores larger opening-card characters, collapses the selected
+starting point to an editable summary, keeps story titles above provider caveats,
+reduces transit-map clutter, and uses the existing Quavi logo for the app icon.
+Interests, customization and mood screens now allow vertical scrolling when their
+content exceeds a smaller phone. Fixed map screens still cannot scroll as pages; recenter controls stay above the bottom panel, with a compact walking summary on short phones.
+
+Verification: 24 client tests and 43 server tests; real fresh-account signup and
+interrupted-setup reload; iPhone 17 account startup; a 25-command Maestro flow on
+iPhone SE through onboarding, mood, openings, starting the story and demo arrival. Production
+dependency audits report no known vulnerabilities for client or server. The saved
+flow is `.maestro/onboarding-small-phone.yaml` and must run on a disposable simulator.
+Outdoor GPS/arrival, physical lock/resume and airplane-mode photo recovery still
+need physical-device acceptance. Friends and authoritative reward services remain
+roadmap work; this pass does not make those prototype features server-backed.
+
+## System design discussion after the bug pass
+
+Current implementation: React/TypeScript runs in the Capacitor iPhone shell;
+Google Maps artwork and GPS use native integrations. Firebase Authentication
+identifies accounts. A Fastify API on Cloud Run stores revisioned private account
+snapshots in Cloud SQL and photos in private Cloud Storage. Overture supplies the
+venue catalog; Google supplies transient reported hours and walking geometry.
+
+Recommended discussion order, before adding more prototype features:
+
+1. **Outing state and offline sync.** Split profile/preferences, outing progress and
+   media metadata into separately versioned records. Define the conflict rule for
+   two devices, offline completion and deletion; retain a durable retry queue.
+2. **Server-owned rewards.** Award XP and spend demo rewards through idempotent
+   server commands and an append-only ledger. Decide which arrival/task evidence
+   is sufficient, and keep merchant rewards explicitly simulated.
+3. **Social access.** Model accepted friendships, story visibility and blocking on
+   the server, with authorization checks on every feed/media request.
+4. **Mobile boundary.** Keep the existing hybrid UI for the first beta while
+   measuring gesture, accessibility and lifecycle problems. Decide any further
+   native migration from those results, preserving the original design.
+5. **Operations.** Separate dev/staging/production, automate deployment, monitor
+   failed sync/provider calls, exercise database restore, and set provider budgets.
+
+These are proposed next decisions, not services already implemented. Physical
+outing acceptance should happen alongside this design work before a wider beta.
 
 ## Build roadmap
 
