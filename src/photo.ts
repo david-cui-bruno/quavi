@@ -1,3 +1,4 @@
+import { resolvePhoto } from './cloud'
 import type { Story } from './data'
 
 /** Read an image file and shrink it so it's cheap to keep in localStorage and to share (max 1000px, JPEG). */
@@ -7,7 +8,7 @@ export function photoFromFile(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error)
     reader.onload = () => {
       const img = new Image()
-      img.onerror = () => resolve(String(reader.result))
+      img.onerror = () => reject(new Error('Unsupported image'))
       img.onload = () => {
         const k = Math.min(1, 1000 / Math.max(img.width, img.height))
         const c = document.createElement('canvas')
@@ -25,5 +26,5 @@ export function photoFromFile(file: File): Promise<string> {
 /** The story's photos as File objects, for the native share sheet. */
 export async function photoFiles(s: Story): Promise<File[]> {
   const urls = Object.values(s.taskPhotos ?? {})
-  return Promise.all(urls.map(async (u, i) => new File([await (await fetch(u)).blob()], `quavi-${i + 1}.jpg`, { type: 'image/jpeg' })))
+  return Promise.all(urls.map(async (u, i) => new File([await (await fetch(await resolvePhoto(u))).blob()], `quavi-${i + 1}.jpg`, { type: 'image/jpeg' })))
 }

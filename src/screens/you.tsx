@@ -1,3 +1,5 @@
+import { AccountPanel } from '../AccountPanel'
+import { Photo } from '../CloudPhoto'
 import { useRef, useState } from 'react'
 import { Persona, flock, safePair, safeSurface } from '../brand/Persona'
 import { FRIEND_STORIES, SUGGESTED_FRIENDS, XP_PER_LEVEL, chapterImg, levelOf, chapterMeta, isPhotoTask, noteLines, notePrompt, photoLines, shareText, type Story } from '../data'
@@ -59,7 +61,7 @@ export function Shelf() {
 }
 
 export function Profile() {
-  const { s, go, restart } = useStore()
+  const { s, go, restart, account } = useStore()
   const { user } = s
   const [confirm, setConfirm] = useState(false)
   const { stage: stageName, disc: discName } = safePair(user.avatar)
@@ -91,6 +93,7 @@ export function Profile() {
         <span><b style={{ fontSize: 20, letterSpacing: '-.01em' }}>{s.game.xp.toLocaleString()} XP</b></span>
         <span className="small muted" style={{ fontWeight: 500 }}>{XP_PER_LEVEL - (s.game.xp % XP_PER_LEVEL)} XP to Level {levelOf(s.game.xp) + 1}</span>
       </div>
+      <AccountPanel />
       <DemoRewards />
       <div className="card" style={{ borderRadius: 26, padding: 20, marginBottom: 10 }}>
         <div className="kicker">Badges</div>
@@ -104,7 +107,7 @@ export function Profile() {
           </button>
         ))}
       </div>
-      <button className="small muted center" style={{ fontWeight: 700, marginTop: 14 }} onClick={() => setConfirm(true)}>Log out & restart demo</button>
+      {!account && <button className="small muted center" style={{ fontWeight: 700, marginTop: 14 }} onClick={() => setConfirm(true)}>Clear & restart demo</button>}
       {confirm && (
         <Sheet label="Log out and restart demo?" onClose={() => setConfirm(false)}>
           <h2 className="h1 h-xs">Log out and restart?</h2>
@@ -179,9 +182,9 @@ export function Read() {
           return (
             <div key={i} className="row" style={{ alignItems: 'flex-start', gap: 14 }}>
               <div className="clip" style={{ width: 84, height: 96, borderRadius: 24, background: `var(--${safeSurface(flock(c.persona, i === 0 ? 'Orange' : 'Yellow'), (['yellow-p', 'orange-p', 'ink-p'] as const)[i % 3])})`, position: 'relative', flex: 'none' }}>
-                {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: 16, top: 10 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={60} /></div>}
+                {img ? <Photo src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: 16, top: 10 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={60} /></div>}
               </div>
-              <div className="col" style={{ flex: 1, gap: 3 }}><span className="kicker">Chapter {i + 1} · {c.place}</span><span className="h1" style={{ fontSize: 19, lineHeight: 1.1 }}>{caps[i]}</span>{photoLines(st).filter((p) => p.chapter === i).map((p) => <img key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: '100%', height: 170, objectFit: 'cover', borderRadius: 20, marginTop: 8 }} />)}{noteLines(st).filter((n) => n.chapter === i).map((n) => <NoteQuote key={n.task} task={n.task} note={n.note} style={{ marginTop: 8 }} />)}</div>
+              <div className="col" style={{ flex: 1, gap: 3 }}><span className="kicker">Chapter {i + 1} · {c.place}</span><span className="h1" style={{ fontSize: 19, lineHeight: 1.1 }}>{caps[i]}</span>{photoLines(st).filter((p) => p.chapter === i).map((p) => <Photo key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: '100%', height: 170, objectFit: 'cover', borderRadius: 20, marginTop: 8 }} />)}{noteLines(st).filter((n) => n.chapter === i).map((n) => <NoteQuote key={n.task} task={n.task} note={n.note} style={{ marginTop: 8 }} />)}</div>
             </div>
           )
         })}
@@ -239,7 +242,7 @@ function EditStory({ orig, draft, setDraft, onSave, onCancel }: { orig: Story; d
                       <div style={{ margin: '10px 0' }}>
                         {img
                           ? <div style={{ position: 'relative' }}>
-                              <img src={img} alt={`Photo: ${t.text}`} style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 16, display: 'block' }} />
+                              <Photo src={img} alt={`Photo: ${t.text}`} style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 16, display: 'block' }} />
                               <div className="row" style={{ position: 'absolute', right: 8, bottom: 8, gap: 6 }}>
                                 <button className="pill" style={{ background: 'var(--paper)' }} onClick={() => { photoKey.current = k; fileInput.current?.click() }}>Replace</button>
                                 <button className="pill" style={{ background: 'var(--paper)' }} onClick={() => removePhoto(k)}>Remove</button>

@@ -1,3 +1,5 @@
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
+import { auth, accountError } from '../cloud'
 import { useEffect, useMemo, useState } from 'react'
 import { Logo, Persona, flock, randomSpec, safePair, safeSurface, type AvatarSpec, type Colorway } from '../brand/Persona'
 import { SLOT_OPTIONS, type Slot } from '../brand/partsData'
@@ -41,48 +43,63 @@ export function Welcome() {
           ))}
         </div>
       </div>
-      <Btn kind="secondary" onClick={() => go('about')}>Find my detour</Btn>
-      <button className="center small" style={{ fontWeight: 700, fontSize: 14, marginTop: 14, height: 24 }} onClick={() => go('login')}>I already have an account</button>
+      <Btn kind="secondary" onClick={() => go('about')}>Explore the demo</Btn>
+      <button className="center small" style={{ fontWeight: 700, fontSize: 14, marginTop: 14, height: 24 }} onClick={() => go('login')}>Log in or create an account</button>
     </Screen$>
   )
 }
 
 export function Login() {
-  const { go, reset, update } = useStore()
-  const [email, setEmail] = useState('maya@email.com')
-  const [pw, setPw] = useState('quavi-demo')
+  const { say } = useStore()
+  const [email, setEmail] = useState('')
+  const [pw, setPw] = useState('')
   const [show, setShow] = useState(false)
   const [err, setErr] = useState<{ email?: string; pw?: string }>({})
-  const enter = () => {
+  const [signup, setSignup] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState('')
+  const enter = async () => {
     const e: { email?: string; pw?: string } = {}
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) e.email = 'Enter an email like name@email.com'
-    if (pw.length < 6) e.pw = 'Password needs at least 6 characters'
+    if (pw.length < (signup ? 8 : 6)) e.pw = signup ? 'Use at least 8 characters' : 'Enter your password'
     setErr(e)
     if (e.email || e.pw) return
-    update((s) => ({ ...s, user: { ...s.user, authed: true, name: email.split('@')[0].replace(/^\w/, (c) => c.toUpperCase()) || 'Maya' } }))
-    reset('home')
+    setBusy(true); setFailure('')
+    try {
+      if (signup) await createUserWithEmailAndPassword(auth, email.trim(), pw)
+      else await signInWithEmailAndPassword(auth, email.trim(), pw)
+    } catch (error) { setFailure(accountError(error)) }
+    finally { setBusy(false) }
   }
   return (
-    <Screen$ bg="paper">
+    <Screen$ bg="paper" scroll>
       <div className="abs bounce" style={{ right: -26, top: 10, zIndex: 0 }}>
         <Persona spec={flock('Juno', 'Orange')} size={190} />
       </div>
       <div style={{ position: 'relative', zIndex: 1 }}><BackBtn /></div>
-      <h1 className="h1 h-xl" style={{ marginTop: 92 }}>Welcome<br />back.</h1>
-      <p className="body muted" style={{ margin: '10px 0 18px' }}>Pick up where your last detour left off.</p>
+      <h1 className="h1 h-xl" style={{ marginTop: 92 }}>{signup ? <>Your next<br />chapter.</> : <>Welcome<br />back.</>}</h1>
+      <p className="body muted" style={{ margin: '10px 0 18px' }}>{signup ? 'Create an account to save your stories across devices.' : 'Pick up where your last detour left off.'}</p>
       <div className="col" style={{ gap: 10 }}>
         <div className={`field${err.email ? ' bad' : ''}`}><label htmlFor="li-email">EMAIL</label><input id="li-email" value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" inputMode="email" aria-invalid={!!err.email} aria-describedby={err.email ? 'li-email-e' : undefined} /></div>
         {err.email && <div className="err" id="li-email-e" role="alert">{err.email}</div>}
         <div className={`field row2${err.pw ? ' bad' : ''}`}>
-          <div><label htmlFor="li-pw">PASSWORD</label><input id="li-pw" value={pw} onChange={(e) => setPw(e.target.value)} type={show ? 'text' : 'password'} autoComplete="current-password" aria-invalid={!!err.pw} aria-describedby={err.pw ? 'li-pw-e' : undefined} /></div>
+          <div><label htmlFor="li-pw">PASSWORD</label><input id="li-pw" value={pw} onChange={(e) => setPw(e.target.value)} type={show ? 'text' : 'password'} autoComplete={signup ? 'new-password' : 'current-password'} aria-invalid={!!err.pw} aria-describedby={err.pw ? 'li-pw-e' : undefined} /></div>
           <button className="small muted" style={{ fontWeight: 700 }} aria-pressed={show} onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button>
         </div>
         {err.pw && <div className="err" id="li-pw-e" role="alert">{err.pw}</div>}
       </div>
       <div className="grow" />
       <div className="col" style={{ gap: 10 }}>
-        <Btn kind="secondary" onClick={enter}>Log in</Btn>
-        <button className="center" style={{ fontWeight: 700, fontSize: 14, height: 28 }} onClick={() => go('interests')}>New here? Create account</button>
+        {failure && <p className="err" role="alert">{failure}</p>}
+        <Btn kind="secondary" onClick={() => void enter()} disabled={busy}>{busy ? 'Connecting…' : signup ? 'Create account' : 'Log in'}</Btn>
+        <button className="center" disabled={busy} style={{ fontWeight: 700, fontSize: 14, minHeight: 44 }} onClick={() => { setSignup(!signup); setFailure(''); setErr({}) }}>{signup ? 'Already have an account? Log in' : 'New here? Create account'}</button>
+        {!signup && <button className="center small" disabled={busy} style={{ minHeight: 44 }} onClick={async () => {
+          if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setErr({ email: 'Enter your email first' }); return }
+          setBusy(true); setFailure('')
+          try { await sendPasswordResetEmail(auth, email.trim()); say('If this email has an account, a reset link is on its way.') }
+          catch (error) { setFailure(accountError(error)) }
+          finally { setBusy(false) }
+        }}>Forgot password?</button>}
       </div>
     </Screen$>
   )

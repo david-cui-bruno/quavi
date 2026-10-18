@@ -1,5 +1,6 @@
+import { Photo } from '../CloudPhoto'
 import { useEffect, useRef, useState } from 'react'
-import { photoFiles } from '../photo'
+import { photoFiles, photoFromFile } from '../photo'
 import { MoodLogo, Persona, flock, safeSurface, type Colorway } from '../brand/Persona'
 import { DEFAULT_PREFS, OPENINGS, applyPrefs, buildStory, chapterImg, chapterMeta, draftCaptions, isPhotoTask, noteLines, notePrompt, photoLines, shareText, tripMeters, type Chapter, type Prefs, type Story } from '../data'
 import { useStore } from '../store'
@@ -115,11 +116,11 @@ export function MomentSheet({ i, story, setStory, onClose }: { i: number; story:
   const [feeling, setFeeling] = useState(cur.feeling ?? '')
   const [img, setImg] = useState<string | undefined>((cur as { img?: string }).img)
   const file = useRef<HTMLInputElement>(null)
-  const pick = (f?: File) => {
+  const { say } = useStore()
+  const pick = async (f?: File) => {
     if (!f) return
-    const r = new FileReader()
-    r.onload = () => setImg(String(r.result))
-    r.readAsDataURL(f)
+    try { setImg(await photoFromFile(f)) }
+    catch { say('Could not open that photo. Try another image.') }
   }
   const c = story.chapters[i]
   return (
@@ -127,7 +128,7 @@ export function MomentSheet({ i, story, setStory, onClose }: { i: number; story:
       <div className="kicker">Chapter {i + 1} · {c.place}</div>
       <h2 className="h1 h-m" style={{ margin: '4px 0 12px' }}>Add a moment.</h2>
       <button onClick={() => file.current?.click()} className="clip" style={{ width: '100%', height: 150, borderRadius: 28, background: 'var(--soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, position: 'relative' }}>
-        {img ? <img src={img} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /> : (<><Persona spec={flock('Juno', 'Orange')} size={90} /><b style={{ fontSize: 14 }}>＋ Add a photo</b></>)}
+        {img ? <Photo src={img} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /> : (<><Persona spec={flock('Juno', 'Orange')} size={90} /><b style={{ fontSize: 14 }}>＋ Add a photo</b></>)}
       </button>
       <input ref={file} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0])} />
       <div className="field" style={{ margin: '12px 0 10px' }}><input aria-label="One line about this moment" value={note} onChange={(e) => setNote(e.target.value)} placeholder="One line about this moment…" /></div>
@@ -195,7 +196,7 @@ export function Complete() {
           return (
             <div key={i} className="fade-in" style={{ flex: 1, background: 'var(--paper)', borderRadius: 22, padding: 10, animationDelay: `${i * 0.1}s` }}>
               <div className="clip" style={{ borderRadius: 16, height: 96, background: BG[safeSurface(flock(crew[i % 3][0], crew[i % 3][1]), surf[i % 3] as 'paper') as Bg], position: 'relative' }}>
-                {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: '50%', top: 12, transform: 'translateX(-50%)' }}><Persona spec={flock(crew[i % 3][0], crew[i % 3][1])} size={56} /></div>}
+                {img ? <Photo src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: '50%', top: 12, transform: 'translateX(-50%)' }}><Persona spec={flock(crew[i % 3][0], crew[i % 3][1])} size={56} /></div>}
               </div>
               <b className="small" style={{ display: 'block', margin: '6px 4px 2px' }}>Ch. {i + 1}</b>
             </div>
@@ -276,7 +277,7 @@ function ShareSheet({ story, caps, onClose }: { story: Story; caps: string[]; on
               <span className="stop-num">{i + 1}</span>
               <div className="col" style={{ flex: 1 }}><b className="h1" style={{ fontSize: 16 }}>{c.place}</b><span className="small it">{caps[i]}</span></div>
             </div>
-            {photoLines(story).filter((p) => p.chapter === i).map((p) => <img key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: 'calc(100% - 44px)', height: 150, objectFit: 'cover', borderRadius: 18, margin: '10px 0 0 44px' }} />)}
+            {photoLines(story).filter((p) => p.chapter === i).map((p) => <Photo key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: 'calc(100% - 44px)', height: 150, objectFit: 'cover', borderRadius: 18, margin: '10px 0 0 44px' }} />)}
             {notes.filter((n) => n.chapter === i).map((n) => (
               <NoteQuote key={n.task} task={n.task} note={n.note} style={{ margin: '10px 0 0 44px' }} />
             ))}
@@ -318,7 +319,7 @@ export function Tell() {
             <div key={i} className="fade-in" style={{ animationDelay: `${i * 0.08}s` }}>
               <div className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
                 <div className="clip" style={{ width: 72, height: 84, borderRadius: 22, background: BG[safeSurface(flock(c.persona, i === 0 ? 'Orange' : 'Yellow'), bg[i % 3] as 'paper') as Bg], position: 'relative', flex: 'none' }}>
-                  {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: 6, top: 12 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={60} /></div>}
+                  {img ? <Photo src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: 6, top: 12 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={60} /></div>}
                 </div>
                 <div className="col" style={{ flex: 1 }}>
                   <span className="kicker">Chapter {i + 1} · {c.place}</span>
@@ -332,7 +333,7 @@ export function Tell() {
                     return (
                       <div key={t.id} className="quote">
                         <b>{t.text}</b>
-                        {isPhotoTask(t) && story.taskPhotos?.[k] && <img src={story.taskPhotos[k]} alt={`Photo: ${t.text}`} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 14, margin: '6px 0' }} />}
+                        {isPhotoTask(t) && story.taskPhotos?.[k] && <Photo src={story.taskPhotos[k]} alt={`Photo: ${t.text}`} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 14, margin: '6px 0' }} />}
                         <textarea aria-label={`Your words for ${t.text}`} rows={2} value={story.taskNotes?.[k] ?? ''} placeholder={notePrompt(t)} onChange={(e) => setStory((s0) => ({ ...s0, taskNotes: { ...(s0.taskNotes ?? {}), [k]: e.target.value } }))} style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, fontWeight: 500 }} />
                       </div>
                     )

@@ -4,14 +4,22 @@ name: iPhone navigation and destination regression checks
 # Run only against a disposable simulator: this resets its Quavi demo data.
 - launchApp:
     clearState: true
-- assertVisible: "Find my detour"
-- tapOn: "I already have an account"
-- tapOn: "Log in"
+- assertVisible: "Explore the demo"
+- tapOn: "Explore the demo"
+- tapOn:
+    point: 50%,26%
+- inputText: "Maya"
+- hideKeyboard
+- tapOn: "Yes, 21+"
+- tapOn: "Continue"
+- tapOn: "Next"
+- tapOn: "Looks like me"
 - assertVisible: "Take a detour"
 - tapOn: "You"
-- swipe:
-    start: 50%,75%
-    end: 50%,30%
+- scrollUntilVisible:
+    element: "Friends Add your first friend ›"
+    centerElement: true
+    timeout: 15000
 - tapOn: "Friends Add your first friend ›"
 - assertVisible: "Friends."
 # Reselecting You from a nested page must return to Profile.

@@ -1,9 +1,9 @@
 # Quavi API foundation
 
 Selected stack: Firebase Authentication, TypeScript/Fastify on Cloud Run,
-PostgreSQL on Cloud SQL, and a private Cloud Storage bucket. This API is a first
-backend slice. The iPhone app still uses local demo storage until its account
-and synchronization UI is connected to a deployed API.
+PostgreSQL on Cloud SQL, and a private Cloud Storage bucket. This account/save API is deployed to Quavi dev and connected to the iPhone app.
+The separate anonymous demo remains local; importing it into an empty account
+requires an explicit confirmation.
 
 ## Run locally
 
@@ -66,53 +66,92 @@ reading, and show a conflict rather than blindly retrying an outdated save.
 Existing anonymous demo data must be imported only after the user chooses to
 attach it to an account. Do not automatically merge another account's local data.
 
-## Deployment preparation
+## Deployed development environment
 
-The Dockerfile runs as a non-root user, excludes local environment files, and
-binds the production service to Cloud Run's `PORT`. Build with:
+Deployed October 18, 2026, in project `quavi-dev-dc824` (number `532892298664`),
+region `us-central1`, billing Framewise Health Main (ending DE54D6).
+
+| Resource | Configuration |
+| --- | --- |
+| Cloud Run `quavi-api` | `https://quavi-api-532892298664.us-central1.run.app`; 0–3 instances, 1 CPU / 512 MiB, concurrency 20, pool max 5, readiness/liveness probes |
+| Artifact Registry `quavi` | Image `us-central1-docker.pkg.dev/quavi-dev-dc824/quavi/api:dev-v2`; Cloud Build builds in Google Cloud |
+| Cloud SQL `quavi-dev-db` | PostgreSQL 16 Enterprise, db-g1-small, 10 GiB SSD, deletion protection, daily backups (08:00 UTC, retain 7), point-in-time recovery |
+| Database `quavi` | `quavi_migrator` owns schema; `quavi_runtime` has DML only on app tables, no schema creation, role/database creation or migration-table access |
+| Migration job `quavi-migrate` | Runs migrations then `dist/bootstrap.js` with a separate migration identity |
+| Private bucket | `quavi-dev-dc824-private-media`; uniform access, public-access prevention; signed uploads and reads; native/local-development CORS |
+| Authentication | Firebase email/password; SDK initializes with persistence and without popup/redirect dependencies for the Capacitor webview |
+| Secrets | `quavi-migration-database-url:1`, `quavi-runtime-database-url:1`; runtime and migration identities access only their respective DB secret |
+
+The database accepts Cloud SQL connector connections only, with encryption and no
+authorized public client networks. Cloud Run uses its Cloud SQL socket. The runtime
+identity has Cloud SQL Client, Firebase Auth Viewer, bucket-scoped Object User,
+access to the runtime secret and permission to sign URLs as itself. No downloaded
+service-account key is used.
+
+The HTTP transport is public so mobile clients can connect; **all `/v1` routes
+still require a verified Firebase token**. Cloud Run uses `--no-invoker-iam-check`,
+the supported public-service setting when organization domain-restricted IAM
+prevents granting `allUsers` the Invoker role. No organization policy was changed.
+Health endpoints return status only; the storage bucket remains private.
+
+Public client configuration lives in `src/cloud-config.json`. Its API key is an
+application identifier restricted to `identitytoolkit.googleapis.com` and
+`securetoken.googleapis.com`; it is not an authorization credential for SQL, GCS
+or the Quavi API. The app uses production Firebase authentication for **development
+accounts**; emulator configuration is never deployed.
+
+## Update this deployment
+
+From `server/`, after local tests pass:
 
 ```sh
-docker build -t quavi-api:dev .
+./scripts/deploy-dev.sh
 ```
 
-Choose a dedicated Quavi GCP project and the billing account containing the credits
-before provisioning. No cloud resources are created by these local commands.
-Use explicit `--project` flags rather than changing or relying on an unrelated
-active gcloud project.
+The script builds an image tagged with the current Git commit, updates and executes
+the existing migration job, then deploys the API with explicit project/region,
+pinned Secret Manager versions and instance caps. It assumes the resources and IAM
+listed above already exist. Only the migration identity can change the schema.
+Review migrations before deploying; avoid running migrations concurrently. The
+migration runner also uses a PostgreSQL advisory lock and immutable checksums.
 
-Provision and configure:
+After a frontend change, run `npm run ios:sync` from the repository root and rebuild
+the app. Changing Cloud Run code alone does not require reinstalling the app.
+The container runs as a non-root user and excludes local environment files.
 
-- Firebase Authentication: enable email/password and configure verification,
-  password recovery, authorized domains and mobile app identifiers.
-- Cloud SQL PostgreSQL: backups enabled; separate migration and runtime database
-  users. Runtime needs SELECT/INSERT/UPDATE on these tables, not schema ownership.
-  Use the Cloud SQL connector/socket with Cloud Run, without broad authorized
-  networks. Run migrations with the migration identity before serving traffic
-  (`npm run migrate:production` in the built container).
-- A Cloud Storage bucket with uniform bucket access and public-access prevention
-  enforced. Allow CORS POST from approved app/web origins if using browser uploads.
-  Completed uploads, retention and orphan-upload cleanup need deployment QA.
-- A dedicated Cloud Run service account: Cloud SQL Client, Firebase Authentication
-  Viewer, bucket-scoped Storage Object User, access to the database secret, and
-  permission to sign URLs as itself (`iam.serviceAccounts.signBlob`). Do not ship
-  service-account keys to the app or grant project-wide Storage Admin.
-- Secret Manager: store `DATABASE_URL` (with the Cloud SQL socket host) as a secret;
-  set `GOOGLE_CLOUD_PROJECT`, `MEDIA_BUCKET` and `ALLOWED_ORIGINS` on the service.
-  Never set `FIREBASE_AUTH_EMULATOR_HOST` on Cloud Run. Production startup rejects it.
-- Initially cap Cloud Run at three instances with five DB connections per instance;
-  configure budgets and alerts even when credits are available. Migrations and
-  the public API runtime are separate deployment steps.
+## Deployed acceptance and limits
 
-Cloud Run must accept mobile HTTP requests at the transport layer; private API
-routes still require verified Firebase tokens. Keep the bucket private and limit
-allowed browser origins. Set up deployment via a short-lived identity rather than
-committing credential JSON files.
+Verified with disposable real Firebase accounts:
+
+- Readiness succeeds and missing/forged credentials are rejected.
+- Account A's save is invisible to B; concurrent revision writes yield one success
+  and one 409, rather than overwriting each other.
+- A real signed GCS upload downloads byte-for-byte, native-origin CORS succeeds,
+  another account receives 404 and an unsigned object read is denied.
+- Runtime SQL privileges were checked directly: no elevated role membership,
+  database/role/schema creation or migration-table access.
+- The iOS simulator signs in through the actual SDK/API, explicitly imports its
+  demo and restores the saved profile after clearing its local app data.
+- The signed backend-connected development app was installed on David's iPhone.
+  Opening the app and checking personal-account behavior on that phone remains a
+  user acceptance step; simulator results do not stand in for physical-device QA.
+
+Root `npm test` covers rewards plus account-cache isolation, offline recovery,
+conflicts, edits during slow uploads and sign-out races. Server `npm test` runs
+against the isolated local Auth emulator and PostgreSQL. Both production dependency
+audits are clean; existing Capacitor/Firebase CLI development-tool advisories are
+separate from shipped runtime dependencies.
 
 ## Next slice
 
-Connect Firebase sign-up/sign-in/sign-out/recovery to the existing iPhone screens;
-add account-specific caches, explicit demo import, revision-aware synchronization
-and private photo upload. Then implement complete account deletion (Auth, SQL,
-media and retries), email verification, production rate limits and cloud acceptance
-tests. These are not implemented by the API scaffold. Friends, AI recommendations,
-background location and a trusted demo-reward ledger remain later roadmap stages.
+Implement full account deletion (Auth, SQL, media and retry behavior), verify email
+recovery/verification delivery, improve sync/photo retry UX, enforce production
+payload validation and per-user quotas, clean orphan uploads, add app attestation,
+and configure deployment CI, alerting/budgets and a backup restore drill. Offline
+account edits are cached, but uncached private photos need a connection. Conflict
+resolution currently offers an explicit cloud-copy replacement; merging divergent
+local edits is not implemented. Initial cloud reads and token refresh need internet.
+
+Friends/circle remain local demo data, recommendation generation is scripted,
+background location is unimplemented, and XP/rewards are client-controlled demo
+values. These are separate roadmap stages, not services supplied by this deploy.

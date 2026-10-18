@@ -30,8 +30,9 @@ iPhone, select your Apple development team in Signing & Capabilities and choose
 a connected phone. `com.quavi.app` is the development bundle identifier; confirm
 the final identifier and team before distributing through TestFlight.
 
-This is the first mobile prototype, not a production release. Authentication,
-AI generation and persistence keep their existing demo behavior. Maps and place
+This is a development build, not a production release. Real email/password
+accounts, private cloud saves and photos now connect to Quavi dev. You can still
+explore the separate local demo. AI generation remains scripted. Maps and place
 lookups still need internet. Foreground GPS, photo picking, sharing, keyboard
 behavior and the complete story flow need physical-iPhone testing; background
 location and native notifications are not implemented by this shell.
@@ -40,15 +41,15 @@ location and native notifications are not implemented by this shell.
 
 | Feature | Current implementation | Needed for a real release |
 | --- | --- | --- |
-| Accounts | App has demo login; new API verifies Firebase tokens locally | Connect real account UI, recovery, verification and complete deletion |
-| Stories, lists, profiles, photos | App uses localStorage; API has private PostgreSQL state and owner-scoped media grants | Cloud deployment, app synchronization, private media upload and account-specific caches |
+| Accounts | Firebase sign-up/sign-in/sign-out, password recovery and verification email controls connected to Quavi dev | Complete account deletion, recent-login handling and email-delivery acceptance |
+| Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA, photo retry UX and orphan cleanup |
 | Friends and circle | Locally added names and bundled example stories | User lookup, friendship requests, shared feed, privacy controls |
 | Mood-based plans and captions | Preset openings, rules and text templates | City-aware recommendations and server-side generation |
 | Explore | Live Photon search, Nominatim detours, OSM map tiles and walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
 | Location and arrival tasks | Browser foreground GPS or demo walking | Native device validation; background tracking if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
 | XP, coins and demo partner rewards | Local XP, fictional offers, locked/unlocked states and persistent simulated redemptions | Server-authoritative reward history and sync; real partners/funding are deferred |
-| Operations | Local builds | CI, environments, monitoring, backups, release/signing setup |
+| Operations | Cloud Run dev deployment, Secret Manager, limited runtime DB privileges, Cloud SQL backups/PITR, private bucket | CI, production environment, alerts/budgets, restore drill, release/signing setup |
 
 Product direction: preserve all prototype features on iPhone and support any city.
 The user confirmed this repo is the full implementation: there is no separate
@@ -65,8 +66,9 @@ Every offer and redemption screen is labeled demo-only and non-redeemable.
 - Every 1,000 lifetime XP unlocks one earned reward. Café and bookshop offers each
   use one earned reward and can each be tried once per demo.
 - Using a demo reward does not deduct lifetime XP, levels, coins or badges.
-- Redemption history is saved on the device and prevents duplicate use. Restarting
-  the demo clears this history with the other demo data.
+- Redemption history is saved on the device and syncs when signed in. Restarting
+  the separate local demo clears its history. The server does not yet validate awards
+  or redemption eligibility; these values remain demo data.
 - There are no valid vouchers, cash balances, payments or real merchant redemption.
 
 Run the reward eligibility and redemption tests with `npm test` (Node.js 22.18+).
@@ -75,12 +77,14 @@ Run the reward eligibility and redemption tests with `npm test` (Node.js 22.18+)
 
 Keep all prototype features and its visual identity; target iPhone first and
 support any city. Demo partners stay in the initial release. This is the build
-order, not a claim that the backend already exists.
+order. The account/save backend is deployed; the detour, social and trusted reward
+services below still need implementation.
 
 | Order | Work | Completion check |
 | --- | --- | --- |
 | Done | iOS shell, safe areas, keyboard behavior, navigation fixes and demo partner rewards | App opens on the user's iPhone; simulator flows and reward tests pass |
-| **In progress: backend foundation** | GCP selected: Firebase Auth + Cloud Run TypeScript API + Cloud SQL PostgreSQL + private Cloud Storage. Local API supports verified identity, isolated state, revision conflicts and private media grants. Next: choose the Quavi GCP project/billing account, deploy, and connect sign-up/sign-in/recovery, private media, account-specific caches, sync and full deletion | API tests pass for two-account isolation and durability. Stage completes only when real accounts keep private data across devices and photo uploads work in the deployed app |
+| Done: dev accounts and cloud saves | Firebase Auth + Cloud Run API + Cloud SQL PostgreSQL + private Cloud Storage in `quavi-dev-dc824`; real sign-in, recovery/verification controls, account caches, revision conflicts, explicit demo import and private photo transfer | Live two-account isolation, concurrent-write conflicts and real photo round trip pass; simulator signs in, imports demo data and restores it after clearing local storage |
+| **Next: account and data hardening** | Full account deletion across Auth/SQL/photos with retries; verify email delivery and recent-login flows; strengthen sync/photo retry UX, payload validation, per-user quotas, orphan cleanup and app attestation; deployment CI, budget/monitoring alerts and restore drill | Delete a populated test account without leftover active data; resume offline edits safely; failed uploads can recover; alert and backup restore tests pass |
 | City-aware detour engine | Replace fixed West Village plans and quest pins with nearby venues; validate opening hours, destination identity, travel time, preferences and age exclusions; generate grounded tasks/captions server-side; handle sparse/no results | Complete a relevant detour in NYC and another city; closed or unavailable places are excluded and uncertain data is shown honestly |
 | Native outing experience | Validate foreground GPS, camera, native sharing, resume and permission-denied behavior; decide active-detour background location and arrival notifications; recover safely from offline/interrupted sessions | Complete a real outing on iPhone, including locking/resuming the phone under the selected tracking policy |
 | Friends and real story delivery | User discovery, requests/acceptance/removal, private circle feed, story sharing controls, blocking/reporting and notifications | A story shared by account A appears for an authorized friend B and stays hidden from unrelated C |
@@ -100,9 +104,25 @@ a TypeScript API on Cloud Run, Cloud SQL PostgreSQL and private Cloud Storage.
 AWS is not part of the initial deployment. Provider-specific map/AI eligibility
 still needs checking against the actual credits.
 
-The locally tested API and deployment requirements are in [server/README.md](server/README.md).
-No GCP resources have been provisioned, and the mobile app is still in local demo
-mode. The active CLI project is not assumed to belong to Quavi.
+The deployed API and operations instructions are in [server/README.md](server/README.md).
+Development API: `https://quavi-api-532892298664.us-central1.run.app` (region
+`us-central1`). Billing is linked to Framewise Health Main (ending DE54D6).
+Every cloud command uses an explicit Quavi project; the unrelated active CLI
+project is unchanged.
+
+On iPhone, open **Quavi → You → Log in or create an account** (or use the welcome
+screen). A new account starts separately from the demo. Before editing it, choose
+**You → Import this device’s demo → Import demo into account** to copy demo progress
+into that empty account. Existing cloud saves cannot be replaced by importing.
+Account edits save automatically; **You → Your account** shows saving/offline/conflict
+status. Signing out preserves each account’s separate pending cache and returns to
+the local demo. A conflict requires explicitly loading the cloud copy before saving
+again; this replaces unsaved local account edits.
+
+`src/cloud-config.json` contains public Firebase client identifiers and the dev API
+URL, not server credentials. Its browser API key is restricted to Authentication
+and token refresh APIs. Passwords, database URLs and service-account keys never ship
+in the app. Dev accounts and data are not the eventual production environment.
 
 ### Mobile verification
 
@@ -118,7 +138,7 @@ simulator** after installing a build (it resets that simulator's Quavi demo data
 maestro test .maestro/ios-smoke.yaml
 ```
 
-- **Stack:** Vite + React + TypeScript with a Capacitor iPhone shell. The app still saves demo state in `localStorage` (Profile → "Log out & restart demo" resets it). The separate API foundation in `server/` is not yet connected to the app.
+- **Stack:** Vite + React + TypeScript with a Capacitor iPhone shell. Anonymous demo state stays in `localStorage` (You → "Clear & restart demo" resets it). Signed-in state uses isolated local caches and the deployed API in `server/`; photos use stable private media IDs.
 - **Brand:** colors, ABC Areal + Fraunces Soft, flat buttons with the brand's hover/pressed behavior (`src/index.css`).
 - **Characters:** the Persona Kit ducklings, rendered as SVG from the brand file's vector data (`src/brand/partsData.ts`, `Persona.tsx`). Colorway rules keep accessories from matching the body.
 - **Flow:** Splash → Welcome → (Log in | Interests → Make your Quavi) → Home → Mood → Openings → Writing → Story details → Active story (add moments, swap chapters) → Complete → Tell your story → Story shelf. Also Explore (map, destination route, stop preview), Friend's story + save to lists, Profile.
