@@ -447,6 +447,7 @@ scheduled deletion and credential files removed after acceptance.
 
 Development revision `quavi-api-00014-flw` serves all traffic from backend source
 `4a50dfd`; migration 007 completed. Mobile layout refinements are in `0a5ecf4`.
-Signed **1.0 (11)** archive is ready, but upload currently needs the Mac unlocked
-so Xcode can access the saved Apple account. **1.0 (10)** remains the latest
+Signed **1.0 (11)** archive is ready. After unlocking the Mac, export still
+failed; Xcode → Settings → Apple Accounts shows no signed-in account. Apple
+Developer sign-in is required before retrying the TestFlight upload. **1.0 (10)** remains the latest
 verified TestFlight build until that upload is completed.
