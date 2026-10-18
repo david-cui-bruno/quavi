@@ -17,7 +17,7 @@ export function CityPicker({
 }: {
   onResults: (result: Results, live: boolean) => void;
 }) {
-  const { account, s } = useStore(),
+  const { account, s, update } = useStore(),
     tracking = useTracking();
   const [query, setQuery] = useState(""),
     [hits, setHits] = useState<Found[]>([]),
@@ -42,6 +42,7 @@ export function CityPicker({
         minutes,
         age21: s.user.age21,
       });
+      if(result.openings.length) update(st=>({...st,user:{...st.user,neighborhood:label}}));
       onResults(result, live);
     } catch (e) {
       setError(accountError(e));
@@ -50,7 +51,7 @@ export function CityPicker({
     }
   };
   return (
-    <section aria-label="Find nearby detours" style={{ margin: "8px 0 16px" }}>
+    <section className="city-picker" aria-label="Find nearby detours" style={{ margin: "8px 0 16px" }}>
       <p className="small" style={{ marginBottom: 10 }}>
         Choose where to start. Opening hours, access and prices aren’t verified.
       </p>

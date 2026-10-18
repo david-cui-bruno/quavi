@@ -3,6 +3,7 @@ import type pg from "pg";
 import { quota } from "./account.js";
 import {
   kinds,
+  normalizeCategory,
   type VenueProvider,
   type Point,
   type VenueResult,
@@ -19,7 +20,7 @@ export function overtureProvider(
           lat: Math.round(origin.lat * 100) / 100,
           lng: Math.round(origin.lng * 100) / 100,
         },
-        key = `overture:${center.lat}:${center.lng}`;
+        key = `overture-v2:${center.lat}:${center.lng}`;
       const db = await pool.connect();
       try {
         await db.query("BEGIN");
@@ -74,7 +75,7 @@ export function overtureProvider(
           venues: rows.map((r) => ({
             id: String(r.id),
             name: String(r.name).slice(0, 200),
-            kind: kinds[r.category] ? r.category : r.basic_category,
+            kind: normalizeCategory(r.category) ?? 'unsupported',
             ll: { lat: Number(r.lat), lng: Number(r.lng) },
             locality: r.locality ? String(r.locality) : undefined,
             confidence: Number(r.confidence),

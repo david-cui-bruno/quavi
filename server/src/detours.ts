@@ -46,6 +46,13 @@ export const kinds: Record<string, { label: string; interest: string }> = {
   arcade: { label: "Arcade", interest: "fun" },
   botanical_garden: { label: "Garden", interest: "air" },
 };
+export function normalizeCategory(primary:string): string|null {
+  if(kinds[primary])return primary
+  if(/^[a-z_]+_restaurant$/.test(primary))return 'restaurant'
+  if(/^[a-z_]+_museum$/.test(primary))return 'museum'
+  if(/^(national|state|regional|city|urban)_park$/.test(primary))return 'park'
+  return null
+}
 export function meters(a: Point, b: Point) {
   const rad = (n: number) => (n * Math.PI) / 180;
   const h =

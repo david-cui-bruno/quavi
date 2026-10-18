@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  normalizeCategory,
   detourInput,
   planDetours,
   meters,
@@ -96,3 +97,14 @@ test("a restaurant category does not override an adult venue name for under-21 u
   for (const route of result.openings)
     assert.ok(route.chapters.every((c) => c.placeId !== "adult-bar"));
 });
+
+test('the app honors real coordinates even when a real venue name matches a demo place',async()=>{
+ const {buildStory,OPENINGS,chapterMeta,tripMeters}=await import('../../src/data.ts')
+ const story=buildStory(OPENINGS[0]);story.origin={lat:37.7749,lng:-122.4194};story.chapters=[{...story.chapters[0],place:'Corner Coffee',ll:{lat:37.775,lng:-122.419}}]
+ assert.equal(chapterMeta(story,0).lat,37.775);assert.ok(tripMeters(story)<100)
+})
+
+
+test('venue categories do not turn offices or parking facilities into outing stops',()=>{
+ assert.equal(normalizeCategory('coworking_space'),null);assert.equal(normalizeCategory('parking'),null);assert.equal(normalizeCategory('travel_agency'),null);assert.equal(normalizeCategory('italian_restaurant'),'restaurant');assert.equal(normalizeCategory('art_museum'),'museum');assert.equal(normalizeCategory('national_park'),'park')
+})

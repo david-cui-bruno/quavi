@@ -53,7 +53,7 @@ export function Explore() {
   return (
     <Screen$ tabs="explore" flush>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 360 }}>
-        <RealMap pins={pins} route={route} coins={coins} you={tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 200, bottom: 30 }} />
+        <RealMap pins={pins} route={route} coins={coins} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 200, bottom: 30 }} />
       </div>
       <div className="hud-inline" style={{ position: 'absolute', left: 24, right: 24, top: 54, zIndex: 8 }}><GameHUD /></div>
       <form className="abs row" onSubmit={(e) => { e.preventDefault(); submit() }} style={{ left: 24, right: 24, top: 114, height: 64, borderRadius: 32, background: 'var(--white)', padding: '0 20px 0 22px', zIndex: 8, gap: 12, boxShadow: '0 4px 18px rgba(30,27,22,.18)' }}>
