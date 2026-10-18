@@ -1,3 +1,5 @@
+import {demoWalk} from '../demo-walks'
+import {Icon} from '../Icons'
 import {RealMap} from '../RealMap'
 import {useWalkingRoute} from '../nav'
 import {PrivateShare} from '../PrivateCircle'
@@ -9,7 +11,7 @@ import type { WalkingCheck } from '../data'
 import { Photo } from '../CloudPhoto'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { photoFiles, photoFromFile } from '../photo'
-import { MoodLogo, Persona, flock, safeSurface, type Colorway } from '../brand/Persona'
+import { MoodLogo, Persona, flock, safeSurface } from '../brand/Persona'
 import { DEFAULT_PREFS, OPENINGS, applyPrefs, buildStory, chapterImg, chapterMeta, draftCaptions, isPhotoTask, noteLines, notePrompt, photoLines, shareText, tripMeters, type Prefs, type Story } from '../data'
 import { useStore } from '../store'
 import { Arrow, BackBtn, BG, Btn, Check, Chip, NoteQuote, SURFACE, Screen$, Sheet, type Bg } from '../ui'
@@ -31,10 +33,11 @@ const total = (st: Story) => st.chapters.reduce((a, c) => a + c.mins, 0)
 
 function RoutePreview({ story }: { story: Story }) {
   const {account}=useStore()
-  const stops=useMemo(()=>story.chapters.map((_,i)=>({id:String(i),ll:{lat:chapterMeta(story,i).lat,lng:chapterMeta(story,i).lng},kind:'dest' as const})),[story])
-  const points=useMemo(()=>[...(story.origin?[story.origin]:[]),...stops.map(p=>p.ll)],[stops,story.origin])
+  const stops=useMemo(()=>story.chapters.map((_,i)=>({id:String(i),ll:{lat:chapterMeta(story,i).lat,lng:chapterMeta(story,i).lng},kind:'dest' as const,number:i+1,size:24})),[story])
+  const points=useMemo(()=>[story.origin??{lat:40.7329,lng:-74.0031},...stops.map(p=>p.ll)],[stops,story.origin])
   const walk=useWalkingRoute(account ? points : null)
-  return <div className="route-preview"><div className="route-preview-map"><RealMap compact pins={stops} fit={points} route={walk.route?.geometry} inset={{top:24,bottom:24}} controlsTop={24}/><div className="route-preview-gesture" aria-hidden="true"/></div><div className="route-preview-caption"><span>{walk.route?'Your walking route':account?'Stop locations · checking walking route':'Sample stop locations'}</span>{account&&walk.status==='error'&&<button onClick={walk.retry}>Retry route</button>}</div></div>
+  const sample=demoWalk(points)
+  return <div className="route-preview"><div className="route-preview-map"><RealMap compact sampleRoute={!account} pins={stops} fit={points} route={account?walk.route?.geometry:sample} inset={{top:24,bottom:24}} controlsTop={24}/><div className="route-preview-gesture" aria-hidden="true"/></div><div className="route-preview-caption"><span>{walk.route?'Your walking route':account?'Stop locations · checking walking route':sample.length?'Sample walking route':'Sample stop locations'}</span>{account&&walk.status==='error'&&<button onClick={walk.retry}>Retry route</button>}</div></div>
 }
 
 export function Details() {
@@ -78,7 +81,7 @@ export function Details() {
       <RoutePreview story={story} />
       <p className="it" style={{ fontSize: 17, margin: '10px 2px' }}>“{story.premise}”</p>
       {story.source&&<>
-        <GoogleAttribution hours={story.chapters.map(c=>c.hours)}/>
+        <GoogleAttribution hours={story.chapters.map(c=>c.hours)} onMap/>
         <details className="route-notes"><summary>Hours, entry &amp; route details</summary>
           <p>Reported hours are refreshed before starting. Entry, tickets and accessible entrances are not confirmed. Check each venue’s details.</p>
           {story.chapters.map((c,i)=><div key={i}><b className="small">{c.place}</b><VenueEntry hours={c.hours}/></div>)}
@@ -205,29 +208,29 @@ export function Swap() {
 export function Complete() {
   const { s, update, go, reset } = useStore()
   const [story, setStory] = useStory()
+  const [photoChapter,setPhotoChapter]=useState<number|null>(null)
   // a finished detour goes straight to your shelf, so leaving this screen never loses it
   useEffect(() => {
     update((st) => (st.story && !st.shelf.some((x) => x.id === st.story!.id) ? { ...st, shelf: [{ ...st.story, status: 'done' }, ...st.shelf] } : st))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const surf: Bg[] = ['orange-p', 'ink-p', 'soft']
-  const crew: [string, Colorway][] = [['Zed', 'Yellow'], ['Maple', 'Yellow'], ['Pip', 'Orange']]
   return (
     <Screen$ bg="yellow" scroll>
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <BackBtn onClick={() => reset('home')} />
-        <span className="kicker">You went a little off-script</span>
+        <span className="kicker">One for the story shelf</span>
       </div>
       <h1 className="h1 h-xl pop" style={{ marginTop: 8, fontSize: 50 }}>The end…<br />for now.</h1>
       <div className="row" style={{ gap: 10, margin: '16px 0' }}>
-        {story.chapters.map((_c, i) => {
+        {story.chapters.map((chapter, i) => {
           const img = chapterImg(story, i)
           return (
             <div key={i} className="fade-in" style={{ flex: 1, background: 'var(--paper)', borderRadius: 22, padding: 10, animationDelay: `${i * 0.1}s` }}>
-              <div className="clip" style={{ borderRadius: 16, height: 96, background: BG[safeSurface(flock(crew[i % 3][0], crew[i % 3][1]), surf[i % 3] as 'paper') as Bg], position: 'relative' }}>
-                {img ? <Photo src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: '50%', top: 12, transform: 'translateX(-50%)' }}><Persona spec={flock(crew[i % 3][0], crew[i % 3][1])} size={56} /></div>}
-              </div>
-              <b className="small" style={{ display: 'block', margin: '6px 4px 2px' }}>Ch. {i + 1}</b>
+              <button className="completion-place-image" aria-label={`Add a photo of ${chapter.place}`} onClick={()=>setPhotoChapter(i)}>
+                {img ? <Photo src={img} alt={chapter.place} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="completion-place-empty"><Icon name="photo" size={28}/><span>Add a photo</span></div>}
+                <span className="completion-stop-number">{i+1}</span>
+              </button>
+              <b className="completion-place-name">{chapter.place}</b>
             </div>
           )
         })}
@@ -258,6 +261,7 @@ export function Complete() {
         <Btn kind="secondary" onClick={() => { update((st) => ({ ...st, story: st.story && { ...st.story, captions: draftCaptions(st.story, st.story.tone) } })); go('tell') }}>Share or edit this story</Btn>
         <Btn kind="soft" onClick={() => reset('home')}>Find another detour</Btn>
       </div>
+      {photoChapter!==null&&<MomentSheet i={photoChapter} story={story} setStory={setStory} onClose={()=>setPhotoChapter(null)}/>}
     </Screen$>
   )
 }

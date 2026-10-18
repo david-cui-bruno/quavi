@@ -1,3 +1,6 @@
+import { Icon } from "./Icons";
+import config from "./cloud-config.json";
+import { reviewEnabled, homeTones, chooseHomeTone } from "./review-home";
 import { useState } from "react";
 import { AccountPanel } from "./AccountPanel";
 import { AppBuild } from "./AppBuild";
@@ -5,11 +8,16 @@ import { PushSettings } from "./PushSettings";
 import { useStore } from "./store";
 import { Sheet, Btn } from "./ui";
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
-  const { account, restart } = useStore(),
+  const { account, restart, go } = useStore(),
     [confirm, setConfirm] = useState(false);
   return (
     <Sheet label="Settings" onClose={onClose}>
-      <h2 className="h1 h-m">The practical stuff.</h2>
+      <div className="settings-heading">
+        <div className="settings-mark">
+          <Icon name="settings" size={28} />
+        </div>
+        <h2 className="h1 h-m">Settings.</h2>
+      </div>
       <AccountPanel />
       {account && <PushSettings />}
       {!account && (
@@ -33,7 +41,56 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           )}
         </section>
       )}
-      <AppBuild />
+      <section className="settings-legal" aria-label="Privacy and terms">
+        <a
+          href={`${config.apiUrl}/legal/privacy`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <Icon name="shield" />
+          <span>Privacy policy</span>
+          <Icon name="chevron" size={18} />
+        </a>
+        <a
+          href={`${config.apiUrl}/legal/terms`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <Icon name="book" />
+          <span>Terms of use</span>
+          <Icon name="chevron" size={18} />
+        </a>
+      </section>
+      {reviewEnabled && (
+        <section className="settings-section">
+          <h3 className="h1 h-xs">Home colour studies</h3>
+          <div className="review-tones">
+            {homeTones.map((tone) => (
+              <button
+                key={tone}
+                style={{
+                  background: `var(--${tone})`,
+                  color: tone === "ink" ? "var(--paper)" : "var(--ink)",
+                }}
+                onClick={() => {
+                  chooseHomeTone(tone);
+                  onClose();
+                  go("home");
+                }}
+              >
+                {tone === "orange-p"
+                  ? "Orange"
+                  : tone === "ink"
+                    ? "Ink"
+                    : "Yellow"}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      <div className="settings-build">
+        <AppBuild />
+      </div>
       <Btn kind="soft" onClick={onClose}>
         Done
       </Btn>

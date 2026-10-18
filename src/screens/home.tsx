@@ -1,3 +1,4 @@
+import {homeTone} from '../review-home'
 import {useSocial} from '../social'
 import {CircleStatus,PrivateStory} from '../PrivateCircle'
 import {OutingSaveStatus} from '../OutingSaveStatus'
@@ -65,13 +66,14 @@ export function Home() {
   const life=useRuntime()
   const { s, go, update, say, syncStatus, account } = useStore()
   const social=useSocial()
+  const tone=homeTone()
   const [ending, setEnding] = useState(false)
   const live = s.story?.status === 'active' ? s.story : undefined
   const at = live ? Math.min(s.chapter, live.chapters.length - 1) : 0
   const mine = s.shelf.find((x) => x.shared)
   const feed = account ? (social.data?.feed??[]).slice(0,4) : [...(mine ? [{ ...mine, author: 'You' }] : []), ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))].slice(0, 4)
   return (
-    <Screen$ tabs="home" scroll>
+    <Screen$ bg={tone} tabs="home" scroll>
       <div className="row" style={{ gap: 10 }}>
         <Badge size={40} />
         <span className="wordmark" style={{ fontSize: 24 }}>Quavi</span>
@@ -92,12 +94,12 @@ export function Home() {
           aria-label={live ? 'Continue your unfinished detour' : 'Take a detour'}
           style={{ position: 'absolute', left: '50%', top: 4, width: 156, height: 222, marginLeft: -78, transition: 'transform var(--motion-t1) var(--ease-default)' }}
         >
-          <svg viewBox="0 24 144 205" width="156" height="222" aria-hidden="true" style={{ position: 'absolute', inset: 0 }}><path className="shape" d={BODY_PLAIN} /></svg>
-          <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 206, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <svg viewBox="0 24 144 205" width="156" height="222" aria-hidden="true" style={{ position: 'absolute', inset: 0 }}><path className="shape" d={BODY_PLAIN} style={{fill:tone==='yellow'?'var(--ink)':undefined}} /></svg>
+          <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 206, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color:tone==='yellow'?'var(--yellow)':undefined }}>
             {live
               ? <span className="h1" style={{ fontSize: 28, lineHeight: 1 }}>Continue<br />detour</span>
               : <span className="h1" style={{ fontSize: 34, lineHeight: 1 }}>Take a<br />detour</span>}
-            <span className="go" style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--ink)', color: 'var(--yellow)', display: 'grid', placeItems: 'center' }}>
+            <span className="go" style={{ width: 42, height: 42, borderRadius: '50%', background: tone==='yellow'?'var(--yellow)':'var(--ink)', color: tone==='yellow'?'var(--ink)':'var(--yellow)', display: 'grid', placeItems: 'center' }}>
               {live ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg> : <Arrow size={20} />}
             </span>
           </span>

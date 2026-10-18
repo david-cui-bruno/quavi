@@ -579,12 +579,34 @@ report/block remain available in person/story menus.
 
 Explore puts search and the map first, without the game HUD, clearance count or
 repeated action bar. The active stop panel uses a compact facts row and named
-actions; an authored SVG replaces the streak emoji. Only fetched pedestrian
-geometry is drawn, removing the demo’s invented orange connecting lines.
-Detour details use a noninteractive Google map of stop locations, with a fresh
-walking path when signed in and online. The anonymous demo shows stop locations
-without claiming a checked route. Provider data remains transient.
+actions; an authored SVG replaces the streak emoji. Live maps draw fetched pedestrian geometry. Detour details use a noninteractive
+Google map of numbered stops with a fresh walking path when signed in and
+online. The second review adds attributed, authored sample pedestrian paths
+for the anonymous demo; it never invents straight connecting roads. Google
+provider data remains transient.
 
 This is a review preview, not a new TestFlight release. Review the updated
 standard iPhone screenshots before publishing the next beta. Physical offline,
 lock/resume and push-receipt acceptance remain pending as recorded above.
+
+### Annotated visual review — second round
+
+Details and active outings use numbered orange stops and a solid orange walking
+path. Live routes use fetched pedestrian geometry; the anonymous demo has a
+small, attributed OSM foot-network snapshot for its fixed stops (see
+ASSET-SOURCES.md). Coin dots and their invisible demo collection are removed
+from Active and Explore. Explore only draws fetched or authored sample paths,
+never straight lines between arbitrary searched coordinates.
+
+The redundant hours/directions badge is removed beside the details map, whose
+Google credit remains visible. Third-party venue credits remain when supplied.
+Completed outings show each place’s name and its recorded moment/task photo;
+missing photos have an Add a photo action instead of an unrelated character.
+Venue-photo discovery is not implemented yet. Rewards & deals emphasizes each
+benefit, and Settings uses the same soft surfaces, display type and row controls
+as the other app flows. Report reasons use the app’s own field treatment.
+
+The review-only build flag VITE_REVIEW_BOARD=true enables three Home colour
+studies in Settings. This control is absent from normal builds. Board variants
+are captured from the app, and prior annotations remain attached to their
+original screen IDs. This working preview is not a new TestFlight release.

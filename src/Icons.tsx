@@ -1,5 +1,19 @@
 import type { ReactNode } from "react";
 const paths: Record<string, ReactNode> = {
+  photo: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="3" />
+      <circle cx="8" cy="9" r="1.5" />
+      <path d="m3 17 5-5 4 4 3-3 6 6" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z" />
+      <path d="m8 12 3 3 5-6" />
+    </>
+  ),
+  chevron: <path d="m9 5 7 7-7 7" />,
   spark: (
     <>
       <path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z" />

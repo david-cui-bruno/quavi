@@ -1,5 +1,4 @@
-import {OutingSaveStatus} from './OutingSaveStatus'
-import config from './cloud-config.json';
+import { OutingSaveStatus } from "./OutingSaveStatus";
 import { useState } from "react";
 import { useStore } from "./store";
 import { Btn } from "./ui";
@@ -16,7 +15,7 @@ const labels = {
     "Save needs attention — check your photos or account limits, then retry",
   empty: "Connected — no cloud save yet",
   demo: "Saved on this device",
-  saved: "Saved to Quavi dev",
+  saved: "Cloud save is up to date",
   pending: "Changes waiting to save",
   saving: "Saving…",
   offline: "Offline — changes stay on this device",
@@ -44,25 +43,26 @@ export function AccountPanel() {
   const [clearDemo, setClearDemo] = useState(true);
   const [busy, setBusy] = useState(false);
   return (
-    <section className="settings-account"
-      style={{
-        margin: "18px 0",
-        padding: "18px 0",
-        borderTop: "1px solid var(--ink-p)",
-      }}
-      aria-label="Account and cloud saves"
-    >
-      <h2 className="h1 h-xs">Your account.</h2><p className="small" style={{marginTop:10}}><a href={`${config.apiUrl}/legal/privacy`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Privacy policy</a> · <a href={`${config.apiUrl}/legal/terms`} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Terms</a></p>
-      <p className="small" style={{ margin: "8px 0" }}>
-        {account?.email || "You’re exploring the demo."}
-      </p>
-      <p className="small muted" role="status">
-        {labels[syncStatus]}
-      </p>
+    <section className="settings-account" aria-label="Account and cloud saves">
+      <div className="settings-identity">
+        <span className="settings-mode">
+          {account ? "QUAVI ACCOUNT" : "JUST LOOKING AROUND?"}
+        </span>
+        <h3 className="h1 h-xs">
+          {account ? "Your account." : "Make yourself at home."}
+        </h3>
+        <p className="small">
+          {account?.email ||
+            "Keep your stories, progress and flock together with a Quavi account."}
+        </p>
+        <p className="small settings-sync" role="status">
+          {labels[syncStatus]}
+        </p>
+      </div>
       <OutingSaveStatus controls />
       <div className="col" style={{ gap: 10, marginTop: 12 }}>
         {!account ? (
-          <Btn kind="soft" onClick={() => go("login")}>
+          <Btn kind="secondary" onClick={() => go("login")}>
             Log in or create an account
           </Btn>
         ) : (

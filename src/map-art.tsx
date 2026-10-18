@@ -13,7 +13,7 @@ function surface(width:number,height:number){
 /** Original brand vectors and font, rendered locally. Native animates the separate layers. */
 export function mapArt(pin: RealPin | 'you' | 'coin', avatar?:AvatarSpec){
  const p=typeof pin==='object'?pin:undefined
- const key=JSON.stringify([p?{id:p.id,kind:p.kind,label:p.label,sub:p.sub,selected:p.selected,quest:p.quest,interactive:!!p.onClick}:pin,avatar])
+ const key=JSON.stringify([p?{id:p.id,kind:p.kind,number:p.number,size:p.size,label:p.label,sub:p.sub,selected:p.selected,quest:p.quest,interactive:!!p.onClick}:pin,avatar])
  const old=cache.get(key);if(old)return old
  const art=renderArt(pin,avatar).catch(e=>{cache.delete(key);throw e})
  if(cache.size>=96)cache.delete(cache.keys().next().value!)
@@ -22,19 +22,20 @@ export function mapArt(pin: RealPin | 'you' | 'coin', avatar?:AvatarSpec){
 async function renderArt(pin:RealPin|'you'|'coin',avatar?:AvatarSpec){
  await document.fonts.load('700 12px "ABC Areal"')
  const you=pin==='you',coin=pin==='coin',p=typeof pin==='object'?pin:undefined
- const w=you?40:coin?16:Math.round(sizes[p!.kind]*(p!.selected?1.3:1))
+ const w=you?40:coin?16:Math.round((p?.size??(p?.number?30:sizes[p!.kind]))*(p!.selected?1.3:1))
  const h=you?50:coin||p?.kind==='start'?16:Math.round(w*1.42)
  const body=surface(w+8,h+8)
  if(coin||p?.kind==='start'){
   body.ctx.fillStyle=coin?yellow:ink;body.ctx.strokeStyle=coin?ink:paper;body.ctx.lineWidth=coin?2.5:3
   body.ctx.beginPath();body.ctx.arc((w+8)/2,(h+8)/2,6.75,0,Math.PI*2);body.ctx.fill();body.ctx.stroke()
  }else{
-  const color=p?.selected?ink:p?.kind==='quest'?'#EE6A2C':p?.kind==='done'?ink:p?.kind==='locked'?'#B9B3A6':yellow
+  const color=p?.number?'#EE6A2C':p?.selected?ink:p?.kind==='quest'?'#EE6A2C':p?.kind==='done'?ink:p?.kind==='locked'?'#B9B3A6':yellow
   const outlined=p?.kind==='current'||p?.kind==='dest'
-  const shape=you?renderToStaticMarkup(<Persona spec={avatar??{color:'Yellow'}} size={40}/>):`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 24 144 205"><path d="${BODY_PLAIN}" fill="${color}" stroke="${outlined?ink:'none'}" stroke-width="7" stroke-linejoin="round"/>${p?.kind==='done'?'<path d="M50 104L68 122L100 84" fill="none" stroke="#F9CB2F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>':''}</svg>`
+  const shape=you?renderToStaticMarkup(<Persona spec={avatar??{color:'Yellow'}} size={40}/>):`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 24 144 205"><path d="${BODY_PLAIN}" fill="${color}" stroke="${outlined?ink:'none'}" stroke-width="7" stroke-linejoin="round"/>${p?.kind==='done'&&!p.number?'<path d="M50 104L68 122L100 84" fill="none" stroke="#F9CB2F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>':''}</svg>`
   const image=new Image(),svg=shape.includes('xmlns=')?shape:shape.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ')
   image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)
   await image.decode();body.ctx.drawImage(image,4,4,w,h)
+  if(p?.number){body.ctx.font='700 16px "ABC Areal"';body.ctx.textAlign='center';body.ctx.textBaseline='middle';body.ctx.fillStyle=ink;body.ctx.fillText(String(p.number),(w+8)/2,4+h*.35)}
  }
  const label=you?'You':p?.label??'',sub=label&&p?.sub?' '+p.sub:''
  body.ctx.font='700 12px "ABC Areal"'

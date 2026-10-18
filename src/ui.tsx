@@ -1,3 +1,5 @@
+import {Capacitor} from '@capacitor/core'
+import {StatusBar,Style} from '@capacitor/status-bar'
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { BODY_PLAIN, Logo, MoodLogo, Persona, flock, type AvatarSpec, type Colorway } from './brand/Persona'
@@ -144,6 +146,7 @@ export function Screen$({
   bg = 'paper', children, scroll, flush, tabs, light,
 }: { bg?: Bg; children: ReactNode; scroll?: boolean; flush?: boolean; tabs?: 'home' | 'explore' | 'you'; light?: boolean }) {
   const { dir } = useStore()
+  useEffect(()=>{if(Capacitor.isNativePlatform())void StatusBar.setStyle({style:light||onDark(bg)?Style.Dark:Style.Light}).catch(()=>{})},[bg,light])
   return (
     <>
       <main className={`screen${scroll ? ' scroll' : ''}${scroll && bg === 'paper' ? ' masked' : ''}${flush ? ' flush' : ''}${onDark(bg) ? ' dark' : ''}${dir === 'back' ? ' back-nav' : ''}`} style={{ background: BG[bg], bottom: tabs && scroll ? 'calc(104px + var(--native-bottom, 0px))' : undefined, paddingBottom: tabs && scroll ? 20 : `calc(${tabs ? 108 : 20}px + var(--native-bottom, 0px))` }}>
@@ -151,6 +154,7 @@ export function Screen$({
       </main>
       <div aria-hidden="true" className="screen-safe-top" style={{background:BG[bg]}} />
       <div aria-hidden="true" className={`statusbar${light || onDark(bg) ? ' light' : ''}`}><span>9:41</span><span>▪▪▪ ▮</span></div>
+      {tabs&&<div aria-hidden="true" className="screen-safe-bottom" style={{background:BG[bg]}}/>}
       {tabs && <TabBar active={tabs} />}
     </>
   )

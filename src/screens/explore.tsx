@@ -1,10 +1,10 @@
+import {demoWalk} from '../demo-walks'
 import {PlaceSearch} from '../PlaceSearch'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flock, safeSurface } from '../brand/Persona'
 import { OPENINGS, PLACE_META, chapterMeta, buildStory, categoryTasks, placeInfo, startStory, type Chapter, type Story } from '../data'
 import { distance, fmtDist, type LatLng } from '../geo'
-import { coinsFor } from '../GameMap'
-import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
+import { RealMap, type RealPin } from '../RealMap'
 import { useWalkingRoute } from '../nav'
 import { aboutFor, searchPlace, sideQuestsAlong, walkMins, type Found } from '../places'
 import { START, useTracking } from '../tracking'
@@ -35,16 +35,15 @@ export function Explore() {
   const nearby = account ? (s.story?.source ? s.story.chapters.map((c,i)=>({place:c.place,persona:c.persona,ll:c.ll!,kind:c.kind??'Local spot',about:c.desc,tasks:chapterMeta(s.story!,i).tasks})) : []) : QUESTS.map(x=>({...x,ll:{lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng},kind:placeInfo(x.place).kind,about:placeInfo(x.place).about,tasks:PLACE_META[x.place].tasks}))
   const currentTrip = ():Trip => { const found=nearby.map(x=>({id:x.place,name:x.place,ll:x.ll,kind:x.kind,about:x.about}));return {dest:found[found.length-1],quests:found.slice(0,-1)} }
   const pins: RealPin[] = nearby.map(x=>({id:x.place,ll:x.ll,kind:'quest',label:x.place,quest:true,onClick:()=>go('stop',{trip:account?currentTrip():questTrip(),sel:x.place})}))
-  const route = useMemo(()=> account ? (s.story?.source ? [s.story.origin??tr.pos,...s.story.chapters.filter(c=>c.ll).map(c=>c.ll!)] : [tr.pos]) : [START,...QUESTS.slice(0,3).map(x=>({lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng}))],[account,s.story,tr.pos])
-  const got = s.game.collected.explore ?? []
-  const coins = useMemo(() => account?[]:coinsFor(route, got), [account,route,got])
-  const collect = useCallback((id: number) => account?undefined:update((st) => { const g = st.game.collected.explore ?? []; return g.includes(id) ? st : { ...st, game: { ...st.game, coins: st.game.coins + 1, collected: { ...st.game.collected, explore: [...g, id] } } } }), [update,account])
-  useCoinCollect(tr.pos, coins, collect)
+  const route = useMemo(()=>s.story?.source?[s.story.origin??tr.pos,...s.story.chapters.filter(c=>c.ll).map(c=>c.ll!)]:[],[s.story,tr.pos])
+  const walking=useWalkingRoute(account&&s.story?.source?route:null)
+  const sampleRoute=demoWalk([START,{lat:40.7352,lng:-74.005},{lat:40.7345,lng:-74.0035},{lat:40.7377,lng:-74.0057}])
   const ranked = nearby.map((x) => ({ ...x, d: distance(tr.pos, x.ll) })).sort((a, b) => a.d - b.d)
   return (
     <Screen$ tabs="explore" flush>
       <div className="explore-map" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 280 }}>
-        <RealMap pins={pins} route={route} coins={coins} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 140, bottom: 25 }} controlsTop={140} />
+        <RealMap sampleRoute={!account} pins={pins} route={account?walking.route?.geometry:sampleRoute} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 140, bottom: 25 }} controlsTop={140} />
+
       </div>
       <PlaceSearch value={q} onChange={setQ} onChoose={choose} near={tr.mode==='live'?tr.pos:START} explore />
       <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
@@ -170,7 +169,7 @@ export function RouteScreen() {
   return (
     <Screen$ tabs="explore" flush>
       <div style={{ position: 'relative', flex: 1, marginTop: -54, marginBottom: -108 }}>
-        <RealMap pins={pins} route={dest ? (walk.route?.geometry ?? path) : undefined} fit={fit} inset={{ top: 190, bottom: 450 }} you={tr.pos} youAvatar={s.user.avatar} />
+        <RealMap pins={pins} route={dest ? walk.route?.geometry : undefined} fit={fit} inset={{ top: 190, bottom: 450 }} you={tr.pos} youAvatar={s.user.avatar} />
         <PlaceSearch value={q} onChange={setQ} onChoose={hit=>{setQ(hit.name);void run(hit.name,hit)}} near={origin} onBack={back} />
         <div className="abs row" data-map-top-obstruction style={{ left: 24, right: 24, top: 'calc(var(--screen-top, 54px) + 62px)', height: 46, borderRadius: 23, background: 'var(--ink)', color: 'var(--paper)', padding: '0 22px', zIndex: 5, justifyContent: 'space-between' }}>
           <b style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>You → {dest?.name ?? q}</b>
@@ -210,7 +209,7 @@ export function RouteScreen() {
 }
 
 export function Stop() {
-  const { s: appState, route, back, go, update, say } = useStore()
+  const { s: appState, route, back, go, update, say, account } = useStore()
   const tr = useTracking()
   const [origin] = useState(tr.pos)
   const trip = useMemo<Trip>(() => {
@@ -225,6 +224,8 @@ export function Stop() {
     ...trip.quests.map((f) => ({ id: f.id, ll: f.ll, kind: 'quest' as const, label: f.name, quest: true, selected: f.id === c?.id, onClick: () => { setSel(f.id); setAdded(false) } })),
   ]
   const tasks = useMemo(() => (c ? categoryTasks(`${c.name} ${c.kind}`) : []), [c])
+  const walkPoints=useMemo(()=>c?(added?[origin,c.ll,trip.dest.ll]:[origin,trip.dest.ll]):null,[origin,c,trip.dest,added])
+  const streetWalk=useWalkingRoute(account?walkPoints:null)
   if (!c) return null
   const total = walkMins(distance(origin, c.ll) + distance(c.ll, trip.dest.ll))
   const start = () => {
@@ -234,7 +235,7 @@ export function Stop() {
   return (
     <Screen$ tabs="explore" flush>
       <div style={{ position: 'relative', flex: 1, marginTop: -54, marginBottom: -108 }}>
-        <RealMap pins={pins} route={added ? [origin, c.ll, trip.dest.ll] : [origin, trip.dest.ll]} fit={[origin, trip.dest.ll, ...trip.quests.map((f) => f.ll)]} inset={{ top: 130, bottom: 430 }} you={tr.pos} youAvatar={appState.user.avatar} />
+        <RealMap pins={pins} route={streetWalk.route?.geometry} fit={[origin, trip.dest.ll, ...trip.quests.map((f) => f.ll)]} inset={{ top: 130, bottom: 430 }} you={tr.pos} youAvatar={appState.user.avatar} />
         <div className="abs row" style={{left:24,right:24,top:'var(--screen-top,54px)',background:'var(--white)',borderRadius:28,padding:8,zIndex:5}}><button className="hit44" onClick={back} aria-label="Back"><span style={{display:'inline-flex',transform:'rotate(180deg)'}}><Arrow size={20}/></span></button><b>{trip.dest.name}</b></div>
         <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '20px 24px 112px', zIndex: 6 }}>
           {added ? (

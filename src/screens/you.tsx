@@ -82,7 +82,7 @@ export function Profile() {
   ]
   return (
     <Screen$ tabs="you" scroll>
-      <div className="profile-heading"><h1 className="h1 h-s">Your little world.</h1><button className="back" aria-label="Settings" onClick={()=>setSettings(true)}><Icon name="settings"/></button></div>
+      <div className="profile-heading"><h1 className="h1 h-s">Your duck tales.</h1><button className="back" aria-label="Settings" onClick={()=>setSettings(true)}><Icon name="settings"/></button></div>
       <div className="clip" style={{ background: BG[stageName as Bg], borderRadius: 36, height: 250, position: 'relative', flex: 'none' }}>
         <div className="abs" style={{ left: '50%', top: 36, width: 180, height: 180, marginLeft: -90, borderRadius: '50%', background: BG[discName as Bg] }} />
         <div className="abs bounce" style={{ left: '50%', top: 22, marginLeft: -78 }}><Persona spec={user.avatar} size={156} /></div>

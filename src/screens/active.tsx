@@ -1,3 +1,4 @@
+import {demoWalk} from '../demo-walks'
 import {Icon} from '../Icons'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
 import { Photo } from '../CloudPhoto'
@@ -5,8 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BODY_PLAIN, Persona, flock } from '../brand/Persona'
 import { ARRIVE_RADIUS, NOTE_STARTERS, chapterMeta, levelName, levelOf, notePrompt, placeInfo, isPhotoTask, TRIP_XP_CAP, taskXp } from '../data'
 import { distance, fmtDist, fmtWalk } from '../geo'
-import { GameHUD, coinsFor } from '../GameMap'
-import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
+import { GameHUD } from '../GameMap'
+import { RealMap, type RealPin } from '../RealMap'
 import { photoFromFile } from '../photo'
 import { START, useTracking } from '../tracking'
 import { bearingTo, compass, fmtMeters, locateOnRoute, stepText, useWalkingRoute } from '../nav'
@@ -152,13 +153,6 @@ export function Active() {
     } else award(xp)
   }
 
-  const collect = useCallback((id: number) => {
-    update((st) => {
-      const got = st.game.collected[story.id] ?? []
-      if (got.includes(id)) return st
-      return { ...st, game: { ...st.game, coins: st.game.coins + (account?0:1), collected: { ...st.game.collected, [story.id]: [...got, id] } } }
-    })
-  }, [update, story.id,account])
 
   const photoInput = useRef<HTMLInputElement>(null)
   const photoKey = useRef('')
@@ -181,21 +175,21 @@ export function Active() {
     else update((st) => ({ ...st, chapter: st.chapter + 1 }))
   }
 
-  const route = useMemo(() => [story.origin ?? START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas, story.origin])
   // Draw only fetched pedestrian geometry. Sample stops never become invented straight-line roads.
-  const legRoute = nav.route?.geometry ?? []
+  const remainingPoints = useMemo(()=>[story.origin??START,...metas.map(m=>({lat:m.lat,lng:m.lng}))],[story.origin,metas])
+  const wholeWalk=useWalkingRoute(account&&story.source?remainingPoints:null)
+  const legRoute = story.source ? (wholeWalk.route?.geometry ?? nav.route?.geometry ?? []) : demoWalk(remainingPoints)
   const pins: RealPin[] = metas.map((m, k) => {
     const state = k < i || (k === i && allDone) ? 'done' : k === i ? 'current' : 'locked'
-    return { id: String(k), ll: { lat: m.lat, lng: m.lng }, kind: state as RealPin['kind'], label: state === 'current' ? story.chapters[k].place : undefined, selected: false }
+    return { id: String(k), ll: { lat: m.lat, lng: m.lng }, kind: state as RealPin['kind'], number:k+1, label: state === 'current' ? story.chapters[k].place : undefined, selected: false }
   })
-  const coins = useMemo(() => coinsFor(route, s.game.collected[story.id] ?? []), [route, s.game.collected, story.id])
   const next = story.chapters[i + 1]
-  useCoinCollect(tr.pos, story.source?[]:coins, collect)
 
   return (
     <Screen$ bg="paper" flush>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 'var(--active-map-bottom, 220px)' }}>
-        <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}   coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={16.5} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+        <RealMap sampleRoute={!story.source} pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]} highlightRoute={recovery.ready&&!arrived?nav.route?.geometry:undefined} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={16.5} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+
       </div>
       <div className="row active-map-header" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8, gap: 10 }}>
         <button className="back" onClick={() => { tr.setWalking(false); reset('home') }} aria-label="Back to Home" style={{ background: 'var(--paper)' }}>

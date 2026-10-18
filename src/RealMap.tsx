@@ -1,3 +1,4 @@
+import {DemoRouteCredit} from './demo-walks'
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { GoogleMap, LatLngBounds, type Marker, type Polyline } from "@capacitor/google-maps";
@@ -18,6 +19,8 @@ export type RealPin = {
   ll: LatLng;
   kind: PinKind;
   label?: string;
+  number?: number;
+  size?: number;
   sub?: string;
   selected?: boolean;
   quest?: boolean;
@@ -29,7 +32,7 @@ let lifecycle: Promise<unknown> = Promise.resolve();
 export function RealMap({
   pins,
   route,
-  doneRoute,
+  highlightRoute,
   coins,
   fit,
   inset = { top: 180, bottom: 340 },
@@ -39,10 +42,11 @@ export function RealMap({
   zoomOnYou = 16,
   controlsTop = 176,
   compact = false,
+  sampleRoute = false,
 }: {
   pins: RealPin[];
   route?: LatLng[];
-  doneRoute?: LatLng[];
+  highlightRoute?: LatLng[];
   coins?: MapCoin[];
   fit?: LatLng[];
   inset?: { top: number; bottom: number };
@@ -52,6 +56,7 @@ export function RealMap({
   zoomOnYou?: number;
   controlsTop?: number;
   compact?: boolean;
+  sampleRoute?: boolean;
 }) {
   const life=useRuntime()
   const element = useRef<HTMLElement>(null),
@@ -305,8 +310,8 @@ export function RealMap({
     return () => {
       canceled = true;
     };
-  }, [map, pins, route, doneRoute, coins, you?.lat, you?.lng, youAvatar]);
-  const routeKey=JSON.stringify([route,doneRoute]);
+  }, [map, pins, route, highlightRoute, coins, you?.lat, you?.lng, youAvatar]);
+  const routeKey=JSON.stringify([route,highlightRoute]);
   useEffect(()=>{
     if(!map)return;
     let canceled=false;
@@ -318,15 +323,13 @@ export function RealMap({
         if (route && route.length > 1)
           paths.push({
             path: route,
-            strokeColor: "#1E1B16",
+            strokeColor: "#EE6A2C",
             strokeWeight: 5,
-            strokeOpacity: Capacitor.isNativePlatform() ? 0.35 : 0,
-            tag: 'quavi-future-route',
-            icons: [{icon:{path:'M 0,0 0,0.1',strokeColor:'#1E1B16',strokeOpacity:0.35,strokeWeight:5},offset:'0',repeat:'12px'}],
+            strokeOpacity: 0.75,
           });
-        if (doneRoute && doneRoute.length > 1)
+        if (highlightRoute && highlightRoute.length > 1)
           paths.push({
-            path: doneRoute,
+            path: highlightRoute,
             strokeColor: "#EE6A2C",
             strokeWeight: 7,
             strokeOpacity: 0.95,
@@ -390,6 +393,7 @@ export function RealMap({
           {error}
         </p>
       )}
+      {sampleRoute&&<DemoRouteCredit/>}
       {you && (
         <button
           className={`rmap-locate${following ? " on" : ""}`}

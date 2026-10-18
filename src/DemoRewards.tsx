@@ -185,7 +185,7 @@ export function DemoRewards() {
             </>
           ) : (
             <>
-              <h2 className="h1 h-m">A little something back.</h2>
+              <h2 className="h1 h-m">Rewards & deals.</h2>
               <p className="body muted" style={{ margin: "8px 0 14px" }}>
                 A coffee. A new book. A reason to take the scenic way.
               </p>
@@ -210,10 +210,8 @@ export function DemoRewards() {
                     >
                       <span className="col" style={{ gap: 5 }}>
                         <b className="h1 h-xs">{offer.title}</b>
-                        <span className="small muted">
-                          {offer.partner}
-                        </span>
-                        <span className="body">{offer.benefit}</span>
+                        <span className={`reward-merchant ${offer.id==='books'?'books':'coffee'}`}>{offer.partner}</span>
+                        <span className="reward-benefit">{offer.benefit}</span>
                         <span className="small" style={{ fontWeight: 700 }}>
                           {state === "used"
                             ? "Preview used · view receipt"

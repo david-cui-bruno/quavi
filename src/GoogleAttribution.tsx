@@ -24,9 +24,11 @@ export function useLiveHoursClock() {
 export function GoogleAttribution({
   hours = [],
   dark = false,
+  onMap = false,
 }: {
   hours?: (HoursCheck | undefined)[];
   dark?: boolean;
+  onMap?: boolean;
 }) {
   const providers = [
     ...new Map(
@@ -35,6 +37,7 @@ export function GoogleAttribution({
         .map((p) => [p.displayName, p]),
     ).values(),
   ];
+  if(onMap&&!providers.length)return null;
   return (
     <div
       style={{
@@ -55,7 +58,7 @@ export function GoogleAttribution({
         lineHeight: 1.5,
       }}
     >
-      <img
+      {!onMap&&<img
         src={`/google-maps-${dark ? "white" : "dark"}.svg`}
         alt="Google Maps"
         style={{
@@ -65,8 +68,7 @@ export function GoogleAttribution({
           display: "block",
           maxWidth: "100%",
         }}
-      />
-      <span style={{ fontSize: 11 }}>Hours &amp; walking</span>
+      />}
       {providers.map((p) => (
         <span key={p.displayName} style={{ display: "inline" }}>
           {p.uri?.startsWith("https://") ? (
