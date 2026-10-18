@@ -47,6 +47,8 @@ const DEFAULT_STATE: AppState = {
   game: { xp: 60, coins: 12, streak: 2, badges: ['First detour'], done: {}, collected: {}, tripXp: {} },
 }
 
+const hasActivity = (state: AppState) => !!state.story || state.shelf.length > 0 || Object.keys(state.library).length > 0 || state.friends.length > 0 || state.demoRedemptions.length > 0 || Object.values(state.lists).some(ids=>ids.length>0) || [state.game.done,state.game.collected,state.game.tripXp].some(entries=>Object.keys(entries).length>0)
+
 const KEY = 'quavi.v1'
 
 function load(): AppState {
@@ -118,9 +120,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const legacyComplete = state.user.name.trim() && typeof state.user.age21 === 'boolean'
         setStack([{name: step && step !== 'complete' ? step : step === 'complete' || legacyComplete ? 'home' : 'about'}])
       }
+      const initial: AppState = { ...structuredClone(DEFAULT_STATE), game: { ...structuredClone(DEFAULT_STATE.game), xp: 0, coins: 0, streak: 0, badges: [] }, user: { ...DEFAULT_STATE.user, name: '', onboarding: 'about', authed: true } }
       const next = new SyncEngine({
         uid: user.uid, storage: localStorage,
-        initial: { ...structuredClone(DEFAULT_STATE), user: { ...DEFAULT_STATE.user, name: '', onboarding: 'about', authed: true } },
+        initial,
         request: (method, body) => api(user, '/state', method, scrubGoogleContent(body)),
         sanitize: scrubGoogleContent,
         available:()=>runtime.get().active&&runtime.get().online,
@@ -128,14 +131,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         onState: (state) => { if (ticket === generation) { stateRef.current = state; setS(state) } },
         onStatus: (status) => { if (ticket === generation) {
           setSyncStatus(status)
-          if (!next.needsRead && status !== 'deleted') enterAccount(next.cache.state)
+          if (['empty','saved','pending','conflict'].includes(status) || (knownCache && ['offline','storage-full'].includes(status))) enterAccount(next.cache.state)
           if (status === 'deleted') { next.close(); localStorage.removeItem(`quavi.account.v1.${user.uid}`); setStack([{name:'welcome'}]); void signOut(auth) }
         } },
       })
+      const knownCache = next.cache.state !== initial
       engine.current = next
       stateRef.current=next.cache.state;setS(next.cache.state)
       // A known account cache can open offline; unknown accounts wait for their own remote state.
-      if (localStorage.getItem(next.key)) enterAccount(next.cache.state)
+      if (!runtime.get().online && knownCache) enterAccount(next.cache.state)
       void next.open()
     })
     const retry = () => { void engine.current?.flush() }
@@ -155,7 +159,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
   const retrySync = useCallback(() => { void engine.current?.flush() }, [])
   const loadCloud = useCallback(async () => { await engine.current?.useCloud() }, [])
-  const hasActivity = (state: AppState) => !!state.story || state.shelf.length > 0 || Object.keys(state.library).length > 0 || state.friends.length > 0 || state.demoRedemptions.length > 0 || Object.values(state.lists).some(ids=>ids.length>0) || [state.game.done,state.game.collected,state.game.tripXp].some(entries=>Object.keys(entries).length>0)
   const canImportDemo = !!account && ['saved','empty'].includes(syncStatus) && !hasActivity(s)
   const importDemo = useCallback(() => {
     const current = engine.current
@@ -207,5 +210,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => ({ account, syncStatus, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, route: stack[stack.length - 1], dir, go, back, reset, canBack: stack.length > 1, toast, toastOut, say, restart }),
     [account, syncStatus, retrySync, loadCloud, canImportDemo, importDemo, logout, deleteAccount, s, update, stack, dir, go, back, reset, toast, toastOut, say, restart],
   )
-  return <StoreCtx.Provider value={value}>{busy ? <div className="screen col center" role="status" style={{ minHeight: '100dvh', justifyContent: 'center', gap: 16 }}><p>{['offline','sign-in-required','save-error'].includes(syncStatus) ? 'Connect to load your account before continuing.' : 'Opening Quavi…'}</p>{['offline','sign-in-required','save-error'].includes(syncStatus) && <button className="btn" onClick={() => void engine.current?.open()}>Try again</button>}</div> : children}</StoreCtx.Provider>
+  const loadFailed = ['offline','sign-in-required','save-error','storage-full'].includes(syncStatus)
+  const loadMessage = syncStatus === 'storage-full' ? 'Free up device storage, then try loading your account again.' : syncStatus === 'sign-in-required' ? 'Sign in again to load your account.' : 'Connect to load your account before continuing.'
+  return <StoreCtx.Provider value={value}>{busy ? <div className="screen col center" role="status" style={{ minHeight: '100dvh', justifyContent: 'center', gap: 16 }}><p>{loadFailed ? loadMessage : 'Opening Quavi…'}</p>{loadFailed && <><button className="btn" onClick={() => void engine.current?.open()}>Try again</button><button className="small" style={{minHeight:44}} onClick={() => void logout()}>Log out</button></>}</div> : children}</StoreCtx.Provider>
 }

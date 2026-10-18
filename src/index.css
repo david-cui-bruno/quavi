@@ -87,7 +87,7 @@ input, textarea { font: inherit; color: inherit; border: 0; outline: 0; backgrou
   padding: 54px var(--gutter) 20px; overflow: hidden; min-width: 0; overscroll-behavior: none;
   animation: enter var(--motion-t3) var(--ease-enter) both;
 }
-.screen.scroll { overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; touch-action: pan-y; }
+.screen.scroll { overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; touch-action: auto; }
 /* keep scrolled content from colliding with the status bar */
 @media (min-width: 481px) { .screen.scroll.masked { -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 38px, #000 50px); mask-image: linear-gradient(to bottom, transparent 0, transparent 38px, #000 50px); } }
 .screen.flush { padding-left: 0; padding-right: 0; }
@@ -419,7 +419,7 @@ button.pill.abs { padding: 0 16px; }
 
 .screen > * { flex-shrink: 0; min-width: 0; }
 .screen > .grow { flex-shrink: 1; }
-.sheet { overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; }
+.sheet { overflow-x: hidden; overscroll-behavior: contain; touch-action: auto; }
 
 /* Original map motion on the browser renderer; iPhone uses matching native layers. */
 .quavi-art-body { filter: drop-shadow(0 1px 2px rgba(30,27,22,.3)); }

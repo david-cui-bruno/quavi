@@ -121,6 +121,32 @@ coverage exercises the actual map component: zoom in/out and cloned autosave
 props preserve marker/path identity; removing a stop removes only that marker.
 Physical outdoor acceptance remains on the roadmap.
 
+### Account setup and October 18 bug pass
+
+New accounts start at About you with blank identity/age fields and zero XP, coins,
+streak and badges. Setup saves an account-specific step through interests and avatar
+customization. Returning completed profiles open Home; a stale online device reads
+its cloud state before selecting that entry screen. Known accounts can open offline;
+unknown offline accounts show retry/log-out recovery instead of being treated as new.
+Existing profiles without a step marker retain their completed behavior when they
+already have a name and age answer. Anonymous demo progress stays separate, and demo
+import remains an explicit action before account detour activity has been saved.
+
+The visual pass restores larger opening-card characters, collapses the selected
+starting point to an editable summary, keeps story titles above provider caveats,
+reduces transit-map clutter, and uses the existing Quavi logo for the app icon.
+Interests, customization and mood screens now allow vertical scrolling when their
+content exceeds a smaller phone. Fixed map screens still cannot scroll as pages.
+
+Verification: 24 client tests and 43 server tests; real fresh-account signup and
+interrupted-setup reload; iPhone 17 account startup; a 20-command Maestro flow on
+iPhone SE through onboarding, mood, openings and the story Start button. Production
+dependency audits report no known vulnerabilities for client or server. The saved
+flow is `.maestro/onboarding-small-phone.yaml` and must run on a disposable simulator.
+Outdoor GPS/arrival, physical lock/resume and airplane-mode photo recovery still
+need physical-device acceptance. Friends and authoritative reward services remain
+roadmap work; this pass does not make those prototype features server-backed.
+
 ## Build roadmap
 
 Keep all prototype features and its visual identity; target iPhone first and

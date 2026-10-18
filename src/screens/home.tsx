@@ -169,7 +169,6 @@ export function Openings() {
       <div className="kicker" style={{ marginTop: 14 }}>{account ? 'A few ways tonight could go' : 'Three ways tonight could go'}</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Pick your<br />opening.</h1>
       {account ? <CityPicker onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}} /> : <p className="small" style={{marginBottom:14}}>These are demo openings in West Village. <button style={{textDecoration:'underline',minHeight:44}} onClick={()=>go('login')}>Log in for nearby places</button></p>}
-      {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p><p>Check prices, entrances and local conditions before you go.</p></details>}
       <div className="col stagger" style={{ gap: 14 }}>
         {order.filter(i=>choices[i]).map((oi) => {
           const o = choices[oi]
@@ -187,6 +186,7 @@ export function Openings() {
           )
         })}
       </div>
+      {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p><p>Check prices, entrances and local conditions before you go.</p></details>}
       {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
       <div className="grow" />
       {choices[0]?.source&&<p className="small" style={{margin:'12px 0'}}>Places: <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a> · snapshot {new Date(choices[0].source.updatedAt).toLocaleDateString()}. Venue catalog only.</p>}

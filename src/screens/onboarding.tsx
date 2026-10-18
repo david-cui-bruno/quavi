@@ -153,7 +153,7 @@ export function Interests() {
   const toggle = (id: string) =>
     update((st) => ({ ...st, user: { ...st.user, interests: st.user.interests.includes(id) ? st.user.interests.filter((x) => x !== id) : [...st.user.interests, id] } }))
   return (
-    <Screen$>
+    <Screen$ scroll>
       <BackBtn />
       <div className="kicker" style={{ marginTop: 14 }}>A little about you · 2 of 4</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>What catches<br />your eye?</h1>
@@ -208,7 +208,7 @@ export function Customize() {
   const cur = currentOf(spec, slot)
   const { stage: stageName, disc: discName } = safePair(spec)
   return (
-    <Screen$>
+    <Screen$ scroll>
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <BackBtn />
         <span className="kicker">{editing ? 'Edit' : '3 of 4'}</span>
@@ -257,7 +257,7 @@ export function Mood() {
   const [sel, setSel] = useState(s.mood ? Math.max(0, MOODS.findIndex((m) => m.id === s.mood)) : 2)
   const pick = (i: number) => { setSel(i); update((st) => ({ ...st, mood: MOODS[i].id })) }
   return (
-    <Screen$ bg="orange">
+    <Screen$ bg="orange" scroll>
       <BackBtn />
       <h1 className="h1 h-m" style={{ marginTop: 14 }}>Plans fell through.<br />What happened?</h1>
       <div className="col" role="radiogroup" aria-label="What happened?" style={{ gap: 10, margin: '22px 0 0' }}>
