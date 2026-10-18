@@ -96,7 +96,7 @@ export async function searchPlace(query: string, near: LatLng, signal?: AbortSig
       const name = p.name as string
       const kind = kindOf(p.osm_key, p.osm_value, name)
       const ll = { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] }
-      const address = [p.housenumber && p.street ? `${p.housenumber} ${p.street}` : p.street, p.locality ?? p.city].filter(Boolean).join(', ')
+      const address = [p.housenumber && p.street ? `${p.housenumber} ${p.street}` : p.street, p.locality ?? p.city, p.state, p.country].filter(Boolean).join(', ')
       return { id: `${p.osm_type}${p.osm_id}`, name, ll, kind, about: aboutFor(kind), address: address || undefined } as Found
     })
   // Prefer the requested place over a nearby sub-place (for example, a dog

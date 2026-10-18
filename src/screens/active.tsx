@@ -161,7 +161,7 @@ export function Active() {
     else update((st) => ({ ...st, chapter: st.chapter + 1 }))
   }
 
-  const route = useMemo(() => [START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas])
+  const route = useMemo(() => [story.origin ?? START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas, story.origin])
   const reached = i + (arrived ? 1 : 0)
   // the street route to this stop, then straight lines to the stops after it
   const legRoute = useMemo(() => [...(nav.route ? nav.route.geometry : [tr.pos, target]), ...metas.slice(i + 1).map((m) => ({ lat: m.lat, lng: m.lng }))], [nav.route, i, metas]) // eslint-disable-line react-hooks/exhaustive-deps
