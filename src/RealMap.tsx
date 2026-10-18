@@ -179,7 +179,7 @@ export function RealMap({
           );
           pin?.onClick?.();
         });
-        await m.enableAccessibilityElements(false); // Plugin passes this flag to accessibilityElementsHidden.
+        if(Capacitor.isNativePlatform())await m.enableAccessibilityElements(false); // Plugin passes this flag to accessibilityElementsHidden.
         if (!canceled) {
           markers.current = [];
           lines.current = [];
