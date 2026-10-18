@@ -87,6 +87,7 @@ export function planDetours(
     )
       return false;
     const name = v.name.trim().toLocaleLowerCase();
+    if (/\b(coworking|co-working|office space|parking|headquarters|navigator|dba)\b/i.test(v.name)) return false;
     if (
       [
         "cafe",

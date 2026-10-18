@@ -108,3 +108,10 @@ test('the app honors real coordinates even when a real venue name matches a demo
 test('venue categories do not turn offices or parking facilities into outing stops',()=>{
  assert.equal(normalizeCategory('coworking_space'),null);assert.equal(normalizeCategory('parking'),null);assert.equal(normalizeCategory('travel_agency'),null);assert.equal(normalizeCategory('italian_restaurant'),'restaurant');assert.equal(normalizeCategory('art_museum'),'museum');assert.equal(normalizeCategory('national_park'),'park')
 })
+
+
+test('obvious non-venue business names are excluded even when the source category is wrong',()=>{
+ const office={...raw.venues[0],id:'office',name:'The Farm SF - Coworking Office Space'}
+ const result=planDetours({...raw,venues:[office,...raw.venues]},input)
+ for(const route of result.openings)assert.ok(route.chapters.every(c=>c.placeId!=='office'))
+})
