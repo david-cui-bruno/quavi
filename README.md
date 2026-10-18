@@ -90,9 +90,9 @@ See **You** for the installed version/build number.
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
 name is necessary because Apple reported that “Quavi” is already in use.
-**1.0 (10)** is verified **Testing** in Quavi Development on October 18, 2026.
+**1.0 (11)** is verified **Testing** in Quavi Development on October 18, 2026.
 Open TestFlight on the accepted tester's iPhone, tap **Update**, and confirm
-**1.0 (10)** in You. Update every device using a migrated account: old builds'
+**1.0 (11)** in You. Update every device using a migrated account: old builds'
 whole-document writes cannot replace independent outing records or server-owned rewards. Earlier builds
 remain listed as release history, not a safe persistence rollback. App Store
 publication and external tester review remain separate release steps.
@@ -447,7 +447,7 @@ scheduled deletion and credential files removed after acceptance.
 
 Development revision `quavi-api-00014-flw` serves all traffic from backend source
 `4a50dfd`; migration 007 completed. Mobile layout refinements are in `0a5ecf4`.
-Signed **1.0 (11)** archive is ready. After unlocking the Mac, export still
-failed; Xcode → Settings → Apple Accounts shows no signed-in account. Apple
-Developer sign-in is required before retrying the TestFlight upload. **1.0 (10)** remains the latest
-verified TestFlight build until that upload is completed.
+Signed **1.0 (11)** uploaded successfully after Xcode Apple Developer sign-in and
+is verified **Testing** in **Quavi Development** on October 18, 2026. Beta testing
+notes are saved. Open TestFlight → Update and confirm 1.0 (11) in You. All phones
+participating in the private circle should update before testing together.
