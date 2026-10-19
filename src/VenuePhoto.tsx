@@ -3,7 +3,7 @@ import { api } from "./cloud";
 import { useRuntime } from "./runtime";
 import { useStore } from "./store";
 import { Photo } from "./CloudPhoto";
-import { Icon } from "./Icons";
+import { VenuePlaceholder } from "./VenuePlaceholder";
 import { Btn, Sheet } from "./ui";
 import type { Chapter } from "./data";
 type Picture = {
@@ -89,12 +89,13 @@ export function VenuePhoto({
     <>
       <button
         className="completion-place-image"
+        disabled={!own && !photo && (loading || !account || !chapter.ll || !life.online)}
         aria-label={
           own
             ? `View your photo of ${chapter.place}`
             : photo
               ? `View venue photo of ${chapter.place}`
-              : `${loading ? "Loading venue photo" : "Photo unavailable"}: ${chapter.place}`
+              : `${loading ? "Loading venue photo" : account && life.online ? "Retry venue photo; illustrated placeholder" : "Venue illustration"}: ${chapter.place}`
         }
         onClick={() =>
           own ? onOwnPhoto() : photo ? setOpen(true) : setRetry((n) => n + 1)
@@ -117,7 +118,7 @@ export function VenuePhoto({
           />
         ) : (
           <div className="completion-place-empty">
-            <Icon name="photo" size={28} />
+            <VenuePlaceholder kind={chapter.kind} />
             <span>
               {loading
                 ? "Finding photo…"
@@ -125,7 +126,7 @@ export function VenuePhoto({
                   ? "Photo needs internet"
                   : result?.error
                     ? "Retry photo"
-                    : "No venue photo"}
+                    : chapter.kind ?? "Your stop"}
             </span>
           </div>
         )}

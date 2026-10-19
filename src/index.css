@@ -565,7 +565,9 @@ input,textarea { caret-color:var(--ink); }
 .demo-route-credit a {text-decoration:underline;text-underline-offset:2px;}
 .route-preview-map .demo-route-credit {bottom:0;font-size:10px;}
 .completion-place-image {height:96px;border-radius:14px;overflow:hidden;background:var(--soft);position:relative;}
-.completion-place-empty {height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--ink-p);font-size:10px;}
+.completion-place-empty {height:100%;position:relative;color:var(--ink);font-size:9px;}
+.venue-placeholder {display:block;width:100%;height:100%;}
+.completion-place-empty > span {position:absolute;bottom:4px;left:3px;right:3px;padding:2px 4px;background:var(--paper);border-radius:5px;line-height:1.2;}
 .completion-stop-number {position:absolute;left:6px;top:6px;display:grid;place-items:center;width:23px;height:23px;background:var(--orange);color:var(--ink);border-radius:50%;font-size:12px;font-weight:700;}
 .completion-place-name {display:block;font-size:12px;line-height:1.15;margin:8px 1px 2px;overflow-wrap:anywhere;}
 .reward-benefit {align-self:flex-start;border-radius:999px;padding:7px 12px;background:var(--yellow-p);color:var(--ink);font-size:17px;font-weight:700;margin:3px 0;}
