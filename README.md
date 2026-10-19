@@ -600,9 +600,10 @@ never straight lines between arbitrary searched coordinates.
 
 The redundant hours/directions badge is removed beside the details map, whose
 Google credit remains visible. Third-party venue credits remain when supplied.
-Completed outings show each place’s name and its recorded moment/task photo;
-missing photos have an Add a photo action instead of an unrelated character.
-Automatic venue-photo discovery is implemented through the authenticated photo endpoint; deployment and live verification are pending. Rewards & deals emphasizes each
+Completed outings show each place’s name and its recorded moment/task photo,
+or automatically request a current venue image. Missing or unverified imagery
+stays unavailable rather than using an unrelated character. The authenticated
+photo endpoint is deployed and live-verified in Quavi dev. Rewards & deals emphasizes each
 benefit, and Settings uses the same soft surfaces, display type and row controls
 as the other app flows. Report reasons use the app’s own field treatment.
 
@@ -635,3 +636,14 @@ pedestrian geometry, with no invented straight-line fallback. Automated checks
 cover authored legs, mid-route resume, exact map coordinate order, curved
 geometry through zoom/autosave, invalid provider geometry and photo isolation.
 Physical iPhone GPS, offline/lock/resume and push-receipt checks remain pending.
+
+Live acceptance (18 October 2026): Cloud Run revision quavi-api-00020-nb4
+serves source 336b0bb. A Greenwich Village route returned three legs with
+37 street geometry points. Automatic images loaded for the nearby architecture
+centre and bakery, plus Caffe Reggio; the unrelated gallery result remained
+unavailable. Photo-only name reconciliation accepts bounded category suffixes
+and organisation labels only for a unique nearby candidate without a category
+conflict; hours keep their stricter identity contract. Backend tests: 93 passed;
+client tests: 39 passed. Native iPhone 17 review captures verify merchant logos,
+Settings without Home colour controls, completion imagery and photo credits.
+This working preview has not been uploaded as a new TestFlight release.

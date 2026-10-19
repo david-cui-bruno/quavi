@@ -542,3 +542,9 @@ temporary Google media URL, author credits and source/report links; it never
 creates a private media upload or persists Google photo content. Deleted users
 are rechecked after the provider call, and per-account/project lookup quotas
 apply. Returning `{photo:null}` is an honest no-photo result.
+
+Deployed to Quavi dev revision `quavi-api-00020-nb4` (source `336b0bb`).
+Live acceptance verified image delivery with author/source credits for two
+real outing stops and Caffe Reggio, an honest no-photo result for an unmatched
+gallery, and a three-leg Google walking route with 37 geometry points.
+All 93 backend tests pass against an isolated migrated test database.
