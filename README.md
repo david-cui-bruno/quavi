@@ -227,7 +227,7 @@ acceptance, operations hardening and real partner verification remain pending.
 | Done: first point-in-time recovery drill | Restore into a separate temporary SQL instance; read-only migration, constraint, table and runtime-privilege checks; delete the temporary copy | Recovered to 2026-10-18 21:00 UTC, verified all 8 migrations and restricted runtime access; temporary instance deleted and source remains RUNNABLE |
 | Next: remaining operations acceptance | Verify operational alert receipt, finish auth-email branding, app attestation and production isolation | Record real notification receipt and physical-device lifecycle checks; SQL recovery alone does not prove cross-service recovery |
 | Done: focused client quality and recovery pass | Account-scoped photo rendering, retry and reconnect/resume recovery, modal focus/background isolation, meaningful save retry controls, conflict confirmation, long-name clipping and larger touch targets | 46 client tests, production build and native Debug build pass; iPhone 17 avatar fix verified; browser modal keyboard checks at 375×667 pass. See [quality record](QUALITY.md) for exact coverage and remaining acceptance |
-| Remaining: release quality acceptance | Finish small-phone scroll verification, large text/VoiceOver, Dark Mode, iPad/landscape and real-device outing/push checks; publish a new signed beta with these fixes | Native automation lost window/input access during the compact-screen scroll check. Existing TestFlight 1.0 (16) does not include this quality pass; do not treat simulator screenshots or unit tests as physical acceptance |
+| Remaining: release quality acceptance | Finish small-phone scroll verification, large text/VoiceOver, Dark Mode, iPad/landscape and real-device outing/push checks; publish a new signed beta with these fixes | Native automation lost window/input access during the compact-screen scroll check. Build 17 containing this pass was uploaded on October 19; tester availability is pending verification; do not treat simulator screenshots or unit tests as physical acceptance |
 | Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
 | Done: detour reliability implementation pass | Category/service-area checks, catalog-localized name aliases, bounded walking/closed-stop replacements, rendered-path validation, whole-visit hours, entry links and note/arrival-grounded captions | 85 backend and 36 client tests cover mismatches, substitutions, provider failures, holiday/closing boundaries, geometry, authenticated Start checks, retention and caption evidence |
 | Remaining: real-world detour acceptance | Verify actual entrances, admission/tickets and accessibility; expand multilingual and sparse-area acceptance using real outings | Complete outings in multiple regions and record coverage, closed-stop replacement and access failures; entry is never inferred from open hours |
@@ -754,3 +754,16 @@ email branding remains follow-up work. Remaining work is operational alert
 receipt, cross-service recovery/deletion reconciliation, app attestation and
 production isolation, followed by the deferred real-phone outing and push checks.
 No new iPhone installation is needed for these backend operations changes.
+
+### TestFlight 1.0 (17) — quality recovery update
+
+Signed Release archive and upload succeeded on October 19, 2026 at 6:14 PM EDT.
+Verified archive: `com.quavi.app`, version `1.0`, build `17`; bundled assets include
+photo retry/account isolation, sheet focus isolation and the long-name layout fix.
+All 46 client tests pass. Apple reported “Uploaded package is processing.”
+
+App Store Connect web sign-in expired during verification. Processing completion,
+Quavi Development group access and What to Test notes are not yet verified.
+Do not assume build 17 is installable until the group shows Testing. External
+group/review status has not been rechecked; previous build 15 status is historical.
+The remaining native/physical checks in [QUALITY.md](QUALITY.md) still apply.
