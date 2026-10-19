@@ -703,3 +703,18 @@ and a search-results screen, explicitly labelled browser previews at iPhone 17
 size. These changes are pushed source work, not part of TestFlight build 15.
 Next: include this pass in the next iPhone build and complete the deferred physical
 phone outing/offline/lock-resume acceptance checks.
+
+### TestFlight 1.0 (16)
+
+The Explore search fixes and automatic nearby venue-photo cards are included in
+signed build 16. The Release archive's bundle identifier/version and bundled web
+content were checked against the production build. Xcode reports Upload succeeded;
+Apple finished processing, testing notes are saved, and the build is assigned to
+Quavi Development. Source validation remains 42 passing client tests plus the
+successful production build and lint checks.
+
+Apple currently disables adding build 16 to external groups because build 15 from
+version 1.0 is already waiting for Beta App Review. Quavi Friends keeps that review
+submission; no external approval or build-16 friend access is claimed. After that
+review completes, add build 16 to Quavi Friends and submit it if Apple requires it.
+Physical-phone outing, offline and lock/resume acceptance remains outstanding.
