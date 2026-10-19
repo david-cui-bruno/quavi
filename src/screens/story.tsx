@@ -1,5 +1,5 @@
+import {VenuePhoto} from '../VenuePhoto'
 import {demoWalk} from '../demo-walks'
-import {Icon} from '../Icons'
 import {RealMap,type RealPin} from '../RealMap'
 import {useWalkingRoute} from '../nav'
 import {PrivateShare} from '../PrivateCircle'
@@ -223,6 +223,7 @@ export function Complete() {
   const { s, update, go, reset } = useStore()
   const [story, setStory] = useStory()
   const [photoChapter,setPhotoChapter]=useState<number|null>(null)
+  const [providerPhoto,setProviderPhoto]=useState(false)
   // a finished detour goes straight to your shelf, so leaving this screen never loses it
   useEffect(() => {
     update((st) => (st.story && !st.shelf.some((x) => x.id === st.story!.id) ? { ...st, shelf: [{ ...st.story, status: 'done' }, ...st.shelf] } : st))
@@ -240,15 +241,13 @@ export function Complete() {
           const img = chapterImg(story, i)
           return (
             <div key={i} className="fade-in" style={{ flex: 1, background: 'var(--paper)', borderRadius: 22, padding: 10, animationDelay: `${i * 0.1}s` }}>
-              <button className="completion-place-image" aria-label={`Add a photo of ${chapter.place}`} onClick={()=>setPhotoChapter(i)}>
-                {img ? <Photo src={img} alt={chapter.place} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="completion-place-empty"><Icon name="photo" size={28}/><span>Add a photo</span></div>}
-                <span className="completion-stop-number">{i+1}</span>
-              </button>
+              <VenuePhoto chapter={{...chapter,ll:{lat:chapterMeta(story,i).lat,lng:chapterMeta(story,i).lng}}} number={i+1} own={img} onProviderPhoto={()=>setProviderPhoto(true)} onOwnPhoto={()=>setPhotoChapter(i)}/>
               <b className="completion-place-name">{chapter.place}</b>
             </div>
           )
         })}
       </div>
+      {providerPhoto&&<div className="venue-gallery-credit"><span>Venue photos</span><img src="/google-maps-dark.svg" height="16" alt="Google Maps"/></div>}
       <div className="card" style={{ background: 'var(--paper)', padding: 22 }}>
         <div className="kicker">{story.title}</div>
         <div className="h1" style={{ fontSize: 21, margin: '4px 0' }}>{story.premise}</div>

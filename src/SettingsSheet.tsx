@@ -1,6 +1,5 @@
 import { Icon } from "./Icons";
 import config from "./cloud-config.json";
-import { reviewEnabled, homeTones, chooseHomeTone } from "./review-home";
 import { useState } from "react";
 import { AccountPanel } from "./AccountPanel";
 import { AppBuild } from "./AppBuild";
@@ -8,7 +7,7 @@ import { PushSettings } from "./PushSettings";
 import { useStore } from "./store";
 import { Sheet, Btn } from "./ui";
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
-  const { account, restart, go } = useStore(),
+  const { account, restart } = useStore(),
     [confirm, setConfirm] = useState(false);
   return (
     <Sheet label="Settings" onClose={onClose}>
@@ -61,33 +60,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <Icon name="chevron" size={18} />
         </a>
       </section>
-      {reviewEnabled && (
-        <section className="settings-section">
-          <h3 className="h1 h-xs">Home colour studies</h3>
-          <div className="review-tones">
-            {homeTones.map((tone) => (
-              <button
-                key={tone}
-                style={{
-                  background: `var(--${tone})`,
-                  color: tone === "ink" ? "var(--paper)" : "var(--ink)",
-                }}
-                onClick={() => {
-                  chooseHomeTone(tone);
-                  onClose();
-                  go("home");
-                }}
-              >
-                {tone === "orange-p"
-                  ? "Orange"
-                  : tone === "ink"
-                    ? "Ink"
-                    : "Yellow"}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
       <div className="settings-build">
         <AppBuild />
       </div>

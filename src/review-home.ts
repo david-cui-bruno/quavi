@@ -1,13 +1,8 @@
 import type { Bg } from "./ui";
-export const reviewEnabled = import.meta.env.VITE_REVIEW_BOARD === "true";
-export const homeTones = ["orange-p", "ink", "yellow"] as const;
+// Build-time screenshot variant only. No colour controls or preferences in the app.
 export function homeTone(): Bg {
-  if (!reviewEnabled) return "paper";
-  const tone = localStorage.getItem("quavi.review.home");
-  return homeTones.includes(tone as (typeof homeTones)[number])
-    ? (tone as Bg)
+  const tone = import.meta.env.VITE_REVIEW_HOME;
+  return tone === "orange-p" || tone === "ink" || tone === "yellow"
+    ? tone
     : "paper";
-}
-export function chooseHomeTone(tone: (typeof homeTones)[number]) {
-  localStorage.setItem("quavi.review.home", tone);
 }

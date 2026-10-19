@@ -40,6 +40,26 @@ export const googlePlace = z.object({
     latitude: z.number().min(-85).max(85),
     longitude: z.number().min(-180).max(180),
   }),
+  photos: z
+    .array(
+      z.object({
+        name: z.string().max(4096),
+        googleMapsUri: z.string().max(4096).optional(),
+        flagContentUri: z.string().max(4096).optional(),
+        authorAttributions: z
+          .array(
+            z.object({
+              displayName: z.string().max(300),
+              uri: z.string().max(4096).optional(),
+              photoUri: z.string().max(4096).optional(),
+            }),
+          )
+          .max(20)
+          .default([]),
+      }),
+    )
+    .max(10)
+    .optional(),
   businessStatus: z.string().optional(),
   primaryType: z.string().max(100).optional(),
   types: z.array(z.string().max(100)).max(100).default([]),

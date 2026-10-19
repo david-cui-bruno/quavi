@@ -210,7 +210,7 @@ export function DemoRewards() {
                     >
                       <span className="col" style={{ gap: 5 }}>
                         <b className="h1 h-xs">{offer.title}</b>
-                        <span className={`reward-merchant ${offer.id==='books'?'books':'coffee'}`}>{offer.partner}</span>
+                        <span className={`reward-merchant ${offer.id==='books'?'books':'coffee'}`}><img className="reward-logo" src={offer.logo} alt="" onError={e=>{e.currentTarget.hidden=true}}/>{offer.partner}</span>
                         <span className="reward-benefit">{offer.benefit}</span>
                         <span className="small" style={{ fontWeight: 700 }}>
                           {state === "used"

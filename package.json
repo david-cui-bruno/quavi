@@ -13,7 +13,8 @@
     "ios:run": "npm run ios:sync && cap run ios",
     "test": "node --test tests/*.test.mjs",
     "postinstall": "node scripts/patch-google-maps.mjs",
-    "maps:icons": "./server/node_modules/.bin/tsx scripts/build-map-icons.tsx"
+    "maps:icons": "./server/node_modules/.bin/tsx scripts/build-map-icons.tsx",
+    "rewards:logos": "node scripts/pull-reward-logos.mjs"
   },
   "dependencies": {
     "@capacitor/app": "8.1.2",

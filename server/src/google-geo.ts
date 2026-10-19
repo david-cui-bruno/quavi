@@ -22,7 +22,20 @@ export type GoogleNavigation = WalkingCheck & {
   }[];
   warnings: string[];
 };
+export type VenuePhoto = {
+  url: string;
+  placeName: string;
+  mapsUrl: string;
+  flagUrl?: string;
+  authors: { name: string; url?: string; avatar?: string }[];
+};
 export interface LiveGeo extends WalkingProvider {
+  photo?(
+    name: string,
+    ll: Point,
+    id?: string,
+    context?: PlaceIdentity,
+  ): Promise<VenuePhoto | null>;
   place(
     name: string,
     ll: Point,
@@ -215,7 +228,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
         headers: {
           Authorization: "Bearer " + token,
           "X-Goog-User-Project": projectId,
-          "X-Goog-FieldMask": mask,
+          ...(mask ? { "X-Goog-FieldMask": mask } : {}),
           "Content-Type": "application/json",
         },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -255,6 +268,45 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
   };
   const fields =
     "id,displayName,location,businessStatus,currentOpeningHours,attributions,googleMapsUri,primaryType,types,pureServiceAreaBusiness,websiteUri";
+  async function lookup(
+    name: string,
+    ll: Point,
+    id?: string,
+    context?: PlaceIdentity,
+    photos = false,
+  ): Promise<GooglePlace | PlaceRejection | undefined> {
+    if (id) {
+      const raw = await request(
+        "https://places.googleapis.com/v1/places/" + encodeURIComponent(id),
+        undefined,
+        photos ? fields + ",photos" : fields,
+        "places",
+      );
+      const parsed = googlePlace.safeParse(raw);
+      if (parsed.success) return assessPlace([parsed.data], name, ll, context);
+      return undefined;
+    }
+    const raw = await request(
+      "https://places.googleapis.com/v1/places:searchText",
+      {
+        textQuery: name,
+        locationBias: {
+          circle: {
+            center: { latitude: ll.lat, longitude: ll.lng },
+            radius: 150,
+          },
+        },
+        maxResultCount: 3,
+        languageCode: "en",
+      },
+      (photos ? fields + ",photos" : fields)
+        .split(",")
+        .map((s) => "places." + s)
+        .join(","),
+      "places",
+    );
+    return assessPlace(raw.places ?? [], name, ll, context);
+  }
   return {
     navigate,
     async check(points) {
@@ -263,39 +315,68 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
       const { legs, duration, distance, provider, checkedAt } = r;
       return { legs, duration, distance, provider, checkedAt };
     },
-    async place(name, ll, id, context) {
-      if (id) {
-        const raw = await request(
-          "https://places.googleapis.com/v1/places/" + encodeURIComponent(id),
-          undefined,
-          fields,
-          "places",
-        );
-        const parsed = googlePlace.safeParse(raw);
-        if (parsed.success)
-          return assessPlace([parsed.data], name, ll, context);
-        return undefined;
-      }
+    place: lookup,
+    async photo(name, ll, id, context) {
+      const p = await lookup(name, ll, id, context, true);
+      if (!p || "rejected" in p) return null;
+      const photo = p.photos?.find(
+        (p) =>
+          /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(p.name) &&
+          !!safeLink(p.googleMapsUri),
+      );
+      if (!photo) return null;
       const raw = await request(
-        "https://places.googleapis.com/v1/places:searchText",
-        {
-          textQuery: name,
-          locationBias: {
-            circle: {
-              center: { latitude: ll.lat, longitude: ll.lng },
-              radius: 150,
-            },
-          },
-          maxResultCount: 3,
-          languageCode: "en",
-        },
-        fields
-          .split(",")
-          .map((s) => "places." + s)
-          .join(","),
+        "https://places.googleapis.com/v1/" +
+          photo.name +
+          "/media?maxWidthPx=960&maxHeightPx=960&skipHttpRedirect=true",
+        undefined,
+        "",
         "places",
       );
-      return assessPlace(raw.places ?? [], name, ll, context);
+      return photoResult(p, photo, raw);
     },
+  };
+}
+
+function safeLink(value?: string) {
+  if (!value) return undefined;
+  try {
+    const u = new URL(value.startsWith("//") ? "https:" + value : value);
+    return u.protocol === "https:" && !u.username && !u.password
+      ? u.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+/** Provider media URLs and credits remain transient, never user-owned story uploads. */
+export function photoResult(
+  place: GooglePlace,
+  photo: NonNullable<GooglePlace["photos"]>[number],
+  raw: unknown,
+): VenuePhoto | null {
+  const url = safeLink((raw as { photoUri?: string })?.photoUri),
+    mapsUrl = safeLink(photo.googleMapsUri);
+  if (!url || !mapsUrl) return null;
+  const host = new URL(url).hostname;
+  if (
+    !(
+      host === "googleusercontent.com" ||
+      host.endsWith(".googleusercontent.com") ||
+      host === "ggpht.com" ||
+      host.endsWith(".ggpht.com")
+    )
+  )
+    return null;
+  return {
+    url,
+    mapsUrl,
+    flagUrl: safeLink(photo.flagContentUri),
+    placeName: place.displayName.text,
+    authors: photo.authorAttributions.map((a) => ({
+      name: a.displayName,
+      url: safeLink(a.uri),
+      avatar: safeLink(a.photoUri),
+    })),
   };
 }

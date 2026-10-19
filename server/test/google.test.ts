@@ -48,3 +48,15 @@ test('a closed stop is replaced with a nearby available alternative rather than 
  const geo={async check(){calls++;return {provider:'Google Maps',checkedAt:new Date().toISOString(),legs:Array(3).fill({distance:200,duration:180}),distance:600,duration:540}},async navigate(){return null},async place(name:string,point:typeof ll){return googlePlace.parse({id:name,displayName:{text:name},location:{latitude:point.lat,longitude:point.lng},businessStatus:name===closed?'CLOSED_TEMPORARILY':'OPERATIONAL',currentOpeningHours:{periods:[{open:{day:0,hour:0,minute:0}}]}})}};
  const result=await checkedDetours(raw,input,geo,geo);assert.ok(result.openings.length);assert.ok(result.openings.every(o=>o.chapters.every(c=>c.place!==closed)));assert.ok(calls<=6);assert.equal(new Set(result.openings.map(o=>o.id)).size,result.openings.length)
 });
+
+test('venue photo URLs keep author/source credit and reject unsafe media locations',async()=>{
+ const {photoResult}=await import('../src/google-geo.js');
+ const p=googlePlace.parse({...base(),photos:[{name:'places/test-id/photos/photo1',googleMapsUri:'https://www.google.com/maps/place/?photo=1',authorAttributions:[{displayName:'Venue owner',uri:'//maps.google.com/maps/contrib/123',photoUri:'https://lh3.googleusercontent.com/avatar'}]}]});
+ const photo=p.photos![0],r=photoResult(p,photo,{photoUri:'https://lh3.googleusercontent.com/place-image'});
+ assert.equal(r?.placeName,'Corner Café');assert.equal(r?.authors[0].url,'https://maps.google.com/maps/contrib/123');assert.equal(r?.mapsUrl,photo.googleMapsUri);
+ assert.equal(photoResult(p,photo,{photoUri:'javascript:alert(1)'}),null);
+ assert.equal(photoResult(p,photo,{photoUri:'https://attacker.example/place.jpg'}),null);
+ assert.equal(photoResult(p,{...photo,googleMapsUri:undefined},{photoUri:'https://lh3.googleusercontent.com/place-image'}),null);
+ const ephemeral={...p,venuePhoto:r,photoUri:r?.url};
+ assert.equal(scrub(ephemeral).photos,undefined);assert.equal(scrub(ephemeral).venuePhoto,undefined);assert.equal(scrub(ephemeral).photoUri,undefined);
+});

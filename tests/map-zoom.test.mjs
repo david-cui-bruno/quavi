@@ -45,10 +45,10 @@ test('zoom in/out, autosave clones and stop changes preserve existing map pins a
  const root={querySelectorAll:()=>[],getAnimations:()=>[],addEventListener(){},removeEventListener(){}}
  const element={clientHeight:844,closest:()=>root,parentElement:{getBoundingClientRect:()=>({width:390,height:844,top:0,bottom:844})}}
  const pins=[{id:'cafe',ll:{lat:40.73,lng:-74},kind:'quest',label:'Cafe'},{id:'park',ll:{lat:40.74,lng:-74},kind:'dest',label:'Park'}]
- const route=pins.map(p=>p.ll)
+ const route=[pins[0].ll,{lat:40.73,lng:-74.002},{lat:40.74,lng:-74.002},pins[1].ll]
  try{
   await act(async()=>{renderer=create(React.createElement(RealMap,{pins,route}),{createNodeMock:()=>element});await settle();await settle()})
-  assert.equal(native.size,2);assert.equal(paths.length,1);assert.equal(paths[0][0].strokeColor,'#EE6A2C');assert.equal(paths[0][0].icons,undefined,'street routes must remain a continuous line')
+  assert.equal(native.size,2);assert.equal(paths.length,1);assert.deepEqual(paths[0][0].path,route,'draw the exact street geometry, preserving longitude/latitude and corners');assert.equal(paths[0][0].strokeColor,'#EE6A2C');assert.equal(paths[0][0].icons,undefined,'street routes must remain a continuous line')
   const first=native.get('cafe')
   for(const zoom of [17,14,18,16])await act(async()=>{callbacks.idle({zoom});await settle()})
   assert.deepEqual(removed,[],'zoom must not remove and recreate pins')

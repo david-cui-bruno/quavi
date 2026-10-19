@@ -15,7 +15,7 @@ import { ownerHash, lockAccount, quota } from "./account.js";
 import { detourInput, planDetours, type VenueProvider } from "./detours.js";
 import { checkedDetours } from "./checked-detours.js";
 import { walkingInput, type WalkingProvider } from "./walking.js";
-import { liveCheckInput, checkHours } from "./live-detours.js";
+import { liveCheckInput, liveStop, checkHours } from "./live-detours.js";
 import type { LiveGeo } from "./google-geo.js";
 import { scrubGoogleContent } from "./google-retention.js";
 import { appStateSchema, inspectState } from "./state-schema.js";
@@ -268,6 +268,17 @@ export async function createApp(options: {
             .code(410)
             .send({ error: "This account is being deleted." });
         return planned;
+      });
+      api.post('/me/venue-photo',async(req,reply)=>{
+        const input=liveStop.omit({mins:true}).parse(req.body);
+        if(!options.liveGeo?.photo)return reply.code(503).send({error:'Venue photos are unavailable. Try again later.'});
+        if(!await quota(req.db!,ownerHash(req.uid),'venue-photo',30,3600))return reply.code(429).send({error:'Too many photo lookups. Try again later.'});
+        const db=req.db!;req.db=null;
+        try{await db.query('COMMIT')}finally{db.release()}
+        const photo=await options.liveGeo.photo(input.name,input.ll,input.googlePlaceId,{kind:input.kind,aliases:input.aliases});
+        req.db=await options.pool.connect();await req.db.query('BEGIN');await lockAccount(req.db,req.uid);
+        if((await req.db.query('SELECT 1 FROM account_deletions WHERE owner_hash=$1',[ownerHash(req.uid)])).rowCount)return reply.code(410).send({error:'This account is being deleted.'});
+        return {photo};
       });
       api.post("/me/walking-check", async (req, reply) => {
         const { points } = walkingInput.parse(req.body);

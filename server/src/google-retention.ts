@@ -6,7 +6,7 @@ export function scrubGoogleContent(value: unknown): any {
   const googleRoute = record.walking?.provider === "Google Maps";
   const out: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value)) {
-    if (["hours", "googleRoute"].includes(key)) continue;
+    if (["hours", "googleRoute", "venuePhoto", "photos", "photoUri"].includes(key)) continue;
     if (googleRoute && ["walking", "estimatedMinutes"].includes(key)) continue;
     if (record.googleRoute && ["walking", "walk"].includes(key)) continue;
     out[key] = scrubGoogleContent(item);

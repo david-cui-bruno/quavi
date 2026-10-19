@@ -1,3 +1,4 @@
+import {resumeDemoWalk} from '../demo-route.mjs'
 import {demoWalk} from '../demo-walks'
 import {Icon} from '../Icons'
 import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
@@ -52,11 +53,14 @@ export function Active() {
   const skipRoute = arrived || farTransit || !recovery.ready
   // the route starts where you are when the stop (or its eligibility) changes; leaving the route asks for a new one
   const points = useMemo(() => (skipRoute ? null : [tr.pos, target]), [skipRoute, target.lat, target.lng]) // eslint-disable-line react-hooks/exhaustive-deps
-  const nav = useWalkingRoute(points,recovery.token)
+  const previousLat=i?metas[i-1].lat:story.origin?.lat??START.lat
+  const previousLng=i?metas[i-1].lng:story.origin?.lng??START.lng
+  const sampleLeg=useMemo(()=>demoWalk([{lat:previousLat,lng:previousLng},target]),[previousLat,previousLng,target])
+  const nav = useWalkingRoute(account?points:null,recovery.token)
   const loc = nav.route ? locateOnRoute(tr.pos, nav.route) : null
   useEffect(() => { if (loc && loc.off > 40 && !arrived) nav.reroute(tr.pos) }, [loc?.off, arrived]) // eslint-disable-line react-hooks/exhaustive-deps
   // hand the street route to the demo walker once per route (not on every step it takes)
-  useEffect(() => { tr.setPath(nav.route ? nav.route.geometry.slice(1) : null); if(story.source&&!nav.route)tr.setWalking(false) }, [nav.route,story.source]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { tr.setPath(nav.route ? nav.route.geometry.slice(1) : !story.source&&sampleLeg.length ? resumeDemoWalk(sampleLeg,tr.pos) : null); if(story.source&&!nav.route)tr.setWalking(false) }, [nav.route,story.source,sampleLeg,life.epoch]) // eslint-disable-line react-hooks/exhaustive-deps
   const [voice, setVoice] = useState(false)
 
   // what the banner says right now
@@ -65,7 +69,7 @@ export function Active() {
   if (!recovery.ready) {
     banner={kind:'head',big:recovery.phase==='offline'?'You’re offline':recovery.phase==='location'?'Waiting for GPS':recovery.phase==='error'?'Check your detour':recovery.phase==='sign-in'?'Sign in to continue':'Checking your detour',text:recovery.phase==='offline'?'Directions and arrival checks are paused.':recovery.phase==='location'?(tr.perm==='denied'?'Allow location in Settings, then retry GPS.':'Waiting for a fresh, precise position.'):recovery.phase==='error'?'Review the message below, then retry.':'Refreshing the walk and reported hours.',sub:'Your plan, notes and progress stay on this device.'}
   } else if (!arrived) {
-    if (farTransit) {
+    if(!story.source&&sampleLeg.length){banner={kind:'head',big:'Sample walking route',text:`Follow the orange path to ${c.place}`}} else if (farTransit) {
       const mins = Math.max(5, Math.round(dist / 250))
       banner = { kind: 'transit', big: 'Take transit', text: `to ${c.place}`, sub: `About ${mins} min · ${fmtMeters(dist)} away`, link: `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=transit` }
     } else if (nav.route && loc) {
@@ -111,6 +115,7 @@ export function Active() {
   useEffect(() => {
     if (arrived && !seen.current[key]) {
       seen.current[key] = true
+      if(tr.mode==='demo')tr.setWalking(false)
       setStory(st=>st.arrivedStops?.includes(i)?st:{...st,arrivedStops:[...(st.arrivedStops??[]),i]})
       tr.notify(`You’ve arrived at ${c.place}`, `${meta.tasks.length} tasks · ${totalXp} XP waiting`)
       setTasks(true)

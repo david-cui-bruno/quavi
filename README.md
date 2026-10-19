@@ -602,15 +602,36 @@ The redundant hours/directions badge is removed beside the details map, whose
 Google credit remains visible. Third-party venue credits remain when supplied.
 Completed outings show each place’s name and its recorded moment/task photo;
 missing photos have an Add a photo action instead of an unrelated character.
-Venue-photo discovery is not implemented yet. Rewards & deals emphasizes each
+Automatic venue-photo discovery is implemented through the authenticated photo endpoint; deployment and live verification are pending. Rewards & deals emphasizes each
 benefit, and Settings uses the same soft surfaces, display type and row controls
 as the other app flows. Report reasons use the app’s own field treatment.
 
-The review-only build flag VITE_REVIEW_BOARD=true enables three Home colour
-studies in Settings. This control is absent from normal builds. Board variants
-are captured from the app, and prior annotations remain attached to their
-original screen IDs. This working preview is not a new TestFlight release.
+Home colour studies stay on the review board. Settings contains no colour-study
+controls in any build. VITE_REVIEW_HOME can select a colour only while building
+a screenshot variant. Prior annotations remain attached to their original screen IDs. This working preview is not a new TestFlight release.
 
 The route overview separates overlapping numbered artwork with short pointers
 that retain the true stop coordinates. Empty detour results now show the search
 explanation directly, with a prompt to change area or available time.
+
+
+### Automatic venue imagery and route verification
+
+Completion requests a current venue photo using independently sourced venue
+name/coordinates, an optional retained Google place ID, category and aliases.
+Identity mismatches and unavailable photos remain honest. Existing personal
+outing photos take precedence. Thumbnail images open author credits, Google
+Maps source links and the supplied reporting link. Provider photo references
+and image URLs remain in session memory and are stripped from durable state.
+
+Rewards use bundled merchant icons automatically refreshed from catalog domains
+with `npm run rewards:logos`; missing icons preserve the company name. These
+remain example offers without real merchant funding or redemption.
+
+The sample walker now follows the same authored foot-network geometry drawn in
+orange. Resuming clips to the nearest remaining street segment rather than
+restarting or cutting directly between stops. Live routing remains Google
+pedestrian geometry, with no invented straight-line fallback. Automated checks
+cover authored legs, mid-route resume, exact map coordinate order, curved
+geometry through zoom/autosave, invalid provider geometry and photo isolation.
+Physical iPhone GPS, offline/lock/resume and push-receipt checks remain pending.

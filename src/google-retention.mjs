@@ -5,7 +5,7 @@ export function scrubGoogleContent(value) {
   const googleRoute=value.walking?.provider==='Google Maps'
   const out={}
   for(const [key,item] of Object.entries(value)) {
-    if(['hours','googleRoute'].includes(key))continue
+    if(['hours','googleRoute','venuePhoto','photos','photoUri'].includes(key))continue
     if(googleRoute&&['walking','estimatedMinutes'].includes(key))continue
     if(value.googleRoute&&['walking','walk'].includes(key))continue
     out[key]=scrubGoogleContent(item)

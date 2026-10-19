@@ -531,3 +531,14 @@ separation, report coalescing, removal revocation, private record retention and
 republish prevention. TestFlight 1.0 (14) is Testing in the existing internal group.
 Actual phone receipt, notification permission/account lifecycle and operational
 moderation response/appeal processes remain acceptance work.
+
+
+## Venue photos
+
+`POST /v1/me/venue-photo` accepts a bounded venue name, coordinates, optional
+Google place ID, kind and aliases. It uses the existing conservative identity
+matcher before fetching one current Places photo. The response contains a
+temporary Google media URL, author credits and source/report links; it never
+creates a private media upload or persists Google photo content. Deleted users
+are rechecked after the provider call, and per-account/project lookup quotas
+apply. Returning `{photo:null}` is an honest no-photo result.

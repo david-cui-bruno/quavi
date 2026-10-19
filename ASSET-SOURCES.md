@@ -10,5 +10,11 @@ closed roads, current access, or an unmatched/swapped sample stop.
 
 Live routes continue to use transient Google Routes results and Google Maps.
 No Google route geometry or venue photo content is included in this fixture.
-Reward company names identify example scenarios; no merchant logos or actual
-partnership claims are included.
+Reward names and logos identify example scenarios, not actual partnerships.
+`npm run rewards:logos` refreshes the bundled icons for each distinct merchant
+in the reward catalog. Starbucks uses its official apple-touch icon:
+https://www.starbucks.com/apple-touch-icon.png. Barnes & Noble uses its published
+site icon obtained via Google's domain favicon service:
+https://www.google.com/s2/favicons?domain=www.barnesandnoble.com&sz=128.
+Icons are bundled so opening rewards does not depend on a third-party image API.
+Merchant names remain visible if an icon is missing.
