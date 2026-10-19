@@ -106,3 +106,19 @@ SMTP sender/domain is configured. Do not claim inbox delivery from a successful
 API request; verification and reset each need a real authorized mailbox check.
 Never log an action link or complete a password reset as part of a delivery drill.
 A branded sender domain requires a domain decision, DNS setup and delivery testing.
+
+## Recorded development evidence (October 18, 2026)
+
+- GitHub run 39192466879: 97 server tests passed; API revision `quavi-api-00022-9gq`
+  and all three jobs deployed from `0d5d330`. Readiness/auth smoke checks passed.
+- Five alert policies enabled; readiness checks passed in Oregon and Iowa.
+- $100/month project budget created with credits excluded and 50/90/100 thresholds.
+- PITR clone `quavi-restore-20261018` recovered to `2026-10-18T21:00:00Z`.
+  Clone operation took approximately ten minutes. Read-only checks verified eight
+  migration checksums, validated constraints, table access and restricted runtime
+  privileges. Proxy stopped and clone deletion completed; source remained RUNNABLE.
+- Real incident email receipt and verification/reset inbox delivery are not verified.
+
+Provider references: [GitHub federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines),
+[budget credit treatment](https://docs.cloud.google.com/billing/docs/reference/budget/rest/v1/billingAccounts.budgets),
+[Cloud SQL point-in-time recovery](https://docs.cloud.google.com/sql/docs/postgres/backup-recovery/pitr).

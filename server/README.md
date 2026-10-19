@@ -154,13 +154,15 @@ separate from shipped runtime dependencies.
 ## Operations and remaining acceptance
 
 The tested GitHub dev deployment, alerting/budget configuration, recovery checks and
-incident procedures are documented in [OPERATIONS.md](OPERATIONS.md). The first live
-workflow passed 93 isolated backend tests and deployed revision `quavi-api-00021-q82`.
+incident procedures are documented in [OPERATIONS.md](OPERATIONS.md). The verified
+workflow passed 97 isolated backend tests and deployed revision `quavi-api-00022-9gq`.
 Five monitoring policies and a project-scoped $100/month budget excluding credits
 are configured. Alert policy creation does not prove email delivery.
 
-Remaining operations work includes restore-drill validation/cleanup, authorized
-verification/reset email delivery checks, alert inbox acceptance, app attestation,
+The point-in-time SQL restore drill verified eight migrations, constraints and
+restricted runtime permissions; its temporary instance was deleted. Remaining
+operations work includes authorized verification/reset email delivery checks,
+alert inbox acceptance, app attestation,
 production isolation and richer sync/photo retry UX. Physical outing/offline/lock
 and push receipt tests remain deferred acceptance work. Friends/private sharing,
 server-owned demo rewards and independent outing records are already implemented;
