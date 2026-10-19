@@ -91,11 +91,12 @@ See **You** for the installed version/build number.
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
 name is necessary because Apple reported that “Quavi” is already in use.
-**1.0 (15)** was accepted by Apple for processing on October 18, 2026.
-Tester availability and group distribution are awaiting App Store Connect verification;
-**1.0 (14)** remains the last build verified Testing in Quavi Development.
-Once 15 is available, open TestFlight on the accepted tester’s iPhone, tap
-**Update**, then confirm **1.0 · Build 15** in You → Settings. Update every device using a migrated account: old builds'
+**1.0 (15)** is verified **Testing** in Quavi Development on October 18, 2026.
+The existing internal tester has access, and What to Test notes are saved.
+Open TestFlight on the accepted tester’s iPhone, tap **Update**, then confirm
+**1.0 · Build 15** in You → Settings. External group **Quavi Friends** is
+created; Apple’s beta-review contact details and review-login choice are pending
+before the build can be submitted for external testing. Update every device using a migrated account: old builds'
 whole-document writes cannot replace independent outing records or server-owned rewards. Earlier builds
 remain listed as release history, not a safe persistence rollback. App Store
 publication and external tester review remain separate release steps.
@@ -655,16 +656,19 @@ This working preview has not been uploaded as a new TestFlight release.
 The signed Release archive was verified as `com.quavi.app`, version 1.0, build
 15, with bundled web content matching the current production build. Apple’s
 upload tool reported “Upload succeeded” and that the package is processing.
-App Store Connect web sign-in is currently stalled, so this records upload
-success, not verified tester availability or external beta approval.
+App Store Connect verification completed through Firefox after Chrome’s sign-in
+form failed to load. Build 15 is assigned to Quavi Development and shows Testing;
+What to Test notes are saved. External group Quavi Friends is created, but the
+external submission still needs the user’s review-contact phone number and
+review-login choice. No external beta approval or friend invitation is claimed.
 
 Includes the visual review changes, numbered orange walking routes, demo walker
 alignment, automatic verified venue photos and credits, illustrated category
 placeholders, merchant logos, quieter Explore and active-map controls, social
 screen styling and Settings without review-only colour controls.
 
-Next: verify processing and existing tester groups, save What to Test notes,
-then check a real outing on physical phones. GPS/arrival, offline recovery,
+Next: finish the external beta-review form when the missing contact information
+is provided, then check a real outing on physical phones. GPS/arrival, offline recovery,
 lock/resume, saved outing/reward reconciliation and cross-phone push receipt
 remain acceptance work. Backgrounding pauses foreground tracking. Reward
 examples remain previews with no merchant redemption.
