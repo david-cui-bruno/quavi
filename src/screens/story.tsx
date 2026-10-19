@@ -1,3 +1,5 @@
+import {PlaceSearch} from '../PlaceSearch'
+import {replacePlannedStop,applyPlannedCheck} from '../route-edit'
 import {VenuePhoto} from '../VenuePhoto'
 import {demoWalk} from '../demo-walks'
 import {RealMap,type RealPin} from '../RealMap'
@@ -12,7 +14,7 @@ import { Photo } from '../CloudPhoto'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { photoFiles, photoFromFile } from '../photo'
 import { MoodLogo, Persona, flock, safeSurface } from '../brand/Persona'
-import { DEFAULT_PREFS, OPENINGS, applyPrefs, buildStory, chapterImg, chapterMeta, draftCaptions, isPhotoTask, noteLines, notePrompt, photoLines, shareText, tripMeters, type Prefs, type Story } from '../data'
+import { DEFAULT_PREFS, OPENINGS, applyPrefs, buildStory, chapterImg, chapterMeta, draftCaptions, isPhotoTask, noteLines, notePrompt, photoLines, shareText, tripMeters, type Prefs, type Story, type Alt } from '../data'
 import { useStore } from '../store'
 import { Arrow, BackBtn, BG, Btn, Check, Chip, NoteQuote, SURFACE, Screen$, Sheet, type Bg } from '../ui'
 import { SaveSheet } from './home'
@@ -148,7 +150,8 @@ export function Details() {
               <div className="chips">{opts.map((o) => <Chip key={o} on={prefs[key] === o} onClick={() => setPrefs((p) => ({ ...p, [key]: o }))}>{o}</Chip>)}</div>
             </div>
           ))}
-          <Btn onClick={() => { setAdjust(false); setStory((st) => applyPrefs(st, prefs)); say('Detour updated: new stops and sidequests') }}>Update my detour</Btn>
+          {story.source&&<div className="col" style={{gap:8,marginBottom:16}}><h3 className="h1 h-xs">Choose your stops.</h3>{story.chapters.map((chapter,i)=><button className="chip" key={i} onClick={()=>{setAdjust(false);go('swap',{i})}} style={{textAlign:'left',justifyContent:'space-between',minHeight:48}}>{i+1}. {chapter.place}<span>Change →</span></button>)}</div>}
+          <Btn onClick={() => { setAdjust(false); setStory((st) => applyPrefs(st, prefs)); say('Plan preferences updated') }}>Update my detour</Btn>
         </Sheet>
       )}
       {save && <SaveSheet story={story} onClose={() => setSave(false)} />}
@@ -185,23 +188,52 @@ export function MomentSheet({ i, story, setStory, onClose }: { i: number; story:
 }
 
 export function Swap() {
-  const { route, back } = useStore()
+  const { route, back, account, s, say } = useStore()
   const [story, setStory] = useStory()
   const i = Number(route.params?.i ?? 0)
   const c = story.chapters[i]
-  const [sel, setSel] = useState(0)
+  const [selected,setSelected] = useState<Alt|null>(c.alts[0]??null)
+  const [query,setQuery] = useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('')
+  const mounted=useRef(true)
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false}},[])
+  const live=!!story.source
+  const started=!!story.status || !!story.outingPhase && story.outingPhase!=='planned'
+  const swap = async () => {
+    if(!selected)return
+    setError('');setBusy(true)
+    try {
+      let next:Story
+      if(live){
+        if(!account||!story.origin)throw new Error('Sign in and choose a starting point first.')
+        next=replacePlannedStop(story,i,selected,s.user.age21)
+        const result=await api<WalkingCheck & {hours:HoursCheck[]}>(account,'/detour-check','POST',{
+          points:[story.origin,...next.chapters.map(ch=>ch.ll)],
+          stops:next.chapters.map(ch=>({name:ch.place,ll:ch.ll,mins:ch.mins,googlePlaceId:ch.googlePlaceId,kind:ch.kind,aliases:ch.aliases})),
+        })
+        next=applyPlannedCheck(next,result)
+        if(!mounted.current||auth.currentUser?.uid!==account.uid)return
+      }else{
+        next={...story,chapters:story.chapters.map((chapter,k)=>k===i?{...chapter,place:selected.place,meta:selected.meta,persona:selected.persona,title:selected.place,desc:'A fresh take on this chapter.',ll:selected.ll,kind:selected.kind}:chapter)}
+      }
+      if(!mounted.current)return
+      setStory(current=>current.id===story.id&&JSON.stringify(current.chapters)===JSON.stringify(story.chapters)?next:current)
+      say(live?'Stop updated. Your walking route has been checked.':'Stop updated.');back()
+    }catch(e){if(mounted.current)setError(accountError(e))}finally{if(mounted.current)setBusy(false)}
+  }
   return (
     <Screen$ scroll>
       <BackBtn />
       <div className="kicker" style={{ marginTop: 14 }}>Rewrite chapter {i + 1}</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 8px' }}>Another way<br />to go.</h1>
-      <p className="body muted" style={{ marginBottom: 14 }}>Same neighborhood, same easy pace. Pick what sounds good.</p>
+      <p className="body muted" style={{ marginBottom: 14 }}>Choose a nearby suggestion or search for a place you have in mind.</p>
+      {live&&!started&&<fieldset disabled={busy} style={{border:0,padding:0,margin:'0 0 18px',minWidth:0}}><PlaceSearch inline value={query} onChange={setQuery} near={c.ll??story.origin!} onChoose={hit=>{setSelected({place:hit.name,meta:hit.address??hit.kind,persona:'Juno',color:'Orange',ll:hit.ll,kind:hit.kind});setError('')}}/></fieldset>}
+      {started&&live&&<p className="small" role="status">Choose your stops before starting the walk. Start a new plan to pick different places.</p>}
       <div className="col" style={{ gap: 10 }}>
-        {c.alts.map((a, k) => {
-          const on = sel === k
+        {c.alts.map((a) => {
+          const on = selected===a
           return (
-            <button key={a.place} className="tile row" onClick={() => setSel(k)} style={{ background: on ? 'var(--yellow-p)' : 'var(--soft)', padding: 16, gap: 14 }}>
-              <div style={{ width: 76, height: 84, borderRadius: 22, background: BG[safeSurface(flock(a.persona, a.color), on ? 'paper' : 'paper') as Bg], overflow: 'hidden', position: 'relative', flex: 'none' }}>
+            <button key={a.place} disabled={busy||live&&started} aria-pressed={on} className="tile row" onClick={() => {setSelected(a);setError('')}} style={{ background: on ? 'var(--yellow-p)' : 'var(--soft)', padding: 16, gap: 14 }}>
+              <div style={{ width: 76, height: 84, borderRadius: 22, background: BG[safeSurface(flock(a.persona, a.color), 'paper') as Bg], overflow: 'hidden', position: 'relative', flex: 'none' }}>
                 <div style={{ position: 'absolute', left: 6, top: 12 }}><Persona spec={flock(a.persona, a.color)} size={64} /></div>
               </div>
               <div className="col" style={{ flex: 1 }}><b className="h1" style={{ fontSize: 19 }}>{a.place}</b><span className="small">{a.meta}</span></div>
@@ -210,10 +242,13 @@ export function Swap() {
           )
         })}
       </div>
+      {selected&&!c.alts.includes(selected)&&<div className="card" style={{background:'var(--yellow-p)',padding:20,marginTop:12}}><span className="kicker">Your choice</span><h2 className="h1 h-xs">{selected.place}</h2><p className="small">{selected.meta}</p></div>}
+      {live&&<p className="small muted" style={{marginTop:12}}>We check the full walk and reported hours before applying your choice. Entry and prices still need checking.</p>}
+      {error&&<p role="alert" className="small" style={{marginTop:12}}>{error}</p>}
       <div className="grow" style={{ minHeight: 16 }} />
       <div className="col" style={{ gap: 10 }}>
-        <Btn onClick={() => { const a = c.alts[sel]; setStory((s) => ({ ...s, chapters: s.chapters.map((x, k) => (k === i ? { ...x, place: a.place, meta: a.meta, persona: a.persona, title: a.place, desc: 'A fresh take on this chapter.', ll: a.ll, kind: a.kind } : x)) })); back() }}>Swap this stop</Btn>
-        <Btn kind="soft" onClick={back}>Keep original</Btn>
+        <Btn disabled={!selected||busy||live&&started} onClick={()=>void swap()}>{busy?'Checking your new route…':'Swap this stop'}</Btn>
+        <Btn kind="soft" disabled={busy} onClick={back}>Keep original</Btn>
       </div>
     </Screen$>
   )

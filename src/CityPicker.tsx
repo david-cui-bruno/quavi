@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { api, accountError } from "./cloud";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { api, accountError, auth } from "./cloud";
 import { searchPlace, type Found } from "./places";
 import { useStore } from "./store";
 import { useTracking, START } from "./tracking";
@@ -13,9 +13,11 @@ type Results = {
   updatedAt: string;
 };
 export function CityPicker({
-  onResults,
+  onResults, refreshKey = 0, onBusy,
 }: {
   onResults: (result: Results, live: boolean) => void;
+  refreshKey?: number;
+  onBusy?: (busy: boolean) => void;
 }) {
   const { account, s, update } = useStore(),
     tracking = useTracking();
@@ -24,16 +26,25 @@ export function CityPicker({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [minutes, setMinutes] = useState(60);
+  const mounted=useRef(true), sequence=useRef(0);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false}},[]);
+  const lastSearch = useRef<{origin:{lat:number;lng:number};label:string;live:boolean}|null>(null);
+  const previousRoutes = useRef<string[][]>([]);
+  useEffect(()=>{onBusy?.(busy)},[busy,onBusy]);
   const [selection,setSelection] = useState<{label:string;minutes:number}|null>(null);
   const find = async (
     origin: { lat: number; lng: number },
     label: string,
     live: boolean,
+    refreshing = false,
   ) => {
     if (!account) return;
+    const ticket=++sequence.current;
     setBusy(true);
     setError("");
     setHits([]);
+    if (!refreshing) previousRoutes.current=[];
+    lastSearch.current={origin,label,live};
     try {
       const result = await api<Results>(account, "/detours", "POST", {
         origin,
@@ -42,20 +53,29 @@ export function CityPicker({
         mood: s.mood,
         minutes,
         age21: s.user.age21,
+        variant: crypto.randomUUID(),
+        avoidRoutes: previousRoutes.current,
       });
+      if(!mounted.current||ticket!==sequence.current||auth.currentUser?.uid!==account.uid)return;
+      if(refreshing && !result.openings.length){setError('No different checked routes fit here right now. Your current options are still available. Try another starting point or more time.');return;}
+      previousRoutes.current=[...previousRoutes.current,...result.openings.map(o=>o.chapters.map(c=>c.placeId??c.place))].slice(-6);
       if(result.openings.length) { update(st=>({...st,user:{...st.user,neighborhood:label}})); setSelection({label,minutes}); }
       onResults(result, live);
     } catch (e) {
-      setError(accountError(e));
+      if(mounted.current&&ticket===sequence.current&&auth.currentUser?.uid===account.uid)setError(accountError(e));
     } finally {
-      setBusy(false);
+      if(mounted.current&&ticket===sequence.current)setBusy(false);
     }
   };
+  const refresh = useEffectEvent(()=>{const last=lastSearch.current;if(last&&!busy)void find(last.origin,last.label,last.live,true)});
+  useEffect(()=>{if(refreshKey)refresh()},[refreshKey]);
   if (selection) return <section className="city-picker" aria-label="Detour starting point" style={{margin:'8px 0 16px'}}>
     <button className="field row" onClick={()=>setSelection(null)} style={{width:'100%',textAlign:'left',gap:12,flexDirection:'row',alignItems:'center',padding:'14px 20px'}} aria-label="Change detour starting point">
       <div style={{flex:1,minWidth:0}}><span className="kicker" style={{display:'block',fontSize:11,marginBottom:3}}>Starting in</span><b style={{fontSize:16,overflowWrap:'anywhere'}}>{selection.label} · {selection.minutes===60?'1 hour':selection.minutes===120?'2 hours':'30 minutes'}</b></div>
       <span style={{fontSize:13,fontWeight:700}}>Change</span>
     </button>
+    {busy&&<p className="small" role="status" style={{marginTop:8}}>Finding different openings and checking their walks…</p>}
+    {error&&<p className="small" role="alert" style={{marginTop:8}}>{error}</p>}
   </section>
   return (
     <section className="city-picker" aria-label="Find nearby detours" style={{ margin: "8px 0 16px" }}>

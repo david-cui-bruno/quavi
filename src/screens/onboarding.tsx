@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Logo, Persona, flock, randomSpec, safePair, safeSurface, type AvatarSpec, type Colorway } from '../brand/Persona'
 import { SLOT_OPTIONS, type Slot } from '../brand/partsData'
 import { INTERESTS, INTEREST_SPEC, MOODS } from '../data'
-import { useStore } from '../store'
+import { accountEntry, useStore } from '../store'
 import { Arrow, Badge, BackBtn, BG, Btn, Check, Chip, Round, SURFACE, Screen$, onDark, type Bg } from '../ui'
 
 export function Splash() {
@@ -26,7 +26,7 @@ export function Splash() {
 }
 
 export function Welcome() {
-  const { go } = useStore()
+  const { go, account, s } = useStore()
   // a fresh, random flock every visit; Yellow is left out because it vanishes on the yellow screen
   const crew = useMemo(() => Array.from({ length: 8 }, () => randomSpec(['Ink', 'Orange'])), [])
   return (
@@ -44,8 +44,7 @@ export function Welcome() {
           ))}
         </div>
       </div>
-      <Btn kind="secondary" onClick={() => go('login')}>Log in or create an account</Btn>
-      <button className="center small" style={{ fontWeight: 700, fontSize: 14, marginTop: 10, minHeight: 44 }} onClick={() => go('about')}>Explore the demo</button>
+      <Btn kind="secondary" onClick={() => go(account ? accountEntry(s.user) : 'login')}>{account ? `Continue${s.user.name.trim() ? ` as ${s.user.name.trim()}` : ''}` : 'Log in or create an account'}</Btn>
     </Screen$>
   )
 }

@@ -160,6 +160,7 @@ export function Openings() {
   const { s, update, go, account } = useStore()
   const tracking = useTracking()
   const [choices,setChoices] = useState<Opening[]>(account ? [] : OPENINGS)
+  const [refreshKey,setRefreshKey]=useState(0),[refreshing,setRefreshing]=useState(false)
   const [liveOrigin,setLiveOrigin] = useState(false)
   const [notice,setNotice] = useState('')
   const [sel, setSel] = useState(OPENINGS.findIndex((o) => o.id === MOOD_TO_OPENING[s.mood ?? 'bailed']))
@@ -177,7 +178,7 @@ export function Openings() {
       <BackBtn />
       <div className="kicker" style={{ marginTop: 14 }}>{account ? 'A few ways tonight could go' : 'Three ways tonight could go'}</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Pick your<br />opening.</h1>
-      {account ? <CityPicker onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}} /> : <p className="small" style={{marginBottom:14}}>These are demo openings in West Village. <button style={{textDecoration:'underline',minHeight:44}} onClick={()=>go('login')}>Log in for nearby places</button></p>}
+      {account ? <CityPicker refreshKey={refreshKey} onBusy={setRefreshing} onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}} /> : <p className="small" style={{marginBottom:14}}>These are demo openings in West Village. <button style={{textDecoration:'underline',minHeight:44}} onClick={()=>go('login')}>Log in for nearby places</button></p>}
       <div className="col stagger" style={{ gap: 14 }}>
         {order.filter(i=>choices[i]).map((oi) => {
           const o = choices[oi]
@@ -199,10 +200,10 @@ export function Openings() {
       {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
       <div className="grow" />
       {choices[0]?.source&&<p className="small" style={{margin:'12px 0'}}>Places: <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a> · snapshot {new Date(choices[0].source.updatedAt).toLocaleDateString()}. Venue catalog only.</p>}
-      <Btn kind="secondary" disabled={!choices.length} onClick={() => start(sel)}>Go with this one</Btn>
+      <Btn kind="secondary" disabled={refreshing||!choices.length} onClick={() => start(sel)}>Go with this one</Btn>
       <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
-        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} disabled={!choices.length} onClick={() => start(Math.floor(Math.random() * choices.length))}>Pick for me</button>
-        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => { setOrder((o) => o.length ? [...o.slice(1),o[0]] : o); }}>Show me different openings</button>
+        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} disabled={refreshing||!choices.length} onClick={() => start(Math.floor(Math.random() * choices.length))}>Pick for me</button>
+        <button className="small hit44" style={{ fontWeight: 700, fontSize: 14 }} disabled={refreshing||!choices.length} onClick={() => { if(account)setRefreshKey(n=>n+1);else setOrder((o) => o.length ? [...o.slice(1),o[0]] : o); }}>{refreshing?'Finding new openings…':'Show me different openings'}</button>
       </div>
       </div>
     </Screen$>

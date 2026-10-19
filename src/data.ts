@@ -3,9 +3,10 @@ import {PLACE_META,categoryTasks,adaptTasks,TRIP_XP_CAP} from '../server/src/rew
 import type { AvatarSpec, Colorway } from './brand/Persona'
 import { distance } from './geo'
 
-export type Alt = { place: string; meta: string; persona: string; color: Colorway; ll?: { lat: number; lng: number }; kind?: string }
+export type Alt = { placeId?: string; aliases?: string[]; place: string; meta: string; persona: string; color: Colorway; ll?: { lat: number; lng: number }; kind?: string }
 export type HoursCheck = {venueStatus?:'matched'|'unverified'|'unsuitable';venueIssue?:'category_mismatch'|'service_area';websiteURL?:string;status:'open'|'closed'|'unknown';checkedAt:string;arrivalAt:string;leaveAt:string;googlePlaceId?:string;mapsURL?:string;attributions:{displayName:string;uri?:string}[]}
 export type Chapter = {
+  placeId?:string
   aliases?:string[]
   googlePlaceId?:string
   googleRoute?:boolean

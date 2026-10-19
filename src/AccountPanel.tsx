@@ -26,6 +26,8 @@ const labels = {
 export function AccountPanel() {
   const {
     account,
+    update,
+    reset,
     syncStatus,
     retrySync,
     loadCloud,
@@ -67,6 +69,11 @@ export function AccountPanel() {
           </Btn>
         ) : (
           <>
+            <Btn kind="soft" disabled={busy || syncStatus === 'conflict' || syncStatus === 'sign-in-required'} onClick={() => {
+              update(st => ({...st, user: {...st.user, onboarding: 'about'}}));
+              reset('welcome');
+            }}>Restart profile setup</Btn>
+            <p className="small muted">Repeat setup while keeping your stories, friends and rewards.</p>
             {["pending", "save-error", "storage-full"].includes(syncStatus) && (
                 <Btn kind="soft" onClick={retrySync}>
                   Retry cloud save

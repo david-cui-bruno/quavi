@@ -96,6 +96,13 @@ type Ctx = {
 const StoreCtx = createContext<Ctx>(null as unknown as Ctx)
 export const useStore = () => useContext(StoreCtx)
 
+/** Destination after a person explicitly continues past Welcome. */
+export function accountEntry(user: AppState['user']): Screen {
+  const step = user.onboarding
+  const legacyComplete = user.name.trim() && typeof user.age21 === 'boolean'
+  return step && step !== 'complete' ? step : step === 'complete' || legacyComplete ? 'home' : 'about'
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<AppState>(load)
   const stateRef = useRef(s)
@@ -114,9 +121,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const timer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    let generation = 0
+    let generation = 0, initialAuth = true
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       const ticket = ++generation
+      const restoringSession = initialAuth && !!user
+      initialAuth = false
       engine.current?.close(); engine.current = null; outings.current?.close(); outings.current=null; clearPhotoCache()
       setAccount(user); setBusy(true)
       if (!user) {
@@ -128,9 +137,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const enterAccount = (state: AppState) => {
         if (routed || !outingsReady || ticket !== generation) return
         routed = true; setBusy(false)
-        const step = state.user.onboarding
-        const legacyComplete = state.user.name.trim() && typeof state.user.age21 === 'boolean'
-        setStack([{name: step && step !== 'complete' ? step : step === 'complete' || legacyComplete ? 'home' : 'about'}])
+        setStack([{name: restoringSession ? 'welcome' : accountEntry(state.user)}])
       }
       const initial: AppState = { ...structuredClone(DEFAULT_STATE), game: { ...structuredClone(DEFAULT_STATE.game), xp: 0, coins: 0, streak: 0, badges: [] }, user: { ...DEFAULT_STATE.user, name: '', onboarding: 'about', authed: true } }
       const next = new SyncEngine({

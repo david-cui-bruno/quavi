@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {readFile,writeFile,mkdir,mkdtemp,rm} from 'node:fs/promises'
+import {readFile,writeFile,mkdtemp,rm} from 'node:fs/promises'
 import {createRequire} from 'node:module'
 import {pathToFileURL} from 'node:url'
 import ts from 'typescript'
@@ -37,6 +37,7 @@ test('a fresh account starts its own onboarding instead of inheriting demo or an
  function Observe(){state=useStore();return null}
  try{
   await act(async()=>{renderer=create(React.createElement(StoreProvider,null,React.createElement(Observe)))})
+  await act(async()=>globalThis.__accountProbe.auth(null))
   await act(async()=>{globalThis.__accountProbe.auth({uid:'brand-new'});await new Promise(r=>setImmediate(r))})
   assert.equal(state.route.name,'about','new account must not skip onboarding')
   assert.equal(state.s.user.name,'','new account must not inherit a demo or placeholder name')
@@ -50,6 +51,7 @@ test('a fresh account starts its own onboarding instead of inheriting demo or an
   await act(async()=>{globalThis.__accountProbe.auth({uid:'second-new'});await new Promise(r=>setImmediate(r))})
   assert.equal(state.route.name,'about');assert.equal(state.s.user.name,'')
   globalThis.__accountProbe.remote={state:first,revision:0}
+  await act(async()=>globalThis.__accountProbe.auth(null))
   await act(async()=>{globalThis.__accountProbe.auth({uid:'brand-new'});await new Promise(r=>setImmediate(r))})
   assert.equal(state.route.name,'interests','interrupted setup resumes at its saved step')
   assert.equal(state.s.user.name,'First')
@@ -71,5 +73,28 @@ test('a fresh account starts its own onboarding instead of inheriting demo or an
   globalThis.__accountProbe.fail=false;globalThis.__accountProbe.online=true
   await act(async()=>{await renderer.root.findAllByType('button').find(b=>b.props.children==='Try again').props.onClick();await new Promise(r=>setImmediate(r))})
   assert.equal(state.route.name,'home','retry uses the returning cloud profile')
+ }finally{await act(async()=>renderer?.unmount());delete globalThis.__accountProbe;await cleanup()}
+})
+
+test('restored signed-in sessions land on Welcome and explicitly continue without losing their profile',async()=>{
+ globalThis.IS_REACT_ACT_ENVIRONMENT=true;globalThis.window=globalThis
+ const disk=new Map()
+ globalThis.localStorage={getItem:k=>disk.get(k)??null,setItem:(k,v)=>disk.set(k,v),removeItem:k=>disk.delete(k)}
+ const saved={user:{name:'Returning Duck',age21:false,onboarding:'complete',avatar:{color:'Orange'}},friends:[],demoRedemptions:[],chapter:0,shelf:[],lists:{},library:{},game:{xp:240,coins:3,streak:2,badges:[],done:{},collected:{},tripXp:{}}}
+ globalThis.__accountProbe={remote:{state:saved,revision:4}}
+ const {StoreProvider,useStore,accountEntry,cleanup}=await loadStore();let state,renderer
+ function Observe(){state=useStore();return null}
+ try{
+  await act(async()=>{renderer=create(React.createElement(StoreProvider,null,React.createElement(Observe)))})
+  await act(async()=>{globalThis.__accountProbe.auth({uid:'returning'});await new Promise(r=>setImmediate(r))})
+  assert.equal(state.route.name,'welcome','restored auth must not skip Welcome')
+  assert.equal(state.s.user.name,'Returning Duck')
+  assert.equal(state.s.user.avatar.color,'Orange')
+  assert.equal(state.s.user.age21,false)
+  await act(async()=>state.go(accountEntry(state.s.user)))
+  assert.equal(state.route.name,'home')
+  assert.equal(state.s.user.onboarding,'complete')
+  assert.equal(accountEntry({...state.s.user,onboarding:'interests'}),'interests','Continue resumes unfinished setup')
+  assert.equal(accountEntry({...state.s.user,onboarding:undefined,name:'',age21:undefined}),'about')
  }finally{await act(async()=>renderer?.unmount());delete globalThis.__accountProbe;await cleanup()}
 })

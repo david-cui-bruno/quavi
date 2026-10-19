@@ -125,3 +125,36 @@ test("missing catalog operating status remains eligible without an open-hours cl
     assert.ok(opening.chapters.every(c => !c.meta.includes("reported open")));
   }
 });
+
+test('seeded openings vary themes and routes without relaxing safety gates',()=>{
+  const diverse={...raw,venues:Array.from({length:24},(_,i)=>venue(`var-${i}`,['coffee_shop','bookstore','park','museum','bakery','arcade'][i%6],origin.lat+.0008*(i%6-2),origin.lng+.0011*(Math.floor(i/6)-2)))}
+  const seenThemes=new Set<string>(),routesByTheme=new Map<string,Set<string>>()
+  for(let seed=0;seed<32;seed++){
+    const request={...input,variant:`round-${seed}`}
+    const result=planDetours(diverse,request)
+    assert.deepEqual(result,planDetours(diverse,request),'same request must be stable during route repair')
+    for(const opening of result.openings){
+      seenThemes.add(opening.id)
+      const route=opening.chapters.map(c=>c.placeId).join('|')
+      const routes=routesByTheme.get(opening.id)??new Set<string>();routes.add(route);routesByTheme.set(opening.id,routes)
+      assert.ok(opening.estimatedMinutes<=input.minutes)
+      assert.equal(new Set(opening.chapters.map(c=>c.placeId)).size,3)
+      for(const chapter of opening.chapters){
+        assert.ok(meters(input.origin,chapter.ll)<=1400)
+        assert.ok(chapter.alts.length>0)
+        for(const alt of chapter.alts)assert.ok(!opening.chapters.some(c=>c.placeId===alt.placeId||meters(c.ll,alt.ll)<40))
+      }
+    }
+  }
+  assert.ok(seenThemes.size>3,'more than the original three opening themes')
+  assert.ok([...routesByTheme.values()].some(routes=>routes.size>1),'the same theme has different walks')
+})
+
+test('refresh excludes previously offered routes and validates bounded variation input',()=>{
+  const first=planDetours(raw,{...input,variant:'first'})
+  const avoidRoutes=first.openings.map(o=>o.chapters.map(c=>c.placeId))
+  const next=planDetours(raw,{...input,variant:'second',avoidRoutes})
+  for(const opening of next.openings)assert.ok(!avoidRoutes.some(route=>route.join('|')===opening.chapters.map(c=>c.placeId).join('|')))
+  assert.throws(()=>detourInput.parse({...input,variant:'x'.repeat(65)}))
+  assert.throws(()=>detourInput.parse({...input,avoidRoutes:[['one']]}))
+})

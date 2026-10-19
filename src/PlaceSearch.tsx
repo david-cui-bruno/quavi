@@ -11,6 +11,7 @@ export function PlaceSearch({
   near,
   onBack,
   explore = false,
+  inline = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -18,6 +19,7 @@ export function PlaceSearch({
   near: LatLng;
   onBack?: () => void;
   explore?: boolean;
+  inline?: boolean;
 }) {
   const id = useId(),
     box = useRef<HTMLFormElement>(null),
@@ -89,11 +91,12 @@ export function PlaceSearch({
         else if (value.trim().length >= 2) void lookup(value.trim());
       }}
       style={{
-        left: 24,
-        right: 24,
-        top: "var(--screen-top, 54px)",
+        position: inline ? 'relative' : 'absolute',
+        left: inline ? 0 : 24,
+        right: inline ? 0 : 24,
+        top: inline ? 0 : "var(--screen-top, 54px)",
         zIndex: 50,
-        bottom: shown ? 16 : undefined,
+        bottom: !inline && shown ? 16 : undefined,
         display: "flex",
         flexDirection: "column",
         pointerEvents: "none",
