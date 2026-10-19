@@ -1,7 +1,7 @@
+import {NearbyStopCard} from '../NearbyStopCard'
 import {demoWalk} from '../demo-walks'
 import {PlaceSearch} from '../PlaceSearch'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { flock, safeSurface } from '../brand/Persona'
 import { OPENINGS, PLACE_META, chapterMeta, buildStory, categoryTasks, placeInfo, startStory, type Chapter, type Story } from '../data'
 import { distance, fmtDist, type LatLng } from '../geo'
 import { RealMap, type RealPin } from '../RealMap'
@@ -32,7 +32,7 @@ export function Explore() {
   const [q, setQ] = useState('')
   const choose = (place:Found) => go('route',{dest:place.name,selectedPlace:place})
   const surprise = () => { if (account) { go('mood'); return } update((st) => ({ ...st, story: startStory(OPENINGS[Math.floor(Math.random() * 3)], st.user), chapter: 0 })); say('Surprise picked'); go('details') }
-  const nearby = account ? (s.story?.source ? s.story.chapters.map((c,i)=>({place:c.place,persona:c.persona,ll:c.ll!,kind:c.kind??'Local spot',about:c.desc,tasks:chapterMeta(s.story!,i).tasks})) : []) : QUESTS.map(x=>({...x,ll:{lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng},kind:placeInfo(x.place).kind,about:placeInfo(x.place).about,tasks:PLACE_META[x.place].tasks}))
+  const nearby = account ? (s.story?.source ? s.story.chapters.map((c,i)=>({place:c.place,persona:c.persona,ll:c.ll!,kind:c.kind??'Local spot',googlePlaceId:c.googlePlaceId,aliases:c.aliases,about:c.desc,tasks:chapterMeta(s.story!,i).tasks})) : []) : QUESTS.map(x=>({...x,ll:{lat:PLACE_META[x.place].lat,lng:PLACE_META[x.place].lng},kind:placeInfo(x.place).kind,about:placeInfo(x.place).about,tasks:PLACE_META[x.place].tasks}))
   const currentTrip = ():Trip => { const found=nearby.map(x=>({id:x.place,name:x.place,ll:x.ll,kind:x.kind,about:x.about}));return {dest:found[found.length-1],quests:found.slice(0,-1)} }
   const pins: RealPin[] = nearby.map(x=>({id:x.place,ll:x.ll,kind:'quest',label:x.place,quest:true,onClick:()=>go('stop',{trip:account?currentTrip():questTrip(),sel:x.place})}))
   const route = useMemo(()=>s.story?.source?[s.story.origin??tr.pos,...s.story.chapters.filter(c=>c.ll).map(c=>c.ll!)]:[],[s.story,tr.pos])
@@ -41,29 +41,19 @@ export function Explore() {
   const ranked = nearby.map((x) => ({ ...x, d: distance(tr.pos, x.ll) })).sort((a, b) => a.d - b.d)
   return (
     <Screen$ tabs="explore" flush>
-      <div className="explore-map" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 280 }}>
+      <div className="explore-map" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}>
         <RealMap sampleRoute={!account} pins={pins} route={account?walking.route?.geometry:sampleRoute} you={account && !s.story?.source && tr.mode!=='live' ? undefined : tr.pos} youAvatar={s.user.avatar} follow zoomOnYou={16} inset={{ top: 140, bottom: 25 }} controlsTop={140} />
 
       </div>
-      <PlaceSearch value={q} onChange={setQ} onChoose={choose} near={tr.mode==='live'?tr.pos:START} explore />
+      <PlaceSearch value={q} onChange={setQ} onChoose={choose} near={tr.pos} explore />
       <div data-map-obstruction className="abs" style={{ left: 0, right: 0, bottom: 0, background: 'var(--paper)', borderRadius: '36px 36px 0 0', padding: '18px 0 calc(112px + var(--native-bottom, 0px))', zIndex: 9 }}>
         <div className="row" style={{ justifyContent: 'space-between', padding: '0 24px' }}>
           <h2 className="h1 h-xs">{account ? 'Your nearby stops.' : 'Around the corner.'}</h2><button className="text-action" onClick={surprise}>Surprise me <Arrow size={16}/></button>
         </div>
         <div className="chips scroll" style={{ gap: 10, margin: '12px 0', padding: '0 24px' }}>
           {account && !ranked.length && <p className="small" style={{padding:'10px 0'}}>Choose an area to find real nearby stops.</p>}
-          {ranked.map((x, i) => {
-            const bgn = safeSurface(flock(x.persona, 'Orange'), (['yellow-p', 'orange-p', 'ink-p'] as const)[i % 3])
-            const bg = `var(--${bgn})`
-            return (
-              <button key={x.place} className="tile" onClick={() => go('stop', { trip: account ? currentTrip() : questTrip(), sel: x.place })} style={{ flex: 'none', width: 156, height: 112, padding: 0, background: bg, color: bgn === 'ink-p' || bgn === 'ink' ? 'var(--paper)' : 'var(--ink)' }}>
-                <div className="abs" style={{ right: 16, bottom: 16 }}><PinIcon size={30} color={bgn === 'orange-p' ? '#1E1B16' : '#EE6A2C'} /></div>
-                <div className="h1" style={{ position: 'absolute', left: 18, top: 18, right: 40, fontSize: 16, lineHeight: 1.05 }}>{x.place}</div>
+          {ranked.map(x=><NearbyStopCard key={x.place} venue={{place:x.place,ll:account?x.ll:undefined,kind:x.kind,...('googlePlaceId' in x?{googlePlaceId:x.googlePlaceId,aliases:x.aliases}:{})}} distance={fmtDist(x.d)} onChoose={()=>go('stop',{trip:account?currentTrip():questTrip(),sel:x.place})}/>)}
 
-                <span className="small" style={{ position: 'absolute', left: 18, bottom: 18, fontWeight: 500 }}>{fmtDist(x.d)}</span>
-              </button>
-            )
-          })}
         </div>
 
       </div>

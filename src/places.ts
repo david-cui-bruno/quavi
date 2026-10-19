@@ -86,11 +86,19 @@ type PhotonFeature = { properties: Record<string, string | undefined>; geometry:
 /** Look up a place by name, biased towards `near`. Returns the best few matches. */
 export async function searchPlace(query: string, near: LatLng, signal?: AbortSignal): Promise<Found[]> {
   const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=${near.lat}&lon=${near.lng}&limit=6&lang=en`
-  const res = await fetch(url, { signal })
-  if (!res.ok) throw new Error(`Search failed (${res.status})`)
-  const data = (await res.json()) as { features: PhotonFeature[] }
+  const request = new AbortController();
+  const cancel = () => request.abort();
+  if(signal?.aborted)request.abort();
+  signal?.addEventListener('abort', cancel, {once:true});
+  const timer=setTimeout(cancel,8000);
+  let data: {features:PhotonFeature[]};
+  try {
+    const res = await fetch(url, {signal:request.signal});
+    if (!res.ok) throw new Error(`Search failed (${res.status})`);
+    data = await res.json();
+  } finally {clearTimeout(timer);signal?.removeEventListener('abort',cancel)}
   const hits = data.features
-    .filter((f) => f.properties.name)
+    .filter((f) => f.properties?.name && Array.isArray(f.geometry?.coordinates) && f.geometry.coordinates.length===2 && f.geometry.coordinates.every(Number.isFinite) && Math.abs(f.geometry.coordinates[0])<=180 && Math.abs(f.geometry.coordinates[1])<=85)
     .map((f) => {
       const p = f.properties
       const name = p.name as string
@@ -106,7 +114,13 @@ export async function searchPlace(query: string, near: LatLng, signal?: AbortSig
     const normalized = name.toLocaleLowerCase()
     return normalized === requested ? 0 : normalized.startsWith(requested) ? 1 : 2
   }
-  return hits.sort((a, b) => relevance(a.name) - relevance(b.name) || distance(near, a.ll) - distance(near, b.ll)).slice(0, 5)
+  const ranked=hits.sort((a, b) => relevance(a.name) - relevance(b.name) || distance(near, a.ll) - distance(near, b.ll));
+  // OSM nodes and ways can describe the same shop or building. Keep distinct branches.
+  const unique:Found[]=[];
+  for(const hit of ranked) {
+    if(!unique.some(p=>p.id===hit.id || (p.name.toLocaleLowerCase()===hit.name.toLocaleLowerCase() && distance(p.ll,hit.ll)<50)))unique.push(hit);
+  }
+  return unique.slice(0,5)
 }
 
 /** Places a few steps off the straight line from `a` to `b`, one category at a time (Nominatim allows ~1 request/second). */

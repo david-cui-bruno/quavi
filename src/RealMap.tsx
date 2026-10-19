@@ -86,6 +86,7 @@ export function RealMap({
       headers.forEach(p=>{if(!observed.has(p)){observed.add(p);observer.observe(p)}});
       setHeaderBottom(headers.length?Math.max(0,...headers.map(p=>p.getBoundingClientRect().bottom-r.top))+8:0);
       const tops = panels
+        .filter(p => getComputedStyle(p).visibility !== "hidden" && getComputedStyle(p).display !== "none")
         .map((p) => p.getBoundingClientRect())
         .filter(p => p.width > r.width * 0.5 && p.bottom >= r.bottom - 4 && p.top < r.bottom && p.top > r.top);
       setCover(tops.length ? Math.max(0, Math.min(r.height - 120, r.bottom - Math.min(...tops.map(p => p.top)))) : 0);
@@ -93,6 +94,8 @@ export function RealMap({
     observer.observe(el.parentElement!);
     const changes = new MutationObserver(schedule);
     changes.observe(root, { childList: true, subtree: true });
+    root.addEventListener("focusin", schedule);
+    root.addEventListener("focusout", schedule);
     root.addEventListener("animationend", schedule);
     root.addEventListener("transitionend", schedule);
     measure();
@@ -100,6 +103,8 @@ export function RealMap({
       cancelAnimationFrame(frame);
       observer.disconnect();
       changes.disconnect();
+      root.removeEventListener("focusin", schedule);
+      root.removeEventListener("focusout", schedule);
       root.removeEventListener("animationend", schedule);
       root.removeEventListener("transitionend", schedule);
     };

@@ -82,7 +82,6 @@ export function PlaceSearch({
   return (
     <form
       ref={box}
-      data-map-top-obstruction
       className="place-search abs"
       onSubmit={(e) => {
         e.preventDefault();
@@ -104,6 +103,7 @@ export function PlaceSearch({
       }}
     >
       <div
+        data-map-top-obstruction
         className="row"
         style={{
           height: explore ? 64 : 56,
@@ -220,6 +220,7 @@ export function PlaceSearch({
       </div>
       {shown && (
         <div
+          data-map-top-obstruction
           className="place-suggestions"
           style={{
             background: "var(--white)",

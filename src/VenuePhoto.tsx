@@ -1,18 +1,9 @@
-import { useEffect, useState } from "react";
-import { api } from "./cloud";
-import { useRuntime } from "./runtime";
-import { useStore } from "./store";
+import { useState } from "react";
 import { Photo } from "./CloudPhoto";
 import { VenuePlaceholder } from "./VenuePlaceholder";
 import { Btn, Sheet } from "./ui";
 import type { Chapter } from "./data";
-type Picture = {
-  url: string;
-  placeName: string;
-  mapsUrl: string;
-  flagUrl?: string;
-  authors: { name: string; url?: string; avatar?: string }[];
-};
+import { useVenuePhoto, type Picture } from "./venue-photos";
 /** Venue images are session-only provider content; they never enter saved outings or photo uploads. */
 export function VenuePhoto({
   chapter,
@@ -27,78 +18,22 @@ export function VenuePhoto({
   onOwnPhoto: () => void;
   onProviderPhoto?: () => void;
 }) {
-  const { account } = useStore(),
-    life = useRuntime();
-  const [result, setResult] = useState<{
-    key: string;
-    photo: Picture | null;
-    error?: boolean;
-  } | null>(null);
-  const [open, setOpen] = useState(false),
-    [retry, setRetry] = useState(0);
-  const key = JSON.stringify([
-    account?.uid,
-    chapter.place,
-    chapter.ll?.lat,
-    chapter.ll?.lng,
-    chapter.googlePlaceId,
-    chapter.kind,
-    chapter.aliases,
-  ]);
-  useEffect(() => {
-    setOpen(false);
-    if (own || !account || !chapter.ll || !life.active || !life.online) {
-      setResult(null);
-      return;
-    }
-    const ac = new AbortController();
-    setResult(null);
-    void api<{ photo: Picture | null }>(
-      account,
-      "/venue-photo",
-      "POST",
-      {
-        name: chapter.place,
-        ll: chapter.ll,
-        googlePlaceId: chapter.googlePlaceId,
-        kind: chapter.kind,
-        aliases: chapter.aliases,
-      },
-      ac.signal,
-    )
-      .then((r) => {
-        if (!ac.signal.aborted) setResult({ key, photo: r.photo });
-      })
-      .catch(() => {
-        if (!ac.signal.aborted) setResult({ key, photo: null, error: true });
-      });
-    return () => ac.abort();
-    // Primitive identity prevents unrelated outing autosaves from causing paid requests.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, own, life.active, life.online, life.epoch, retry]);
-  const photo =
-    life.active && life.online && result?.key === key ? result.photo : null;
-  const loading =
-    !!account &&
-    !!chapter.ll &&
-    !own &&
-    life.online &&
-    life.active &&
-    result?.key !== key;
+  const {photo,loading,error,retry,canRetry,imageFailed,online}=useVenuePhoto(chapter,own);
+  const [open,setOpen]=useState(false);
   return (
     <>
       <button
         className="completion-place-image"
-        disabled={!own && !photo && (loading || !account || !chapter.ll || !life.online)}
+        disabled={!own && !photo && !canRetry}
         aria-label={
           own
             ? `View your photo of ${chapter.place}`
             : photo
               ? `View venue photo of ${chapter.place}`
-              : `${loading ? "Loading venue photo" : account && life.online ? "Retry venue photo; illustrated placeholder" : "Venue illustration"}: ${chapter.place}`
+              : `${loading ? "Loading venue photo" : canRetry ? "Retry venue photo; illustrated placeholder" : "Venue illustration"}: ${chapter.place}`
         }
         onClick={() =>
-          own ? onOwnPhoto() : photo ? setOpen(true) : setRetry((n) => n + 1)
+          own ? onOwnPhoto() : photo ? setOpen(true) : retry()
         }
       >
         {own ? (
@@ -114,7 +49,7 @@ export function VenuePhoto({
             alt={photo.placeName}
             referrerPolicy="no-referrer"
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            onError={() => setResult({ key, photo: null, error: true })}
+            onError={() => imageFailed()}
           />
         ) : (
           <div className="completion-place-empty">
@@ -122,9 +57,9 @@ export function VenuePhoto({
             <span>
               {loading
                 ? "Finding photo…"
-                : !life.online
+                : !online
                   ? "Photo needs internet"
-                  : result?.error
+                  : error
                     ? "Retry photo"
                     : chapter.kind ?? "Your stop"}
             </span>
@@ -132,10 +67,17 @@ export function VenuePhoto({
         )}
         <span className="completion-stop-number">{number}</span>
       </button>
-      {open && photo && (
+      {open && photo && <VenuePhotoSheet photo={photo} onClose={()=>setOpen(false)}/>}
+
+    </>
+  );
+}
+
+export function VenuePhotoSheet({photo,onClose}:{photo:Picture;onClose:()=>void}) {
+  return (
         <Sheet
-          label={`Venue photo: ${chapter.place}`}
-          onClose={() => setOpen(false)}
+          label={`Venue photo: ${photo.placeName}`}
+          onClose={() => onClose()}
         >
           <h2 className="h1 h-s">{photo.placeName}</h2>
           <img
@@ -168,11 +110,8 @@ export function VenuePhoto({
               </a>
             )}
           </div>
-          <Btn kind="soft" onClick={() => setOpen(false)}>
+          <Btn kind="soft" onClick={() => onClose()}>
             Done
           </Btn>
-        </Sheet>
-      )}
-    </>
-  );
+        </Sheet>);
 }

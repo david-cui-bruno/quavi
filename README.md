@@ -680,3 +680,26 @@ was checked against authentication, state, outing, reward and social endpoints;
 it has no prior outings, no relationships and no moderator access. Its credentials
 are retained privately outside the repository while Apple reviews the build.
 The internal Quavi Development build remains available for the owner’s phone.
+
+### Explore search and nearby photo cards
+
+Explore now biases place search toward the current map location, removes duplicate
+OSM representations of the same place, rejects invalid coordinates and times out
+stalled requests after eight seconds with the existing retry control. Search
+focus hides both the nearby panel and navigation background; the map uses the
+full available height. Map controls measure the visible search row and results.
+
+Real nearby-stop cards automatically request verified Google venue photos using
+the same account-scoped, session-only imagery path as outing completion. Cards
+keep readable place/distance labels, expose photo credits and use category
+illustrations when no verified image is available. Demo venues do not trigger
+photo lookups. Provider imagery stays out of saved outing data.
+
+Validation: 42 client tests pass; production build and lint complete. Browser
+checks covered broad coffee suggestions, distinct local Brown University results,
+exact bookstore selection, clear/return, full-height search maps, photo cards,
+gallery fallback and author/source links. The review board has updated screen 15
+and a search-results screen, explicitly labelled browser previews at iPhone 17
+size. These changes are pushed source work, not part of TestFlight build 15.
+Next: include this pass in the next iPhone build and complete the deferred physical
+phone outing/offline/lock-resume acceptance checks.
