@@ -9,7 +9,13 @@ if [[ -n $(git status --porcelain) ]]; then
   exit 1
 fi
 image="us-central1-docker.pkg.dev/$project/quavi/api:$commit"
-gcloud builds submit --project="$project" --region="$region" --tag="$image" --quiet
+if [[ -n ${QUAVI_IMAGE:-} ]]; then
+  # CI builds from the checked-out commit and authenticates through restricted OIDC.
+  [[ "$QUAVI_IMAGE" == "us-central1-docker.pkg.dev/$project/quavi/api:$(git rev-parse HEAD)" ]] || { echo 'Image must match this exact source commit.' >&2; exit 1; }
+  image="$QUAVI_IMAGE"
+else
+  gcloud builds submit --project="$project" --region="$region" --tag="$image" --quiet
+fi
 gcloud run jobs update quavi-migrate --project="$project" --region="$region" --image="$image" --quiet
 gcloud run jobs update quavi-maintenance --project="$project" --region="$region" --image="$image" --quiet
 gcloud run jobs execute quavi-migrate --project="$project" --region="$region" --wait --quiet
@@ -26,3 +32,9 @@ gcloud run deploy quavi-api --project="$project" --region="$region" --image="$im
 if gcloud run jobs describe quavi-push --project="$project" --region="$region" >/dev/null 2>&1; then
   gcloud run jobs update quavi-push --project="$project" --region="$region" --image="$image" --quiet
 fi
+
+# Readiness includes a database round-trip; /v1 must still reject anonymous callers.
+url=$(gcloud run services describe quavi-api --project="$project" --region="$region" --format='value(status.url)')
+curl --fail --silent --show-error --retry 4 --retry-delay 3 "$url/readyz"
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$url/v1/me/state")
+[[ "$status" == 401 ]] || { echo "Authentication smoke check failed: $status" >&2; exit 1; }

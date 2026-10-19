@@ -1,0 +1,74 @@
+name: Backend checks and Quavi dev deployment
+on:
+  push:
+    branches: [main, mobile/social-delivery]
+    paths: ['server/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['server/**', '.github/workflows/backend.yml']
+permissions:
+  contents: read
+concurrency:
+  group: quavi-backend-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: quavi
+          POSTGRES_PASSWORD: local-quavi-only
+          POSTGRES_DB: quavi
+        ports: ['55432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 3s --health-retries 20
+    env:
+      GOOGLE_CLOUD_PROJECT: demo-quavi
+      DATABASE_URL: postgresql://quavi:local-quavi-only@127.0.0.1:55432/quavi
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+        working-directory: server
+      - run: npm run migrate
+        working-directory: server
+      - run: npx firebase emulators:exec --only auth --project demo-quavi 'npm test'
+        working-directory: server
+  deploy-dev:
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/mobile/social-delivery'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/532892298664/locations/global/workloadIdentityPools/quavi-github/providers/quavi-backend
+          service_account: quavi-deploy@quavi-dev-dc824.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Build and push immutable source image
+        run: |
+          image="us-central1-docker.pkg.dev/quavi-dev-dc824/quavi/api:$GITHUB_SHA"
+          docker build --tag "$image" server
+          docker push "$image"
+          echo "QUAVI_IMAGE=$image" >> "$GITHUB_ENV"
+      - name: Migrate, deploy and check API
+        run: server/scripts/deploy-dev.sh

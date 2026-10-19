@@ -30,3 +30,6 @@ design-review
 
 # Local mobile test captures
 .maestro/artifacts/
+
+# Short-lived Google GitHub Actions credentials
+gha-creds-*.json
