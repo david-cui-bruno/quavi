@@ -67,9 +67,7 @@ export function AccountPanel() {
           </Btn>
         ) : (
           <>
-            {syncStatus !== "saved" &&
-              syncStatus !== "empty" &&
-              syncStatus !== "conflict" && (
+            {["pending", "save-error", "storage-full"].includes(syncStatus) && (
                 <Btn kind="soft" onClick={retrySync}>
                   Retry cloud save
                 </Btn>

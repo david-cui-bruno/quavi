@@ -445,6 +445,7 @@ export function PrivateShare({
                 .filter((p) => p.chapter === i)
                 .map((p) => (
                   <Photo
+                    retryable
                     key={p.task}
                     src={p.img}
                     alt={p.task}
@@ -608,6 +609,7 @@ export function PrivateStory() {
                 .filter((p) => p.chapter === i)
                 .map((p) => (
                   <Photo
+                    retryable
                     src={p.img}
                     key={p.task}
                     alt={p.task}

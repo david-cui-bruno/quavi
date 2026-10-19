@@ -1,3 +1,4 @@
+import { Icon } from '../Icons'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth, accountError } from '../cloud'
 import { useEffect, useMemo, useState } from 'react'
@@ -217,8 +218,8 @@ export function Customize() {
       <div className="clip" style={{ background: BG[(stageName === 'paper' ? 'soft' : stageName) as Bg], borderRadius: 36, height: 290, position: 'relative', flex: 'none', display: 'grid', placeItems: 'center', transition: 'background var(--motion-t3)' }}>
         <div className="abs" style={{ width: 196, height: 196, borderRadius: '50%', background: BG[discName as Bg], top: 50, transition: 'background var(--motion-t3)' }} />
         <div key={JSON.stringify(spec)} className="pop" style={{ position: 'relative', left: 11, marginTop: 8 }}><Persona spec={spec} size={196} /></div>
-        <span className="pill abs" style={{ left: 20, top: 20, background: 'var(--paper)' }}>{s.user.name} · you</span>
-        <button className="pill abs" style={{ right: 20, top: 20, background: 'var(--paper)' }} onClick={() => set({ ...flock(['Pip', 'Juno', 'Luna', 'Rex', 'Coco', 'Zed', 'Poppy', 'Dax'][Math.floor(Math.random() * 8)]), color: (['Yellow', 'Ink', 'Orange'] as Colorway[])[Math.floor(Math.random() * 3)] })}>🎲 Surprise me</button>
+        <div className="customize-topline"><span className="pill customize-name" style={{ background: 'var(--paper)' }}>{s.user.name} · you</span>
+        <button className="pill customize-surprise" style={{ background: 'var(--paper)' }} onClick={() => set({ ...flock(['Pip', 'Juno', 'Luna', 'Rex', 'Coco', 'Zed', 'Poppy', 'Dax'][Math.floor(Math.random() * 8)]), color: (['Yellow', 'Ink', 'Orange'] as Colorway[])[Math.floor(Math.random() * 3)] })}><Icon name="spark" size={16}/> Surprise me</button></div>
       </div>
       <div className="chips scroll" style={{ marginTop: 12 }}>
         {SLOTS.map((x) => <Chip key={x.id} on={slot === x.id} onClick={() => setSlot(x.id)}>{x.label}</Chip>)}

@@ -107,37 +107,46 @@ export function TabBar({ active }: { active: 'home' | 'explore' | 'you' }) {
 
 export function Sheet({ onClose, children, label }: { onClose: () => void; children: ReactNode; label?: string }) {
   const ref = useRef<HTMLDivElement>(null)
+  const layer = useRef<HTMLDivElement>(null)
   const close = useRef(onClose)
   close.current = onClose
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
     const el = ref.current
-    const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>('button, input, textarea, [href], [tabindex]:not([tabindex="-1"])') ?? []).filter((n) => !n.hasAttribute('disabled'))
+    const background = Array.from(layer.current?.parentElement?.children ?? []).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== layer.current)
+    const previous = background.map(node => ({node, inert: node.inert, hidden: node.getAttribute('aria-hidden')}))
+    background.forEach(node => { node.inert = true; node.setAttribute('aria-hidden', 'true') })
+    const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>('button, input, textarea, [href], select, [tabindex]:not([tabindex="-1"])') ?? []).filter((n) => !n.hasAttribute('disabled') && n.getClientRects().length > 0)
     // Focus the native dialog itself so a sheet does not open the keyboard
     // before the person chooses to edit a field.
     ;(document.documentElement.classList.contains('native-app') ? el : focusables()[0] ?? el)?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); close.current(); return }
+      if (layer.current?.inert || e.defaultPrevented) return
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close.current(); return }
       if (e.key !== 'Tab') return
       const f = focusables()
-      if (!f.length) return
+      if (!f.length) { e.preventDefault(); el?.focus(); return }
       const first = f[0], last = f[f.length - 1]
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+      if (e.shiftKey && (document.activeElement === first || !f.includes(document.activeElement as HTMLElement))) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && (document.activeElement === last || !f.includes(document.activeElement as HTMLElement))) { e.preventDefault(); first.focus() }
     }
     document.addEventListener('keydown', onKey)
-    return () => { document.removeEventListener('keydown', onKey); prev?.focus?.({ preventScroll: true }) }
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      previous.forEach(({node, inert, hidden}) => { node.inert = inert; if (hidden === null) node.removeAttribute('aria-hidden'); else node.setAttribute('aria-hidden', hidden) })
+      if (prev?.isConnected && !prev.closest('[inert]')) prev.focus({ preventScroll: true })
+    }
   }, [])
   // Rendered on the phone itself, not inside the screen: a screen that scrolls would otherwise carry its sheet up and out of view.
   const host = document.querySelector('.phone') ?? document.body
   return createPortal(
-    <>
+    <div className="sheet-layer" ref={layer}>
       <div className="scrim" onClick={onClose} aria-hidden="true" />
       <div className="sheet" role="dialog" aria-modal="true" aria-label={label ?? 'Details'} ref={ref} tabIndex={-1}>
         <div className="grabber" />
         {children}
       </div>
-    </>,
+    </div>,
     host,
   )
 }

@@ -345,6 +345,7 @@ export function Moderation() {
               ))}
               {evidence.sharedPhotos?.map((p, i) => (
                 <Photo
+                    retryable
                   key={i}
                   src={p.img}
                   alt={`Reported story photo at ${p.place}`}

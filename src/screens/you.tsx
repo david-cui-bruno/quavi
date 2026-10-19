@@ -86,7 +86,7 @@ export function Profile() {
       <div className="clip" style={{ background: BG[stageName as Bg], borderRadius: 36, height: 250, position: 'relative', flex: 'none' }}>
         <div className="abs" style={{ left: '50%', top: 36, width: 180, height: 180, marginLeft: -90, borderRadius: '50%', background: BG[discName as Bg] }} />
         <div className="abs bounce" style={{ left: '50%', top: 22, marginLeft: -78 }}><Persona spec={user.avatar} size={156} /></div>
-        <span className="pill abs" style={{ left: 20, top: 20, background: 'var(--paper)' }}>{user.name} · you</span>
+        <span className="pill abs profile-name" style={{ left: 20, top: 20, background: 'var(--paper)' }}>{user.name} · you</span>
         <button className="btn primary abs" style={{ left: 90, right: 90, bottom: 14, width: 'auto', height: 46, fontSize: 14 }} onClick={() => go('customize', { editing: true })}>Edit your Quavi</button>
       </div>
       <div style={{ display: 'flex', margin: '12px 0', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
@@ -184,7 +184,7 @@ export function Read() {
               <div className="clip" style={{ width: 84, height: 96, borderRadius: 24, background: `var(--${safeSurface(flock(c.persona, i === 0 ? 'Orange' : 'Yellow'), (['yellow-p', 'orange-p', 'ink-p'] as const)[i % 3])})`, position: 'relative', flex: 'none' }}>
                 {img ? <Photo src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: 16, top: 10 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={60} /></div>}
               </div>
-              <div className="col" style={{ flex: 1, gap: 3 }}><span className="kicker">Chapter {i + 1} · {c.place}</span><span className="h1" style={{ fontSize: 19, lineHeight: 1.1 }}>{caps[i]}</span>{photoLines(st).filter((p) => p.chapter === i).map((p) => <Photo key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: '100%', height: 170, objectFit: 'cover', borderRadius: 20, marginTop: 8 }} />)}{noteLines(st).filter((n) => n.chapter === i).map((n) => <NoteQuote key={n.task} task={n.task} note={n.note} style={{ marginTop: 8 }} />)}</div>
+              <div className="col" style={{ flex: 1, gap: 3 }}><span className="kicker">Chapter {i + 1} · {c.place}</span><span className="h1" style={{ fontSize: 19, lineHeight: 1.1 }}>{caps[i]}</span>{photoLines(st).filter((p) => p.chapter === i).map((p) => <Photo retryable key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: '100%', height: 170, objectFit: 'cover', borderRadius: 20, marginTop: 8 }} />)}{noteLines(st).filter((n) => n.chapter === i).map((n) => <NoteQuote key={n.task} task={n.task} note={n.note} style={{ marginTop: 8 }} />)}</div>
             </div>
           )
         })}

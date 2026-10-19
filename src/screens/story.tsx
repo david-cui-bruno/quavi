@@ -113,7 +113,7 @@ export function Details() {
                 <div style={{ position: 'absolute', left: 5, top: 8 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={42} /></div>
               </div>
               <div className="col" style={{ flex: 1, textAlign: 'left' }}><b className="h1" style={{ fontSize: 17 }}>{c.title}</b><span className="small muted">{story.source?`${c.kind??'Stop'} · ${hoursLabel(c.hours)}`:c.meta}</span></div>
-              <button className="small muted" style={{ fontWeight: 700 }} onClick={() => go('swap', { i })}>Swap</button>
+              <button className="small muted hit44" aria-label={`Swap ${c.place}`} style={{ fontWeight: 700 }} onClick={() => go('swap', { i })}>Swap</button>
             </div>
           )
         })}
@@ -324,7 +324,7 @@ function ShareSheet({ story, caps, onClose }: { story: Story; caps: string[]; on
               <span className="stop-num">{i + 1}</span>
               <div className="col" style={{ flex: 1 }}><b className="h1" style={{ fontSize: 16 }}>{c.place}</b><span className="small it">{caps[i]}</span></div>
             </div>
-            {photoLines(story).filter((p) => p.chapter === i).map((p) => <Photo key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: 'calc(100% - 44px)', height: 150, objectFit: 'cover', borderRadius: 18, margin: '10px 0 0 44px' }} />)}
+            {photoLines(story).filter((p) => p.chapter === i).map((p) => <Photo retryable key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: 'calc(100% - 44px)', height: 150, objectFit: 'cover', borderRadius: 18, margin: '10px 0 0 44px' }} />)}
             {notes.filter((n) => n.chapter === i).map((n) => (
               <NoteQuote key={n.task} task={n.task} note={n.note} style={{ margin: '10px 0 0 44px' }} />
             ))}
