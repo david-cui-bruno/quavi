@@ -218,7 +218,7 @@ export function Swap() {
       if(!mounted.current)return
       setStory(current=>current.id===story.id&&JSON.stringify(current.chapters)===JSON.stringify(story.chapters)?next:current)
       say(live?'Stop updated. Your walking route has been checked.':'Stop updated.');back()
-    }catch(e){if(mounted.current)setError(accountError(e))}finally{if(mounted.current)setBusy(false)}
+    }catch(e){if(mounted.current)setError(e instanceof Error?e.message:accountError(e))}finally{if(mounted.current)setBusy(false)}
   }
   return (
     <Screen$ scroll>

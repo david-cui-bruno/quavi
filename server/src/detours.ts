@@ -154,7 +154,7 @@ export function planDetours(
     {id:'fresh',title:'The fresh-air chapter',interest:'air',persona:'Rex',color:'Yellow',bg:'ink'},
     {id:'play',title:'Something a little unexpected',interest:'fun',persona:'Pip',color:'Orange',bg:'orange'},
   ] as const;
-  const selectedThemes = input.variant ? [...themes,...extraThemes].sort((a,b)=>noise(`theme:${a.id}`)-noise(`theme:${b.id}`)).slice(0,3) : themes;
+  const selectedThemes = input.variant ? [...themes,...extraThemes].filter(theme=>venues.some(v=>kinds[v.kind].interest===theme.interest)).sort((a,b)=>noise(`theme:${a.id}`)-noise(`theme:${b.id}`)).slice(0,3) : themes;
   const routes = new Set<string>();
   const avoided = new Set((input.avoidRoutes ?? []).map(route=>route.join('|')));
   const openings = selectedThemes.flatMap((theme) => {
@@ -162,10 +162,14 @@ export function planDetours(
       totalWalk = 0;
     const chosen: Venue[] = [];
     for (let i = 0; i < 3; i++) {
-      const candidates = venues.filter(
+      let candidates = venues.filter(
         (v) =>
           !chosen.includes(v) && !chosen.some((c) => meters(c.ll, v.ll) < 40),
       );
+      if(input.variant && i===0){
+        const themed=candidates.filter(v=>kinds[v.kind].interest===theme.interest);
+        if(themed.length)candidates=themed;
+      }
       candidates.sort((a, b) => {
         const score = (v: Venue) => {
           const interest = kinds[v.kind].interest;
