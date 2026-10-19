@@ -225,7 +225,7 @@ acceptance, operations hardening and real partner verification remain pending.
 | Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
 | Done: deployment and monitoring foundation | GitHub PostgreSQL/Auth-emulator checks before dev deployment, branch/repository-bound keyless identity, source-tagged images, migration guards, post-deploy smoke checks and API traffic rollback; five monitoring policies and a $100/month pre-credit alert budget | GitHub passed 97 backend tests, including rollback/order failures, and deployed API/jobs successfully; readiness samples pass in two US locations |
 | Done: first point-in-time recovery drill | Restore into a separate temporary SQL instance; read-only migration, constraint, table and runtime-privilege checks; delete the temporary copy | Recovered to 2026-10-18 21:00 UTC, verified all 8 migrations and restricted runtime access; temporary instance deleted and source remains RUNNABLE |
-| Next: remaining operations acceptance | Verify alert and auth-email inbox delivery, richer sync/photo recovery UX, app attestation and production isolation | Record real notification receipt and physical-device lifecycle checks; SQL recovery alone does not prove cross-service recovery |
+| Next: remaining operations acceptance | Verify operational alert receipt, finish auth-email branding, richer sync/photo recovery UX, app attestation and production isolation | Record real notification receipt and physical-device lifecycle checks; SQL recovery alone does not prove cross-service recovery |
 | Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
 | Done: detour reliability implementation pass | Category/service-area checks, catalog-localized name aliases, bounded walking/closed-stop replacements, rendered-path validation, whole-visit hours, entry links and note/arrival-grounded captions | 85 backend and 36 client tests cover mismatches, substitutions, provider failures, holiday/closing boundaries, geometry, authenticated Start checks, retention and caption evidence |
 | Remaining: real-world detour acceptance | Verify actual entrances, admission/tickets and accessibility; expand multilingual and sparse-area acceptance using real outings | Complete outings in multiple regions and record coverage, closed-stop replacement and access failures; entry is never inferred from open hours |
@@ -745,8 +745,10 @@ SQL recovery drill, not an Auth/media recovery or production recovery SLA.
 
 [server/OPERATIONS.md](server/OPERATIONS.md) documents setup, alert response,
 rollbacks and restoration. Firebase managed email templates and enumeration
-protection are configured. Verification/reset email inbox testing awaits approval
-to send the two test messages; no delivery claim is made. Remaining work is alert
+protection are configured. Verification and password-reset emails were sent once each with user authorization
+and confirmed in the recipient Gmail INBOX on October 18. Neither action link was
+opened and the password was not changed. Subjects still use the dev project name;
+email branding remains follow-up work. Remaining work is operational alert
 receipt, cross-service recovery/deletion reconciliation, app attestation and
 production isolation, followed by the deferred real-phone outing and push checks.
 No new iPhone installation is needed for these backend operations changes.

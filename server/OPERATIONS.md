@@ -117,7 +117,10 @@ A branded sender domain requires a domain decision, DNS setup and delivery testi
   Clone operation took approximately ten minutes. Read-only checks verified eight
   migration checksums, validated constraints, table access and restricted runtime
   privileges. Proxy stopped and clone deletion completed; source remained RUNNABLE.
-- Real incident email receipt and verification/reset inbox delivery are not verified.
+- Real incident alert receipt is not verified. Verification and password-reset emails
+  were each sent once with authorization and confirmed in Gmail INBOX on October
+  18 at 23:11 EDT. No action links were opened and no password change was made.
+  Subjects still identify the dev project; branding is a separate follow-up.
 
 Provider references: [GitHub federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines),
 [budget credit treatment](https://docs.cloud.google.com/billing/docs/reference/budget/rest/v1/billingAccounts.budgets),

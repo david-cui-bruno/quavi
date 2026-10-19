@@ -161,8 +161,8 @@ are configured. Alert policy creation does not prove email delivery.
 
 The point-in-time SQL restore drill verified eight migrations, constraints and
 restricted runtime permissions; its temporary instance was deleted. Remaining
-operations work includes authorized verification/reset email delivery checks,
-alert inbox acceptance, app attestation,
+operations work includes email branding, operational alert inbox acceptance,
+app attestation,
 production isolation and richer sync/photo retry UX. Physical outing/offline/lock
 and push receipt tests remain deferred acceptance work. Friends/private sharing,
 server-owned demo rewards and independent outing records are already implemented;
@@ -552,3 +552,13 @@ Live acceptance verified image delivery with author/source credits for two
 real outing stops and Caffe Reggio, an honest no-photo result for an unmatched
 gallery, and a three-leg Google walking route with 37 geometry points.
 All 93 backend tests pass against an isolated migrated test database.
+
+
+### Authentication email delivery check
+
+On October 18, one verification email was sent through the signed-in app and one
+password-reset email through the same Firebase endpoint used by the client. Both
+were authorized and confirmed in Gmail INBOX, rather than spam. No action links
+were opened and the password was not changed. Subjects currently use the dev
+project ID; sender/application branding remains follow-up work. Operational alert
+receipt is a separate check and is not established by this authentication test.
