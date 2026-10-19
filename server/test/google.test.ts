@@ -60,3 +60,18 @@ test('venue photo URLs keep author/source credit and reject unsafe media locatio
  const ephemeral={...p,venuePhoto:r,photoUri:r?.url};
  assert.equal(scrub(ephemeral).photos,undefined);assert.equal(scrub(ephemeral).venuePhoto,undefined);assert.equal(scrub(ephemeral).photoUri,undefined);
 });
+
+test('venue photo identity reconciles bounded category suffixes and organisation labels without remote or ambiguous matches',async()=>{
+ const {assessPhotoPlace}=await import('../src/google-hours.js');
+ const raw=(name:string,id='one',lat=ll.lat)=>({...base(),id,displayName:{text:name},location:{latitude:lat,longitude:ll.lng},types:['bakery','cafe'],primaryType:'bakery'});
+ const bakery=raw('Mille-Feuille Bakery Cafe');
+ assert.equal(assessPhotoPlace([bakery],'Mille-Feuille Bakery',ll,{kind:'Bakery'})?.id,'one');
+ assert.equal(assessPhotoPlace([bakery,raw('Mille-Feuille Bakery Cafe','two')],'Mille-Feuille Bakery',ll,{kind:'Bakery'}),undefined);
+ assert.equal(assessPhotoPlace([raw('Mille-Feuille Bakery Cafe','remote',41)],'Mille-Feuille Bakery',ll,{kind:'Bakery'}),undefined);
+ assert.equal(assessPhotoPlace([raw('Different Bakery Cafe')],'Mille-Feuille Bakery',ll,{kind:'Bakery'}),undefined);
+ assert.equal(assessPhotoPlace([bakery],'Mille-Feuille Bakery',ll,{kind:'Museum'}),undefined);
+ const museum={...raw('AIA New York | Center for Architecture'),types:['museum'],primaryType:'museum'};
+ assert.equal(assessPhotoPlace([museum],'Center for Architecture (AIANY)',ll,{kind:'Museum'})?.id,'one');
+ // Expanded matching is limited to photos; hours retain their stricter identity contract.
+ assert.equal(matchPlace([bakery],'Mille-Feuille Bakery',ll),undefined);
+});

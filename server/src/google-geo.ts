@@ -8,7 +8,7 @@ import {
   type WalkingProvider,
   type WalkingCheck,
 } from "./walking.js";
-import { assessPlace, googlePlace, type GooglePlace } from "./google-hours.js";
+import { assessPlace, assessPhotoPlace, googlePlace, type GooglePlace } from "./google-hours.js";
 export const WALKING_WARNING =
   "Walking directions may be missing sidewalks or pedestrian paths. Check local signs and conditions.";
 export type GoogleNavigation = WalkingCheck & {
@@ -283,7 +283,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
         "places",
       );
       const parsed = googlePlace.safeParse(raw);
-      if (parsed.success) return assessPlace([parsed.data], name, ll, context);
+      if (parsed.success) return (photos ? assessPhotoPlace : assessPlace)([parsed.data], name, ll, context);
       return undefined;
     }
     const raw = await request(
@@ -305,7 +305,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
         .join(","),
       "places",
     );
-    return assessPlace(raw.places ?? [], name, ll, context);
+    return (photos ? assessPhotoPlace : assessPlace)(raw.places ?? [], name, ll, context);
   }
   return {
     navigate,
