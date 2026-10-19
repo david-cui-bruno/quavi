@@ -17,8 +17,8 @@ else
   gcloud builds submit --project="$project" --region="$region" --tag="$image" --quiet
 fi
 gcloud run jobs update quavi-migrate --project="$project" --region="$region" --image="$image" --quiet
-gcloud run jobs update quavi-maintenance --project="$project" --region="$region" --image="$image" --quiet
 gcloud run jobs execute quavi-migrate --project="$project" --region="$region" --wait --quiet
+previous=$(gcloud run services describe quavi-api --project="$project" --region="$region" --format='value(status.latestReadyRevisionName)')
 gcloud run deploy quavi-api --project="$project" --region="$region" --image="$image" \
   --service-account="quavi-api@$project.iam.gserviceaccount.com" \
   --add-cloudsql-instances="$project:$region:quavi-dev-db" \
@@ -29,12 +29,17 @@ gcloud run deploy quavi-api --project="$project" --region="$region" --image="$im
   --startup-probe='httpGet.path=/readyz,httpGet.port=8080,periodSeconds=10,timeoutSeconds=5,failureThreshold=12' \
   --liveness-probe='httpGet.path=/healthz,httpGet.port=8080,periodSeconds=30,timeoutSeconds=5,failureThreshold=3' --quiet
 
+# Readiness includes a database round-trip; /v1 must still reject anonymous callers.
+url=$(gcloud run services describe quavi-api --project="$project" --region="$region" --format='value(status.url)')
+if ! curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --retry 4 --retry-delay 3 "$url/readyz" ||
+   [[ $(curl --connect-timeout 5 --max-time 15 --silent --output /dev/null --write-out '%{http_code}' "$url/v1/me/state") != 401 ]]; then
+  echo 'Post-deploy smoke check failed; returning API traffic to the prior revision.' >&2
+  gcloud run services update-traffic quavi-api --project="$project" --region="$region" --to-revisions="$previous=100" --quiet
+  exit 1
+fi
+
+gcloud run jobs update quavi-maintenance --project="$project" --region="$region" --image="$image" --quiet
+
 if gcloud run jobs describe quavi-push --project="$project" --region="$region" >/dev/null 2>&1; then
   gcloud run jobs update quavi-push --project="$project" --region="$region" --image="$image" --quiet
 fi
-
-# Readiness includes a database round-trip; /v1 must still reject anonymous callers.
-url=$(gcloud run services describe quavi-api --project="$project" --region="$region" --format='value(status.url)')
-curl --fail --silent --show-error --retry 4 --retry-delay 3 "$url/readyz"
-status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$url/v1/me/state")
-[[ "$status" == 401 ]] || { echo "Authentication smoke check failed: $status" >&2; exit 1; }

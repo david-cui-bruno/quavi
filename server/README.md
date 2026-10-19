@@ -151,18 +151,20 @@ against the isolated local Auth emulator and PostgreSQL. Both production depende
 audits are clean; existing Capacitor/Firebase CLI development-tool advisories are
 separate from shipped runtime dependencies.
 
-## Next slice
+## Operations and remaining acceptance
 
-Verify email recovery/verification delivery, improve sync/photo retry UX, add app attestation,
-and configure deployment CI, alerting/budgets and a backup restore drill. Offline
-account edits are cached, but uncached private photos need a connection. Conflict
-resolution currently offers an explicit cloud-copy replacement; merging divergent
-local edits is not implemented. Initial cloud reads and token refresh need internet.
+The tested GitHub dev deployment, alerting/budget configuration, recovery checks and
+incident procedures are documented in [OPERATIONS.md](OPERATIONS.md). The first live
+workflow passed 93 isolated backend tests and deployed revision `quavi-api-00021-q82`.
+Five monitoring policies and a project-scoped $100/month budget excluding credits
+are configured. Alert policy creation does not prove email delivery.
 
-Friends/circle remain local demo data, captions remain scripted,
-background location is unimplemented, and XP/rewards are client-controlled demo
-values. These are separate roadmap stages, not services supplied by this deploy.
-
+Remaining operations work includes restore-drill validation/cleanup, authorized
+verification/reset email delivery checks, alert inbox acceptance, app attestation,
+production isolation and richer sync/photo retry UX. Physical outing/offline/lock
+and push receipt tests remain deferred acceptance work. Friends/private sharing,
+server-owned demo rewards and independent outing records are already implemented;
+background location and real merchant redemption remain later work.
 
 ## Account deletion and data guards (October 18)
 
