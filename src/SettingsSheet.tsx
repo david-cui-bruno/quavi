@@ -22,7 +22,7 @@ export function SettingsSheet({onClose}:{onClose:()=>void}) {
    </>}
    {page==='appearance'&&<><p className="body muted">A little colour for your next plot twist.</p><div className="home-colours" role="radiogroup" aria-label="Home background colour">{([['orange-p','Orange'],['yellow','Yellow'],['paper','Paper'],['ink','Ink']] as [HomeColor,string][]).map(([tone,label])=><button key={tone} role="radio" aria-checked={homeTone(s.user.homeColor)===tone} onClick={()=>update(st=>({...st,user:{...st.user,homeColor:tone}}))}><span className="home-colour-swatch" style={{background:BG[tone]}}>{homeTone(s.user.homeColor)===tone&&<Icon name="check" size={24}/>}</span><b>{label}</b></button>)}</div><p className="small muted">Saved with your profile.</p></>}
    {page==='account'&&<div className="settings-account-page"><AccountPanel/>{!account&&<section className="settings-section">{confirm?<><p className="body">Clear this device’s demo stories and progress?</p><Btn kind="secondary" onClick={restart}>Clear & restart demo</Btn><button className="text-action" onClick={()=>setConfirm(false)}>Keep my demo</button></>:<button className="text-action" onClick={()=>setConfirm(true)}>Clear & restart demo</button>}</section>}</div>}
-   {page==='notifications'&&<PushSettings/>}
+   {page==='notifications'&&<PushSettings heading={false}/>}
    {page==='privacy'&&<section className="settings-legal" aria-label="Privacy and terms">{(['privacy','terms'] as const).map(kind=><a key={kind} href={`${config.apiUrl}/legal/${kind}`} target="_blank" rel="noreferrer"><Icon name={kind==='privacy'?'shield':'book'}/><span>{kind==='privacy'?'Privacy policy':'Terms of use'}</span><Icon name="chevron" size={18}/></a>)}</section>}
   </div>
  </Sheet>

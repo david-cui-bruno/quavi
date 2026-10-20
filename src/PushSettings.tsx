@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { enablePush, detachPush, nativePush } from "./push";
-export function PushSettings() {
+export function PushSettings({heading=true}:{heading?:boolean}={}) {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   if (!nativePush()) return null;
@@ -23,7 +23,7 @@ export function PushSettings() {
   };
   return (
     <section className="settings-section">
-      <h3 className="h1 h-xs">Notifications</h3>
+      {heading&&<h3 className="h1 h-xs">Notifications</h3>}
       <p className="small muted">
         Choose whether Quavi can send updates to this iPhone.
       </p>
