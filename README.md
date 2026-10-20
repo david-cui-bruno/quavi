@@ -894,3 +894,23 @@ Apple processing completed. Build 21 is verified **Testing** in the internal
 notes saved. Open TestFlight → Quavi → Update and confirm **1.0 (21)**. The
 tester record still showed build 20 installed at verification time. Build 21 was
 not assigned to the external Quavi Friends group in this release step.
+
+### Nearby stop swaps, contrast and review reconciliation — build 22
+
+The pre-walk editor no longer treats every business within 40 metres of another
+stop as a duplicate, or rejects a distant branch merely for sharing its name.
+A shared catalog ID still identifies the same venue; without a shared ID, a
+matching normalized name/alias must also be nearby. Separate adjacent businesses
+and distant same-name branches now pass regression checks; actual repeated venues
+still fail. Walking, category, age and time-budget validation remain in place.
+
+Removed the extra Google Maps mark from the opening-list footer. The duration
+step uses an orange duck on yellow. Shared control styles invert matching
+background colours, and same-colour character silhouettes retain a fine outline
+without changing the chosen avatar. The review board now distinguishes the main
+flow (32 screens), other states (16), archived duplicates (4), and older colour
+references (3); all IDs and existing notes remain accessible.
+
+Validation: 56 client tests, production web build, Capacitor sync and signed
+Release archive pass. Browser checks cover the current planner at 402 × 874
+with no horizontal overflow. TestFlight 1.0 (22) is uploading for internal testing.

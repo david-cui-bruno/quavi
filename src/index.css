@@ -698,3 +698,12 @@ input,textarea { caret-color:var(--ink); }
 .circle-feed{display:flex;flex-direction:column;gap:16px;margin-top:8px;}
 .circle-feed .tile{min-height:148px;padding:24px 88px 24px 24px;justify-content:center;gap:10px;}
 .circle-feed .tile .h1{font-size:26px!important;line-height:1.1!important;overflow-wrap:anywhere;}
+
+/* Same-colour controls stay distinct from their containing brand surface. */
+.screen[data-surface="yellow"] .btn.primary,.screen[data-surface="yellow-p"] .btn.primary,.screen[data-surface="yellow"] .round.yellow,.screen[data-surface="yellow-p"] .round.yellow{background:var(--ink);color:var(--paper);}
+.screen[data-surface="orange"] .btn.accent,.screen[data-surface="orange-p"] .btn.accent{background:var(--ink);color:var(--paper);}
+.screen.dark .btn.secondary,.screen.dark .chip.on{background:var(--paper);color:var(--ink);}
+.screen[data-surface="soft"] .btn.soft,.screen[data-surface="soft"] .chip,.screen[data-surface="soft"] .pill{box-shadow:inset 0 0 0 1px var(--ink-p);}
+/* Preserve a person's chosen duck colour with a fine silhouette when it matches the page. */
+.screen[data-surface="yellow"] svg[data-color="Yellow"],.screen[data-surface="yellow-p"] svg[data-color="Yellow"],.screen[data-surface="orange"] svg[data-color="Orange"],.screen[data-surface="orange-p"] svg[data-color="Orange"]{filter:drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink)) drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink));}
+.screen.dark svg[data-color="Ink"]{filter:drop-shadow(1px 0 0 var(--paper)) drop-shadow(-1px 0 0 var(--paper)) drop-shadow(0 1px 0 var(--paper)) drop-shadow(0 -1px 0 var(--paper));}

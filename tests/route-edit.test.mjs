@@ -31,7 +31,7 @@ test('chosen stops invalidate old place identity and route checks before applyin
  assert.deepEqual(applied.walking.legs,check().legs)
 })
 test('route editing rejects duplicate, adult, invalid, started and over-budget changes',()=>{
- assert.throws(()=>replacePlannedStop(story(),1,{...choice,ll},true),/already/)
+ assert.throws(()=>replacePlannedStop(story(),1,{...choice,place:'Cafe',ll},true),/already/)
  assert.throws(()=>replacePlannedStop(story(),1,{...choice,place:'Cocktail bar'},false),/age-restricted/)
  assert.throws(()=>replacePlannedStop(story(),1,{...choice,ll:{lat:999,lng:0}},true),/location/)
  assert.throws(()=>replacePlannedStop({...story(),status:'active'},1,choice,true),/before starting/)
@@ -61,4 +61,18 @@ test('rough spend ranges use stop categories, include free outings and remain ex
  const cafeBook=estimateSpend({chapters:[{kind:'Café'},{kind:'Bookshop'},{kind:'Park'}]})
  assert.deepEqual(cafeBook,{low:5,high:40,currency:'USD',label:'$5–40'})
  assert.ok(estimateSpend({chapters:[{kind:'Unknown'}]}).high>0)
+})
+
+test('swapping accepts a distinct business next door to another route stop',()=>{
+ const selected={...choice,place:'Next Door Gallery',placeId:'catalog-gallery',ll:{lat:ll.lat+.0001,lng:ll.lng}}
+ assert.doesNotThrow(()=>replacePlannedStop(story(),1,selected,true))
+})
+test('swapping accepts a different branch of the same named business',()=>{
+ const selected={...choice,place:'Cafe',placeId:'catalog-cafe-other-branch',ll:{lat:40.74,lng:-74}}
+ assert.doesNotThrow(()=>replacePlannedStop(story(),1,selected,true))
+})
+
+test('the same catalog venue or a nearby spelling alias still cannot be added twice',()=>{
+ assert.throws(()=>replacePlannedStop(story(),1,{...choice,placeId:'catalog-Cafe'},true),/already/)
+ assert.throws(()=>replacePlannedStop(story(),1,{...choice,place:'Café!',ll:{lat:ll.lat+.00001,lng:ll.lng}},true),/already/)
 })

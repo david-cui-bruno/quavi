@@ -2,7 +2,6 @@ import {homeTone} from '../review-home'
 import {useSocial} from '../social'
 import {CircleStatus,PrivateStory} from '../PrivateCircle'
 import {OutingSaveStatus} from '../OutingSaveStatus'
-import {GoogleAttribution} from '../GoogleAttribution'
 import {useRuntime} from '../runtime'
 import { CityPicker, type PlannerStage } from '../CityPicker'
 import { useTracking } from '../tracking'
@@ -175,7 +174,6 @@ export function Openings() {
             <div className="planner-opening-duck"><Persona spec={flock(o.persona,o.color)} size={76}/></div>{on&&<span className="tick"><Check/></span>}
           </button>})}
           {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p></details>}
-          {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
           {choices[0]?.source&&<details className="route-notes"><summary>Venue data</summary><p>Venue catalog: <a href={choices[0].source.attributionURL} target="_blank" rel="noreferrer">Overture Maps</a>.</p></details>}
         </div>
         <div className="planner-footer"><Btn kind="secondary" disabled={refreshing||!choices.length} onClick={start}>Continue <Arrow size={20}/></Btn><button className="text-action" disabled={refreshing||!choices.length} onClick={()=>account?setRefreshKey(n=>n+1):setOrder(o=>[...o.slice(1),o[0]])}>{refreshing?'Finding new openings…':'Shuffle openings'}</button></div>

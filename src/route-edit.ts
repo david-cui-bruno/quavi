@@ -1,13 +1,21 @@
 import {isDrinkPlace, type Alt, type Story, type WalkingCheck, type HoursCheck} from './data'
 import {distance} from './geo'
 
+/** A shared venue identity is a duplicate; proximity alone is not one. */
+const venueName=(value:string)=>value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()
+function sameVenue(a: Story['chapters'][number], b: Alt): boolean {
+  if(a.placeId&&b.placeId&&a.placeId===b.placeId)return true
+  const names=new Set([a.place,...a.aliases??[]].map(venueName))
+  return !!a.ll&&!!b.ll&&distance(a.ll,b.ll)<40&&[b.place,...b.aliases??[]].some(n=>names.has(venueName(n)))
+}
+
 /** Editing is only allowed before the walk starts; old checks must not follow a new stop. */
 export function replacePlannedStop(story: Story, index: number, place: Alt, age21?: boolean): Story {
   if (story.status || story.outingPhase && story.outingPhase !== 'planned') throw new Error('Stops can be customized before starting the walk. Start a new plan to choose different places.')
   if (!story.chapters[index]) throw new Error('Choose a stop to replace.')
   if (!place.ll || !Number.isFinite(place.ll.lat) || !Number.isFinite(place.ll.lng) || Math.abs(place.ll.lat)>85 || Math.abs(place.ll.lng)>180) throw new Error('Choose a search result with a map location.')
   if (age21 !== true && isDrinkPlace(`${place.place} ${place.kind??''}`)) throw new Error('Choose a place without an age-restricted drinking venue.')
-  if (story.chapters.some((c,i)=>i!==index&&(c.place.trim().toLowerCase()===place.place.trim().toLowerCase() || c.ll&&distance(c.ll,place.ll!)<40))) throw new Error('That place is already in this opening. Choose a different stop.')
+  if (story.chapters.some((c,i)=>i!==index&&sameVenue(c,place))) throw new Error('That place is already in this opening. Choose a different stop.')
   const chapters=story.chapters.map((chapter,i)=>{
     const {hours:_hours,googlePlaceId:_id,placeId:_catalogId,googleRoute:_google,walk:_walk,...original}=chapter
     if(i!==index)return {...chapter,hours:undefined,walk:'Check walking route'}
