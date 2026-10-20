@@ -943,3 +943,9 @@ The shared provider cap and account/API burst protection remain in place.
 Validation: 106 backend tests pass, including 20 successful shuffles, explicit
 burst rejection, capacity messages, coalescing, expiry and failed-call recovery.
 No client change is required; installed TestFlight build 22 uses this backend.
+
+Deployment: both quota updates passed CI checks and Quavi dev deployment. Three
+sequential authenticated live shuffle requests using the Google path each returned
+HTTP 200 with two route choices (about one second each). No new TestFlight upload
+is needed. The owner's requested profile-only restart was applied separately and
+verified at setup step 1; stories, friends and rewards were not cleared.
