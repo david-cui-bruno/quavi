@@ -936,6 +936,10 @@ or precise route request is written to a durable cache. Different shuffle
 variants still generate new candidates. Capacity errors identify the actual
 limit and preserve existing choices rather than returning “Too many lookups.”
 
-Validation: 105 backend tests pass, including 20 successful shuffles, explicit
+Venue-photo and route-check allowances are 240/hour per signed-in account,
+so normal browsing and stop editing do not exhaust the old 30/60-hour limits.
+The shared provider cap and account/API burst protection remain in place.
+
+Validation: 106 backend tests pass, including 20 successful shuffles, explicit
 burst rejection, capacity messages, coalescing, expiry and failed-call recovery.
 No client change is required; installed TestFlight build 22 uses this backend.

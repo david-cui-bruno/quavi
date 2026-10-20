@@ -276,7 +276,7 @@ export async function createApp(options: {
       api.post('/me/venue-photo',async(req,reply)=>{
         const input=liveStop.omit({mins:true}).parse(req.body);
         if(!options.liveGeo?.photo)return reply.code(503).send({error:'Venue photos are unavailable. Try again later.'});
-        if(!await quota(req.db!,ownerHash(req.uid),'venue-photo',30,3600))return reply.code(429).send({error:'Too many photo lookups. Try again later.'});
+        if(!await quota(req.db!,ownerHash(req.uid),'venue-photo',240,3600))return reply.code(429).send({error:'Too many photo lookups. Try again later.'});
         const db=req.db!;req.db=null;
         try{await db.query('COMMIT')}finally{db.release()}
         const photo=await options.liveGeo.photo(input.name,input.ll,input.googlePlaceId,{kind:input.kind,aliases:input.aliases});
@@ -291,7 +291,7 @@ export async function createApp(options: {
             error: "Walking checks are unavailable. Try again shortly.",
           });
         if (
-          !(await quota(req.db!, ownerHash(req.uid), "walking-check", 60, 3600))
+          !(await quota(req.db!, ownerHash(req.uid), "walking-check", 240, 3600))
         )
           return reply
             .code(429)
@@ -342,7 +342,7 @@ export async function createApp(options: {
               req.db!,
               ownerHash(req.uid),
               "google-check",
-              60,
+              240,
               3600,
             ))
           )

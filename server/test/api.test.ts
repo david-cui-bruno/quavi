@@ -580,3 +580,14 @@ test('map budget exhaustion returns an actionable message without exposing provi
   assert.equal(r.statusCode,429);assert.equal(r.json().code,'map_capacity');assert.match(r.json().error,/current openings/);assert.equal(r.headers['retry-after'],'3600')
  }finally{await real.close()}
 })
+
+
+test('browsing forty venue cards does not exhaust the hourly photo allowance',async()=>{
+ const real=await createApp({pool,auth,origins:[],liveGeo:{async photo(){return null},async place(){return undefined},async navigate(){return null},async check(){return null}}})
+ try{
+  for(let i=0;i<40;i++){
+   const r=await real.inject({method:'POST',url:'/v1/me/venue-photo',headers:headers(7),payload:{name:'Coffee '+i,ll:{lat:40.73,lng:-74}}})
+   assert.equal(r.statusCode,200,`photo ${i+1}: ${r.body}`)
+  }
+ }finally{await real.close()}
+})
