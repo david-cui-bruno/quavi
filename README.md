@@ -239,7 +239,7 @@ acceptance, operations hardening and real partner verification remain pending.
 | Done: social inbox and moderation implementation | Transactional request/accept/share notices, unread/read controls, keyset pagination, staff-only report evidence/review, audited story removal and seven-day social restrictions | 90 backend and 37 client tests cover recipient isolation, duplicate suppression, revocation, timestamp ties, role enforcement, hidden-story republish prevention, restrictions and push retries |
 | Remaining: physical push acceptance and moderation operations | Production APNs setup, worker scheduling and selected moderator role are configured; establish operational response/appeal practices | Verify actual TestFlight phone receipt, denial, off/logout/account switching and tap recovery; no real phone delivery is claimed by server/simulator checks |
 | Done: server-owned demo rewards | Deterministic task plans, append-only ledger, one-time redemptions, offline commands and legacy display-only XP | 63 backend and 30 client tests cover duplicate awards, concurrent spending, inflated balances and lost acknowledgements; partners remain fictional |
-| Implemented: real-account showcase and editable openings | Welcome on restored sign-in with explicit Continue, no anonymous demo entry on Welcome, profile-only setup restart, eight sampled opening themes, seeded route variations and recent-route exclusion; live stop suggestions plus place search with full walking/hours/time validation before applying swaps | 51 client tests and 18 targeted backend tests pass; cloud CI/deployment and new TestFlight availability are being verified. Customization is for the three planned stops before Start; existing outings stay intact on failed checks |
+| Done: real-account showcase and editable openings | Welcome on restored sign-in with explicit Continue, no anonymous demo entry on Welcome, profile-only setup restart, eight sampled opening themes, seeded route variations and recent-route exclusion; live stop suggestions plus place search with full walking/hours/time validation before applying swaps | 51 client tests, 18 targeted backend tests and 99 backend CI tests pass; Quavi dev deployment passed. Live browser generation, refresh, searched stop replacement and changed walking time verified; build 20 uploaded, tester access pending sign-in verification. Customization is for the three planned stops before Start; existing outings stay intact on failed checks |
 | Done: explicit Explore location selection | Address-bearing search suggestions, keyboard selection and stale-response cancellation | Searching never silently chooses the first hit; the selected result coordinates drive the route |
 | Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) verified Testing in Quavi Development |
 | Done: first internal TestFlight beta | App Store Connect record, explicit app identifier, signed 1.0 (4), real-use onboarding, visible build label and beta instructions | Apple shows Testing in Quavi Development; owner is an accepted tester; installation on the physical phone is the next user step |
@@ -770,3 +770,39 @@ record showed build 16 installed before this update. Build 15 now shows Testing
 on the iOS build overview with Quavi Friends assigned; build 17 has only been
 added to the internal group in this release step.
 The remaining native/physical checks in [QUALITY.md](QUALITY.md) still apply.
+
+### Real-account showcase and route customization — build 20
+
+Fresh launches now show Welcome even when sign-in is restored. Continue uses the
+account’s own saved setup progress; foreground resume keeps the current walk.
+Welcome has no “Explore the demo” button. Settings → Restart profile setup only
+changes the setup marker; it keeps stories, friends and rewards. The owner’s
+requested reset was applied and verified at step 1 after reloading.
+
+Opening generation samples from eight themes and varies nearby venues within a
+theme, while keeping age, distance, time, route and hours checks. Refresh requests
+new options and excludes the latest six offered sequences instead of reordering
+cards. Sparse coverage may return fewer options; if a refresh finds none, the
+previous choices remain available. Existing quotas still apply.
+
+Before Start, use Swap beside any of the three stops, or Adjust → Choose your
+stops. Pick a nearby suggestion or search by name and verify the address. The
+whole itinerary is checked before applying a replacement; old place IDs, timing
+and hours cannot follow the changed stop. Failed, closed, duplicate, unsuitable
+or over-budget choices preserve the current plan. Starting a search clears the
+previous selection so it cannot be applied accidentally. Already-started live
+walks are not rewritten through this pre-walk editor.
+
+Validation: 51 client tests, 18 focused server tests, 99 full backend CI tests and
+production/client/server/Release archive builds pass. GitHub deployed source
+`fd797461ad7797a922940a3f7927cd196b5a1add` to Quavi dev. In a separate review
+account, live Greenwich Village options changed on refresh; replacing a restaurant
+with the exact New York Washington Square Park search result rechecked the route
+and changed the estimate from about 72 to 78 minutes. This was browser/API QA,
+not physical GPS or locked-phone acceptance.
+
+Signed `com.quavi.app` 1.0 (20) uploaded successfully on October 19 at 8:10 PM EDT.
+Tester availability and What to Test notes remain pending App Store Connect
+verification in the dedicated Chrome tab. Builds 18/19 were intermediate uploads
+and were not added to the internal tester group in these steps. Build 17 remains
+the last verified Testing release until build 20 group access is confirmed.

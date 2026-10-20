@@ -28,3 +28,13 @@ This is a focused client hardening pass on `mobile/social-delivery`, after TestF
 - A signed Release archive containing these fixes was uploaded as 1.0 (17) on October 19 at 6:14 PM EDT. Processing completed; build 17 is verified Testing in Quavi Development with the existing internal tester included and What to Test notes saved. Install via TestFlight → Update; these release steps do not complete the pending physical acceptance checks.
 
 No backend schema or cloud deployment changes are part of this pass.
+
+## Later October 19: showcase/planner follow-up
+
+51 client tests and 99 backend CI tests pass. Welcome restoration, profile-only
+setup restart, explicit search selection, seeded opening diversity, recent-route
+exclusion and checked pre-walk replacement are implemented. A live browser test
+replaced a Greenwich Village restaurant with the selected Washington Square Park
+result and updated the checked walking plan from about 72 to 78 minutes. Quavi
+dev deployment passed. Build 20 uploaded successfully; TestFlight group access
+awaits web verification. This does not close the physical/native checks above.
