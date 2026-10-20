@@ -913,4 +913,7 @@ references (3); all IDs and existing notes remain accessible.
 
 Validation: 56 client tests, production web build, Capacitor sync and signed
 Release archive pass. Browser checks cover the current planner at 402 × 874
-with no horizontal overflow. TestFlight 1.0 (22) is uploading for internal testing.
+with no horizontal overflow, including the 430 × 932 iPhone 15 Plus viewport.
+TestFlight **1.0 (22)** uploaded on October 19 at 10:43 PM EDT and is verified
+**Testing** in **Quavi Development**, with test notes saved. Existing tester access
+is preserved; this release does not add the external Quavi Friends group.
