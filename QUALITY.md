@@ -36,5 +36,5 @@ setup restart, explicit search selection, seeded opening diversity, recent-route
 exclusion and checked pre-walk replacement are implemented. A live browser test
 replaced a Greenwich Village restaurant with the selected Washington Square Park
 result and updated the checked walking plan from about 72 to 78 minutes. Quavi
-dev deployment passed. Build 20 uploaded successfully; TestFlight group access
-awaits web verification. This does not close the physical/native checks above.
+dev deployment passed. Build 20 is verified Testing in Quavi Development, with the existing internal
+tester included and What to Test notes saved. This does not close the physical/native checks above.

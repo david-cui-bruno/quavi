@@ -91,11 +91,10 @@ See **You** for the installed version/build number.
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
 name is necessary because Apple reported that “Quavi” is already in use.
-**1.0 (17)** is verified **Testing** in Quavi Development on October 19, 2026.
+**1.0 (20)** is verified **Testing** in Quavi Development on October 19, 2026.
 The existing internal tester has access, and What to Test notes are saved.
 Open TestFlight on the accepted tester’s iPhone, tap **Update**, then confirm
-**1.0 · Build 17** in You → Settings. External group **Quavi Friends** has build 15 submitted to Beta App Review and verified
-**Waiting for Review**. External testers cannot install until Apple approves it. Update every device using a migrated account: old builds'
+**1.0 · Build 20** in You → Settings. Build 15 is assigned to **Quavi Friends** and now shows Testing on the build overview. Build 20 is currently enabled for the internal group only. Update every device using a migrated account: old builds'
 whole-document writes cannot replace independent outing records or server-owned rewards. Earlier builds
 remain listed as release history, not a safe persistence rollback. App Store
 publication and external tester review remain separate release steps.
@@ -239,7 +238,7 @@ acceptance, operations hardening and real partner verification remain pending.
 | Done: social inbox and moderation implementation | Transactional request/accept/share notices, unread/read controls, keyset pagination, staff-only report evidence/review, audited story removal and seven-day social restrictions | 90 backend and 37 client tests cover recipient isolation, duplicate suppression, revocation, timestamp ties, role enforcement, hidden-story republish prevention, restrictions and push retries |
 | Remaining: physical push acceptance and moderation operations | Production APNs setup, worker scheduling and selected moderator role are configured; establish operational response/appeal practices | Verify actual TestFlight phone receipt, denial, off/logout/account switching and tap recovery; no real phone delivery is claimed by server/simulator checks |
 | Done: server-owned demo rewards | Deterministic task plans, append-only ledger, one-time redemptions, offline commands and legacy display-only XP | 63 backend and 30 client tests cover duplicate awards, concurrent spending, inflated balances and lost acknowledgements; partners remain fictional |
-| Done: real-account showcase and editable openings | Welcome on restored sign-in with explicit Continue, no anonymous demo entry on Welcome, profile-only setup restart, eight sampled opening themes, seeded route variations and recent-route exclusion; live stop suggestions plus place search with full walking/hours/time validation before applying swaps | 51 client tests, 18 targeted backend tests and 99 backend CI tests pass; Quavi dev deployment passed. Live browser generation, refresh, searched stop replacement and changed walking time verified; build 20 uploaded, tester access pending sign-in verification. Customization is for the three planned stops before Start; existing outings stay intact on failed checks |
+| Done: real-account showcase and editable openings | Welcome on restored sign-in with explicit Continue, no anonymous demo entry on Welcome, profile-only setup restart, eight sampled opening themes, seeded route variations and recent-route exclusion; live stop suggestions plus place search with full walking/hours/time validation before applying swaps | 51 client tests, 18 targeted backend tests and 99 backend CI tests pass; Quavi dev deployment passed. Live browser generation, refresh, searched stop replacement and changed walking time verified; build 20 is verified Testing in Quavi Development with testing notes saved. Customization is for the three planned stops before Start; existing outings stay intact on failed checks |
 | Done: explicit Explore location selection | Address-bearing search suggestions, keyboard selection and stale-response cancellation | Searching never silently chooses the first hit; the selected result coordinates drive the route |
 | Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) verified Testing in Quavi Development |
 | Done: first internal TestFlight beta | App Store Connect record, explicit app identifier, signed 1.0 (4), real-use onboarding, visible build label and beta instructions | Apple shows Testing in Quavi Development; owner is an accepted tester; installation on the physical phone is the next user step |
@@ -802,7 +801,9 @@ and changed the estimate from about 72 to 78 minutes. This was browser/API QA,
 not physical GPS or locked-phone acceptance.
 
 Signed `com.quavi.app` 1.0 (20) uploaded successfully on October 19 at 8:10 PM EDT.
-Tester availability and What to Test notes remain pending App Store Connect
-verification in the dedicated Chrome tab. Builds 18/19 were intermediate uploads
-and were not added to the internal tester group in these steps. Build 17 remains
-the last verified Testing release until build 20 group access is confirmed.
+Build 20 is verified **Testing** in **Quavi Development**, with the existing
+internal tester included and What to Test notes saved. The tester record showed
+build 17 installed before this update. Open TestFlight → Update, then confirm
+**Build 20** in You → Settings. Builds 18/19 were intermediate uploads and were
+not added to the internal tester group in these steps. Build 20 has not been
+assigned to the external Quavi Friends group in this release step.
