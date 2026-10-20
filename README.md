@@ -874,3 +874,23 @@ missing photos keep placeholders. Current source builds for the iPhone Simulator
 Native input automation remained intermittent, so complete native flow acceptance
 and a fresh TestFlight release remain separate checks, not inferred from browser
 captures.
+
+### TestFlight 1.0 (21) — approved visual review
+
+Signed Release archive `com.quavi.app` 1.0 (21) uploaded successfully on
+October 19 at 10:18 PM EDT. This includes the approved planning stages
+(location → duration → openings), orange Home and saved colour choices,
+cleaner Settings, flexible planning without hours restrictions, rough spend
+estimates, reopening saved routes, and the four final duration/share/circle/photo
+viewer corrections. Browser review images remain layout previews.
+
+Validation: 53 client tests pass; the current production web bundle, Capacitor
+sync and signed Release archive pass. Backend changes were deployed separately
+to Quavi dev. Physical GPS, locked-phone navigation and push receipt still need
+a real iPhone outing; uploading does not establish those checks.
+
+Apple processing completed. Build 21 is verified **Testing** in the internal
+**Quavi Development** group with the existing tester included and What to Test
+notes saved. Open TestFlight → Quavi → Update and confirm **1.0 (21)**. The
+tester record still showed build 20 installed at verification time. Build 21 was
+not assigned to the external Quavi Friends group in this release step.
