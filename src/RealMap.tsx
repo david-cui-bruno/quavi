@@ -1,3 +1,4 @@
+import {DemoRouteCredit} from './demo-walks'
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { GoogleMap, LatLngBounds, type Marker, type Polyline } from "@capacitor/google-maps";
@@ -18,6 +19,9 @@ export type RealPin = {
   ll: LatLng;
   kind: PinKind;
   label?: string;
+  number?: number;
+  size?: number;
+  offsetX?: number;
   sub?: string;
   selected?: boolean;
   quest?: boolean;
@@ -29,7 +33,7 @@ let lifecycle: Promise<unknown> = Promise.resolve();
 export function RealMap({
   pins,
   route,
-  doneRoute,
+  highlightRoute,
   coins,
   fit,
   inset = { top: 180, bottom: 340 },
@@ -38,10 +42,12 @@ export function RealMap({
   follow = false,
   zoomOnYou = 16,
   controlsTop = 176,
+  compact = false,
+  sampleRoute = false,
 }: {
   pins: RealPin[];
   route?: LatLng[];
-  doneRoute?: LatLng[];
+  highlightRoute?: LatLng[];
   coins?: MapCoin[];
   fit?: LatLng[];
   inset?: { top: number; bottom: number };
@@ -50,6 +56,8 @@ export function RealMap({
   follow?: boolean;
   zoomOnYou?: number;
   controlsTop?: number;
+  compact?: boolean;
+  sampleRoute?: boolean;
 }) {
   const life=useRuntime()
   const element = useRef<HTMLElement>(null),
@@ -70,6 +78,7 @@ export function RealMap({
     };
     const observer = new ResizeObserver(schedule);
     const measure = () => {
+      if(compact){setCover(0);setHeaderBottom(0);return}
       const panels = [...root.querySelectorAll<HTMLElement>("[data-map-obstruction], .sheet")];
       panels.forEach(p => { if (!observed.has(p)) { observed.add(p); observer.observe(p); } });
       const r = el.parentElement!.getBoundingClientRect();
@@ -77,6 +86,7 @@ export function RealMap({
       headers.forEach(p=>{if(!observed.has(p)){observed.add(p);observer.observe(p)}});
       setHeaderBottom(headers.length?Math.max(0,...headers.map(p=>p.getBoundingClientRect().bottom-r.top))+8:0);
       const tops = panels
+        .filter(p => getComputedStyle(p).visibility !== "hidden" && getComputedStyle(p).display !== "none")
         .map((p) => p.getBoundingClientRect())
         .filter(p => p.width > r.width * 0.5 && p.bottom >= r.bottom - 4 && p.top < r.bottom && p.top > r.top);
       setCover(tops.length ? Math.max(0, Math.min(r.height - 120, r.bottom - Math.min(...tops.map(p => p.top)))) : 0);
@@ -84,6 +94,8 @@ export function RealMap({
     observer.observe(el.parentElement!);
     const changes = new MutationObserver(schedule);
     changes.observe(root, { childList: true, subtree: true });
+    root.addEventListener("focusin", schedule);
+    root.addEventListener("focusout", schedule);
     root.addEventListener("animationend", schedule);
     root.addEventListener("transitionend", schedule);
     measure();
@@ -91,10 +103,12 @@ export function RealMap({
       cancelAnimationFrame(frame);
       observer.disconnect();
       changes.disconnect();
+      root.removeEventListener("focusin", schedule);
+      root.removeEventListener("focusout", schedule);
       root.removeEventListener("animationend", schedule);
       root.removeEventListener("transitionend", schedule);
     };
-  }, []);
+  }, [compact]);
   const [map, setMap] = useState<GoogleMap | null>(null),
     [error, setError] = useState(""),
     [following, setFollowing] = useState(follow);
@@ -185,6 +199,7 @@ export function RealMap({
           created = undefined;
           return;
         }
+        if(compact)await m.disableTouch();
         await m.setOnCameraMoveStartedListener((e) => {
           if (e.isGesture) setFollow(false);
         });
@@ -219,18 +234,18 @@ export function RealMap({
           if (created) await created.destroy();
         });
     };
-  }, [id, cover, life.epoch, life.active, life.online]);
+  }, [id, cover, life.epoch, life.active, life.online, compact]);
   const paddingReady = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     if (!map) return;
     const h = element.current?.clientHeight ?? 600;
-    const top = Math.min(headerBottom || inset.top, Math.max(0,h-100)),
-      bottom = Math.min(
+    const top = compact ? 40 : Math.min(headerBottom || inset.top, Math.max(0,h-100)),
+      bottom = compact ? 12 : Math.min(
         cover ? 60 : Math.max(70, inset.bottom),
         Math.max(20,h-top-80),
       );
     paddingReady.current = map.setPadding({ top, bottom, left: 24, right: 24 }).catch(() => {});
-  }, [map, inset.top, inset.bottom, cover, headerBottom]);
+  }, [map, inset.top, inset.bottom, cover, headerBottom, compact]);
   const fitKey = (fit ?? []).map((p) => p.lat + "," + p.lng).join("|");
   useEffect(() => {
     if (!map || !fit?.length) return;
@@ -249,11 +264,11 @@ export function RealMap({
     });
     let canceled=false;
     // Native bridge calls may execute concurrently; fit only after obstruction padding applies.
-    void paddingReady.current.then(()=>{if(!canceled)return map.fitBounds(bounds,32)}).catch(()=>{});
+    void paddingReady.current.then(()=>{if(!canceled)return map.fitBounds(bounds,compact?16:32)}).catch(()=>{});
     return ()=>{canceled=true};
     // Geometry controls framing; array identity changes while walking do not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, fitKey]);
+  }, [map, fitKey, compact]);
   const markers = useRef<string[]>([]),
     lines = useRef<string[]>([]);
   useEffect(() => {
@@ -267,7 +282,7 @@ export function RealMap({
         clicks.current.clear();
         const list: (Marker & {quavi?:unknown})[] = await Promise.all(pins.map(async (p) => ({
           coordinate: p.ll,
-          title: p.label ?? "",
+          title: p.number ? `Stop ${p.number}${p.label?`: ${p.label}`:""}` : p.label ?? "",
           snippet: p.sub ?? "",
           ...await mapArt(p),
           zIndex: p.selected ? 10 : p.kind === "current" ? 8 : 2,
@@ -301,8 +316,8 @@ export function RealMap({
     return () => {
       canceled = true;
     };
-  }, [map, pins, route, doneRoute, coins, you?.lat, you?.lng, youAvatar]);
-  const routeKey=JSON.stringify([route,doneRoute]);
+  }, [map, pins, route, highlightRoute, coins, you?.lat, you?.lng, youAvatar]);
+  const routeKey=JSON.stringify([route,highlightRoute]);
   useEffect(()=>{
     if(!map)return;
     let canceled=false;
@@ -314,18 +329,16 @@ export function RealMap({
         if (route && route.length > 1)
           paths.push({
             path: route,
-            strokeColor: "#1E1B16",
-            strokeWeight: 5,
-            strokeOpacity: Capacitor.isNativePlatform() ? 0.35 : 0,
-            tag: 'quavi-future-route',
-            icons: [{icon:{path:'M 0,0 0,0.1',strokeColor:'#1E1B16',strokeOpacity:0.35,strokeWeight:5},offset:'0',repeat:'12px'}],
-          });
-        if (doneRoute && doneRoute.length > 1)
-          paths.push({
-            path: doneRoute,
             strokeColor: "#EE6A2C",
-            strokeWeight: 7,
-            strokeOpacity: 0.95,
+            strokeWeight: 3,
+            strokeOpacity: 0.6,
+          });
+        if (highlightRoute && highlightRoute.length > 1)
+          paths.push({
+            path: highlightRoute,
+            strokeColor: "#EE6A2C",
+            strokeWeight: 5,
+            strokeOpacity: 0.9,
           });
         if (paths.length) lines.current = await map.addPolylines(paths);
 
@@ -386,6 +399,7 @@ export function RealMap({
           {error}
         </p>
       )}
+      {sampleRoute&&<DemoRouteCredit/>}
       {you && (
         <button
           className={`rmap-locate${following ? " on" : ""}`}

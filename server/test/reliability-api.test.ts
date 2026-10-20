@@ -39,6 +39,7 @@ const app = await createApp({
   auth,
   origins: [],
   liveGeo: {
+    photo:async(name)=>({url:'https://lh3.googleusercontent.com/photo',placeName:name,mapsUrl:'https://www.google.com/maps/?photo=1',authors:[{name:'Venue owner',url:'https://www.google.com/maps/contrib/1'}]}),
     check: async (points) => route(points),
     navigate: async (points) => route(points),
     place: async (name, ll, _id, context) =>
@@ -121,7 +122,7 @@ test("start/resume checks reject unsuitable stops and validate category/alias in
   const good = await call(body);
   assert.equal(good.statusCode, 200, good.body);
   assert.equal(good.json().hours[0].venueStatus, "matched");
-  assert.equal(good.json().hours[0].status, "open");
+  assert.equal(good.json().hours[0].status, "unknown");
   assert.equal(
     (
       await call({
@@ -131,4 +132,12 @@ test("start/resume checks reject unsuitable stops and validate category/alias in
     ).statusCode,
     400,
   );
+});
+
+test('venue photos require an authenticated bounded identity request and never enable URL proxying',async()=>{
+ const payload={name:'Test café',ll:{lat:40.731,lng:-74},kind:'Café'};
+ const call=(body:unknown,authorized=true)=>app.inject({method:'POST',url:'/v1/me/venue-photo',headers:authorized?{authorization:'Bearer '+token}:{},payload:body});
+ assert.equal((await call(payload,false)).statusCode,401);
+ assert.equal((await call({...payload,url:'http://127.0.0.1/private'})).statusCode,400);
+ const r=await call(payload);assert.equal(r.statusCode,200,r.body);assert.equal(r.headers['cache-control'],'no-store');assert.equal(r.json().photo.placeName,payload.name);assert.equal(r.json().photo.authors[0].name,'Venue owner');
 });

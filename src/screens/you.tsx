@@ -1,14 +1,15 @@
 import {useSocial} from '../social'
+import {reopenSavedPlan} from '../route-edit'
 import {SocialFriends,PrivateShare} from '../PrivateCircle'
-import { AppBuild } from '../AppBuild'
-import { AccountPanel } from '../AccountPanel'
+import { SettingsSheet } from '../SettingsSheet'
+import {Icon} from '../Icons'
 import { Photo } from '../CloudPhoto'
 import { useRef, useState } from 'react'
 import { Persona, flock, safePair, safeSurface } from '../brand/Persona'
 import { FRIEND_STORIES, SUGGESTED_FRIENDS, XP_PER_LEVEL, chapterImg, levelOf, chapterMeta, isPhotoTask, noteLines, notePrompt, photoLines, shareText, type Story } from '../data'
 import { photoFiles, photoFromFile } from '../photo'
 import { useStore } from '../store'
-import { Arrow, BackBtn, BG, Btn, Chip, NoteQuote, RatingDucks, Screen$, Sheet, type Bg } from '../ui'
+import { Arrow, BackBtn, BG, Btn, Chip, NoteQuote, RatingDucks, Screen$, type Bg } from '../ui'
 import { GameHUD } from '../GameMap'
 import { DemoRewards } from '../DemoRewards'
 
@@ -48,10 +49,9 @@ export function Shelf() {
                 const dark = bg === 'ink-p'
                 const extra = x.rating ? 40 : 0
                 return (
-                  <button key={x.id} className="tile fade-in" onClick={() => go('read', { id: x.id })} style={{ background: BG[bg], height: (tall ? 226 : 176) + extra, color: dark ? 'var(--paper)' : 'var(--ink)', padding: 14 }}>
+                  <button key={x.id} className="tile fade-in" onClick={() => go('read', { id: x.id })} style={{ background: BG[bg], height: (tall ? 226 : 194) + extra, color: dark ? 'var(--paper)' : 'var(--ink)', padding: 14 }}>
                     <div className="abs" style={{ left: '50%', top: tall ? 14 : 8, transform: 'translateX(-50%)' }}><Persona spec={flock(pn, pc)} size={tall ? 92 : 68} /></div>
-                    <div className="h1" style={{ position: 'absolute', left: 18, right: 18, bottom: 40 + extra, fontSize: 17, lineHeight: 1.05, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{x.title}</div>
-                    <div className="small" style={{ position: 'absolute', left: 18, right: 18, bottom: 18 + extra, fontWeight: 500 }}>{x.date} · {(account?social.data?.myPosts.some(p=>p.outingId===x.id):x.shared) ? 'Shared' : 'Not shared yet'}</div>
+                    <div className="shelf-card-copy" style={{bottom:18+extra}}><div className="h1">{x.title}</div><div className="small">{x.date} · {(account?social.data?.myPosts.some(p=>p.outingId===x.id):x.shared) ? 'Shared' : 'Not shared yet'}</div></div>
                     {x.rating && <div style={{ position: 'absolute', left: 14, bottom: 14 }}><RatingDucks rating={x.rating} size={12} compact /></div>}
                   </button>
                 )
@@ -65,13 +65,15 @@ export function Shelf() {
 }
 
 export function Profile() {
-  const { s, go, restart, account } = useStore()
+  const { s, go, account } = useStore()
   const social=useSocial()
   const friendCount=account?social.data?.friends.length??0:s.friends.length
   const { user } = s
-  const [confirm, setConfirm] = useState(false)
+  const [settings, setSettings] = useState(false)
   const { stage: stageName, disc: discName } = safePair(user.avatar)
   const rows: [string, string, () => void][] = [
+    ...(account ? [['Notifications', 'Updates from your circle', () => go('notifications')]] as [string,string,()=>void][] : []),
+    ...(social.data?.canModerate ? [['Moderation', 'Review private reports', () => go('moderation')]] as [string,string,()=>void][] : []),
     ['Your lists', Object.keys(s.lists).join(' · '), () => go('lists')],
     ['Story shelf', 'Stories you’ve told', () => go('shelf')],
     ['Friends', friendCount ? `${friendCount} friend${friendCount > 1 ? 's' : ''}` : 'Add your first friend', () => go('friends')],
@@ -80,10 +82,11 @@ export function Profile() {
   ]
   return (
     <Screen$ tabs="you" scroll>
+      <div className="profile-heading"><h1 className="h1 h-s">Your duck tales.</h1><button className="back" aria-label="Settings" onClick={()=>setSettings(true)}><Icon name="settings"/></button></div>
       <div className="clip" style={{ background: BG[stageName as Bg], borderRadius: 36, height: 250, position: 'relative', flex: 'none' }}>
         <div className="abs" style={{ left: '50%', top: 36, width: 180, height: 180, marginLeft: -90, borderRadius: '50%', background: BG[discName as Bg] }} />
         <div className="abs bounce" style={{ left: '50%', top: 22, marginLeft: -78 }}><Persona spec={user.avatar} size={156} /></div>
-        <span className="pill abs" style={{ left: 20, top: 20, background: 'var(--paper)' }}>{user.name} · you</span>
+        <span className="pill abs profile-name" style={{ left: 20, top: 20, background: 'var(--paper)' }}>{user.name} · you</span>
         <button className="btn primary abs" style={{ left: 90, right: 90, bottom: 14, width: 'auto', height: 46, fontSize: 14 }} onClick={() => go('customize', { editing: true })}>Edit your Quavi</button>
       </div>
       <div style={{ display: 'flex', margin: '12px 0', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
@@ -99,12 +102,10 @@ export function Profile() {
         <span><b style={{ fontSize: 20, letterSpacing: '-.01em' }}>{s.game.xp.toLocaleString()} XP</b></span>
         <span className="small muted" style={{ fontWeight: 500 }}>{XP_PER_LEVEL - (s.game.xp % XP_PER_LEVEL)} XP to Level {levelOf(s.game.xp) + 1}</span>
       </div>
-      <AccountPanel />
-      <AppBuild />
       <DemoRewards />
       <div className="card" style={{ borderRadius: 26, padding: 20, marginBottom: 10 }}>
         <div className="kicker">Badges</div>
-        <div className="chips" style={{ marginTop: 8 }}>{s.game.badges.map((b) => <span key={b} className="pill" style={{ background: 'var(--yellow)' }}>🏅 {b}</span>)}</div>
+        <div className="chips" style={{ marginTop: 8 }}>{s.game.badges.map((b) => <span key={b} className="pill" style={{ background: 'var(--yellow)' }}><Icon name="spark" size={14}/> {b}</span>)}</div>
       </div>
       <div className="col" style={{ gap: 8 }}>
         {rows.map(([t, m, fn]) => (
@@ -114,17 +115,7 @@ export function Profile() {
           </button>
         ))}
       </div>
-      {!account && <button className="small muted center" style={{ fontWeight: 700, marginTop: 14 }} onClick={() => setConfirm(true)}>Clear & restart demo</button>}
-      {confirm && (
-        <Sheet label="Log out and restart demo?" onClose={() => setConfirm(false)}>
-          <h2 className="h1 h-xs">Log out and restart?</h2>
-          <p className="body muted" style={{ margin: '8px 0 16px' }}>This clears your stories, lists and progress on this device. It can’t be undone.</p>
-          <div className="col" style={{ gap: 10 }}>
-            <Btn kind="secondary" onClick={restart}>Yes, log out and clear</Btn>
-            <Btn kind="soft" onClick={() => setConfirm(false)}>Keep my stuff</Btn>
-          </div>
-        </Sheet>
-      )}
+      {settings && <SettingsSheet onClose={()=>setSettings(false)}/>}
     </Screen$>
   )
 }
@@ -164,7 +155,7 @@ export function Lists() {
 }
 
 export function Read() {
-  const { s, route, say, update, account } = useStore()
+  const { s, route, say, update, account, go } = useStore()
   const mine = s.shelf.find((x) => x.id === route.params?.id)
   const st = mine ?? s.library[String(route.params?.id)] ?? (account?undefined:FRIEND_STORIES[0])
   const [privateShare,setPrivateShare]=useState(false)
@@ -193,12 +184,13 @@ export function Read() {
               <div className="clip" style={{ width: 84, height: 96, borderRadius: 24, background: `var(--${safeSurface(flock(c.persona, i === 0 ? 'Orange' : 'Yellow'), (['yellow-p', 'orange-p', 'ink-p'] as const)[i % 3])})`, position: 'relative', flex: 'none' }}>
                 {img ? <Photo src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="abs" style={{ left: 16, top: 10 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={60} /></div>}
               </div>
-              <div className="col" style={{ flex: 1, gap: 3 }}><span className="kicker">Chapter {i + 1} · {c.place}</span><span className="h1" style={{ fontSize: 19, lineHeight: 1.1 }}>{caps[i]}</span>{photoLines(st).filter((p) => p.chapter === i).map((p) => <Photo key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: '100%', height: 170, objectFit: 'cover', borderRadius: 20, marginTop: 8 }} />)}{noteLines(st).filter((n) => n.chapter === i).map((n) => <NoteQuote key={n.task} task={n.task} note={n.note} style={{ marginTop: 8 }} />)}</div>
+              <div className="col" style={{ flex: 1, gap: 3 }}><span className="kicker">Chapter {i + 1} · {c.place}</span><span className="h1" style={{ fontSize: 19, lineHeight: 1.1 }}>{caps[i]}</span>{photoLines(st).filter((p) => p.chapter === i).map((p) => <Photo retryable key={p.task} src={p.img} alt={`Photo: ${p.task}`} style={{ width: '100%', height: 170, objectFit: 'cover', borderRadius: 20, marginTop: 8 }} />)}{noteLines(st).filter((n) => n.chapter === i).map((n) => <NoteQuote key={n.task} task={n.task} note={n.note} style={{ marginTop: 8 }} />)}</div>
             </div>
           )
         })}
       </div>
       <div className="grow" style={{ minHeight: 20 }} />
+      {!mine&&!st.status&&(!st.outingPhase||st.outingPhase==='planned')&&<Btn onClick={()=>{update(x=>({...x,story:reopenSavedPlan(st),chapter:0}));go('details')}}>Open this route</Btn>}
       {account&&mine&&<Btn onClick={()=>setPrivateShare(true)}>Share with friends</Btn>}
       <Btn kind={account?"soft":"primary"} onClick={share}>{account?"Export a copy":"Share this story"}</Btn>
       {privateShare&&<PrivateShare story={st} onClose={()=>setPrivateShare(false)}/>}

@@ -6,7 +6,7 @@ export function OutingSaveStatus({ controls = false }: { controls?: boolean }) {
   const [choice, setChoice] = useState<"cloud" | "local" | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  if (!account || outingStatus === "demo") return null;
+  if (!account || outingStatus === "demo" || outingStatus === "saved" || outingStatus === "empty") return null;
   const labels = {
     saved: "Outings saved",
     empty: "No saved outings yet",
@@ -39,24 +39,23 @@ export function OutingSaveStatus({ controls = false }: { controls?: boolean }) {
             automatically. Choose which version of the conflicting outing to
             keep.
           </p>
-          <button
+          <div className="outing-conflict-actions"><button
             className="small"
             style={{ minHeight: 44, textDecoration: "underline" }}
             onClick={() => setChoice("cloud")}
           >
             Use cloud outing
           </button>
-          {" · "}
           <button
             className="small"
             style={{ minHeight: 44, textDecoration: "underline" }}
             onClick={() => setChoice("local")}
           >
             Keep my outing edits
-          </button>
+          </button></div>
         </>
       )}
-      {controls && !["saved", "conflict", "deleted"].includes(outingStatus) && (
+      {controls && !["saved", "empty", "saving", "conflict", "deleted", "offline", "sign-in-required"].includes(outingStatus) && (
         <button
           className="small"
           style={{ minHeight: 44, textDecoration: "underline" }}

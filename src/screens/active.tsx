@@ -1,23 +1,25 @@
-import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
+import {resumeDemoWalk} from '../demo-route.mjs'
+import {demoWalk} from '../demo-walks'
+import {Icon} from '../Icons'
+import {GoogleAttribution} from '../GoogleAttribution'
 import { Photo } from '../CloudPhoto'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BODY_PLAIN, Persona, flock } from '../brand/Persona'
 import { ARRIVE_RADIUS, NOTE_STARTERS, chapterMeta, levelName, levelOf, notePrompt, placeInfo, isPhotoTask, TRIP_XP_CAP, taskXp } from '../data'
 import { distance, fmtDist, fmtWalk } from '../geo'
-import { GameHUD, coinsFor } from '../GameMap'
-import { RealMap, useCoinCollect, type RealPin } from '../RealMap'
+import { GameHUD } from '../GameMap'
+import { RealMap, type RealPin } from '../RealMap'
 import { photoFromFile } from '../photo'
 import { START, useTracking } from '../tracking'
 import { bearingTo, compass, fmtMeters, locateOnRoute, stepText, useWalkingRoute } from '../nav'
 import { useStore } from '../store'
-import { Arrow, BackBtn, Btn, Check, Round, Screen$, Sheet, StatRow } from '../ui'
+import { Arrow, BackBtn, Btn, Check, Screen$, Sheet } from '../ui'
 import { canArrive } from '../location-session.mjs'
 import { useRuntime } from '../runtime'
 import { useOutingCheck } from '../use-outing-check'
 import { MomentSheet, useStory } from './story'
 
 export function Active() {
-  useLiveHoursClock()
   const { s, update, go, reset, say, syncStatus, outingStatus, account } = useStore()
   const tr = useTracking()
   const life = useRuntime()
@@ -26,6 +28,7 @@ export function Active() {
   const [tasks, setTasks] = useState(false)
   const [preview, setPreview] = useState(true)
   const [gps, setGps] = useState(false)
+  const [more, setMore] = useState(false)
   const [float, setFloat] = useState<string | null>(null)
   const i = s.chapter
   const c = story.chapters[i]
@@ -49,20 +52,23 @@ export function Active() {
   const skipRoute = arrived || farTransit || !recovery.ready
   // the route starts where you are when the stop (or its eligibility) changes; leaving the route asks for a new one
   const points = useMemo(() => (skipRoute ? null : [tr.pos, target]), [skipRoute, target.lat, target.lng]) // eslint-disable-line react-hooks/exhaustive-deps
-  const nav = useWalkingRoute(points,recovery.token)
+  const previousLat=i?metas[i-1].lat:story.origin?.lat??START.lat
+  const previousLng=i?metas[i-1].lng:story.origin?.lng??START.lng
+  const sampleLeg=useMemo(()=>demoWalk([{lat:previousLat,lng:previousLng},target]),[previousLat,previousLng,target])
+  const nav = useWalkingRoute(account?points:null,recovery.token)
   const loc = nav.route ? locateOnRoute(tr.pos, nav.route) : null
   useEffect(() => { if (loc && loc.off > 40 && !arrived) nav.reroute(tr.pos) }, [loc?.off, arrived]) // eslint-disable-line react-hooks/exhaustive-deps
   // hand the street route to the demo walker once per route (not on every step it takes)
-  useEffect(() => { tr.setPath(nav.route ? nav.route.geometry.slice(1) : null); if(story.source&&!nav.route)tr.setWalking(false) }, [nav.route,story.source]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { tr.setPath(nav.route ? nav.route.geometry.slice(1) : !story.source&&sampleLeg.length ? resumeDemoWalk(sampleLeg,tr.pos) : null); if(story.source&&!nav.route)tr.setWalking(false) }, [nav.route,story.source,sampleLeg,life.epoch]) // eslint-disable-line react-hooks/exhaustive-deps
   const [voice, setVoice] = useState(false)
 
   // what the banner says right now
   type Banner = { kind: string; modifier?: string; big: string; text: string; sub?: string; link?: string }
   let banner: Banner | null = null
   if (!recovery.ready) {
-    banner={kind:'head',big:recovery.phase==='offline'?'You’re offline':recovery.phase==='location'?'Waiting for GPS':recovery.phase==='error'?'Check your detour':recovery.phase==='sign-in'?'Sign in to continue':'Checking your detour',text:recovery.phase==='offline'?'Directions and arrival checks are paused.':recovery.phase==='location'?(tr.perm==='denied'?'Allow location in Settings, then retry GPS.':'Waiting for a fresh, precise position.'):recovery.phase==='error'?'Review the message below, then retry.':'Refreshing the walk and reported hours.',sub:'Your plan, notes and progress stay on this device.'}
+    banner={kind:'head',big:recovery.phase==='offline'?'You’re offline':recovery.phase==='location'?'Waiting for GPS':recovery.phase==='error'?'Check your detour':recovery.phase==='sign-in'?'Sign in to continue':'Checking your detour',text:recovery.phase==='offline'?'Directions and arrival checks are paused.':recovery.phase==='location'?(tr.perm==='denied'?'Allow location in Settings, then retry GPS.':'Waiting for a fresh, precise position.'):recovery.phase==='error'?'Review the message below, then retry.':'Refreshing your walking route.',sub:'Your plan, notes and progress stay on this device.'}
   } else if (!arrived) {
-    if (farTransit) {
+    if(!story.source&&sampleLeg.length){banner={kind:'head',big:'Sample walking route',text:`Follow the orange path to ${c.place}`}} else if (farTransit) {
       const mins = Math.max(5, Math.round(dist / 250))
       banner = { kind: 'transit', big: 'Take transit', text: `to ${c.place}`, sub: `About ${mins} min · ${fmtMeters(dist)} away`, link: `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=transit` }
     } else if (nav.route && loc) {
@@ -108,6 +114,7 @@ export function Active() {
   useEffect(() => {
     if (arrived && !seen.current[key]) {
       seen.current[key] = true
+      if(tr.mode==='demo')tr.setWalking(false)
       setStory(st=>st.arrivedStops?.includes(i)?st:{...st,arrivedStops:[...(st.arrivedStops??[]),i]})
       tr.notify(`You’ve arrived at ${c.place}`, `${meta.tasks.length} tasks · ${totalXp} XP waiting`)
       setTasks(true)
@@ -150,13 +157,6 @@ export function Active() {
     } else award(xp)
   }
 
-  const collect = useCallback((id: number) => {
-    update((st) => {
-      const got = st.game.collected[story.id] ?? []
-      if (got.includes(id)) return st
-      return { ...st, game: { ...st.game, coins: st.game.coins + (account?0:1), collected: { ...st.game.collected, [story.id]: [...got, id] } } }
-    })
-  }, [update, story.id,account])
 
   const photoInput = useRef<HTMLInputElement>(null)
   const photoKey = useRef('')
@@ -179,22 +179,21 @@ export function Active() {
     else update((st) => ({ ...st, chapter: st.chapter + 1 }))
   }
 
-  const route = useMemo(() => [story.origin ?? START, ...metas.map((m) => ({ lat: m.lat, lng: m.lng }))], [metas, story.origin])
-  const reached = i + (arrived ? 1 : 0)
-  // Live outings draw only the fetched path; later stops are pins rather than invented connecting lines.
-  const legRoute = useMemo(() => story.source ? (nav.route?.geometry ?? []) : [...(nav.route ? nav.route.geometry : [tr.pos, target]), ...metas.slice(i + 1).map((m) => ({ lat: m.lat, lng: m.lng }))], [nav.route, i, metas]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Draw only fetched pedestrian geometry. Sample stops never become invented straight-line roads.
+  const remainingPoints = useMemo(()=>[story.origin??START,...metas.map(m=>({lat:m.lat,lng:m.lng}))],[story.origin,metas])
+  const wholeWalk=useWalkingRoute(account&&story.source?remainingPoints:null)
+  const legRoute = story.source ? (wholeWalk.route?.geometry ?? nav.route?.geometry ?? []) : demoWalk(remainingPoints)
   const pins: RealPin[] = metas.map((m, k) => {
     const state = k < i || (k === i && allDone) ? 'done' : k === i ? 'current' : 'locked'
-    return { id: String(k), ll: { lat: m.lat, lng: m.lng }, kind: state as RealPin['kind'], label: state === 'current' ? story.chapters[k].place : undefined, selected: false }
+    return { id: String(k), ll: { lat: m.lat, lng: m.lng }, kind: state as RealPin['kind'], number:k+1, label: state === 'current' ? story.chapters[k].place : undefined, selected: false }
   })
-  const coins = useMemo(() => coinsFor(route, s.game.collected[story.id] ?? []), [route, s.game.collected, story.id])
   const next = story.chapters[i + 1]
-  useCoinCollect(tr.pos, story.source?[]:coins, collect)
 
   return (
     <Screen$ bg="paper" flush>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 'var(--active-map-bottom, 292px)' }}>
-        <RealMap pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]}  doneRoute={story.source?undefined:route.slice(0, reached + 1)} coins={story.source?[]:coins} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={16.5} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 'var(--active-map-bottom, 220px)' }}>
+        <RealMap sampleRoute={!story.source} pins={pins} fit={!tr.ready?metas.map(m=>({lat:m.lat,lng:m.lng})):undefined} route={recovery.ready?legRoute:[]} highlightRoute={recovery.ready&&!arrived?nav.route?.geometry:undefined} you={tr.ready?tr.pos:undefined} youAvatar={s.user.avatar} follow zoomOnYou={16.5} inset={{ top: banner ? 290 : 170, bottom: 30 }} controlsTop={banner ? 292 : 176} />
+
       </div>
       <div className="row active-map-header" data-map-top-obstruction style={{ position: 'absolute', left: 24, right: 24, top: 'var(--screen-top, 54px)', zIndex: 8, gap: 10 }}>
         <button className="back" onClick={() => { tr.setWalking(false); reset('home') }} aria-label="Back to Home" style={{ background: 'var(--paper)' }}>
@@ -213,21 +212,20 @@ export function Active() {
           </div>
           {banner.link
             ? <a className="navbtn" href={banner.link} target="_blank" rel="noopener noreferrer">Open</a>
-            : <button className="navbtn" onClick={() => setVoice((v) => !v)} aria-pressed={voice} aria-label={voice ? 'Turn off spoken directions' : 'Turn on spoken directions'}>{voice ? '🔊' : '🔇'}</button>}
+            : <button className="navbtn" onClick={() => setVoice((v) => !v)} aria-pressed={voice} aria-label={voice ? 'Turn off spoken directions' : 'Turn on spoken directions'}><Icon name={voice ? "volume" : "muted"}/></button>}
         </div>
       )}
       <button className="status-pill" onClick={() => setGps(true)}><span className="dotlive" />{tr.mode === 'live' ? (tr.ready?'Tracking · My GPS':'GPS · Waiting for location') : 'Tracking · Demo walk'}</button>
       </div>
       {float && <div className="xpfloat">{float}</div>}
 
-      <div data-map-obstruction className="qcard fade-in" key={i}>
+      <div data-map-obstruction className="qcard active-card fade-in" key={i}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className="kicker">Chapter {i + 1} of {story.chapters.length}</span>
           <span className="pill" style={{ background: arrived ? 'var(--yellow)' : 'var(--soft)' }}>{tr.mode==='live'&&!tr.ready?'Location needed':!recovery.ready?'Walking checks paused':arrived?'✦ You’re here':nav.route?`${fmtMeters(nav.route.distance)} · ${Math.ceil(nav.route.duration/60)} min walk`:story.source?'Route not checked':`${fmtDist(dist)} · ${getThere(dist)}`} </span>
         </div>
-        <h1 className="h1" style={{ fontSize: 28, margin: '4px 0 8px' }}>{c.title}</h1>
-        <p className="small muted active-stop-summary" style={{ marginBottom: 10 }}>{c.place} · {c.desc}</p>
-        <div className="active-stop-stats"><StatRow style={{ marginBottom: 12 }} size={18} stats={[[`${done.length}/${meta.tasks.length}`, 'Tasks'], [`${tripEarned}/${TRIP_XP_CAP}`, 'Trip XP'], [`${c.mins} min`, 'Here']]} /></div>
+        <h1 className="h1 active-stop-title">{c.title}</h1>
+        <div className="active-facts" aria-label="Stop progress"><span>{done.length}/{meta.tasks.length} tasks</span><span>{tripEarned}/{TRIP_XP_CAP} XP</span><span>{c.mins} min here</span></div>
         {(syncStatus==='storage-full'||outingStatus==='storage-full')&&<p role="alert" className="small" style={{marginBottom:10}}>Device storage is full. Keep Quavi open and free up space; your latest changes may not be saved.</p>}
         {!recovery.ready&&<p className="small" role="status" style={{marginBottom:10}}>{recovery.phase==='offline'?'Saved on this device. Reconnect to refresh directions and hours.':recovery.phase==='location'?tr.locationError||'Waiting for a fresh position. Arrival tasks stay paused.':recovery.message||'Refreshing your outing before continuing.'}</p>}
         <div className="row">
@@ -236,15 +234,12 @@ export function Active() {
               : tr.mode === 'demo' ? <Btn onClick={() => tr.setWalking(!tr.walking)}>{tr.walking ? 'Pause walking' : 'Walk there ▶'}</Btn>
               : <Btn kind="soft" disabled>Walk to {c.place}</Btn>}
           </div>
-          <Round kind={allDone ? 'yellow' : 'soft'} onClick={advance} label={next ? 'Next chapter' : 'Finish'} />
+          <button className="active-next" onClick={advance} aria-label={next ? 'Next chapter' : 'Finish'}>{next ? 'Next' : 'Finish'}<Arrow size={18}/></button>
         </div>
-        <div className="row" style={{ marginTop: 12, justifyContent: 'center', gap: 18 }}>
-          <button className="small" style={{ fontWeight: 700 }} onClick={() => setMoment(true)}>＋ Add a moment</button>
-          <button className="small" style={{ fontWeight: 700 }} onClick={() => setPreview(true)}>About this stop</button>
-          <button className="small" style={{ fontWeight: 700 }} disabled={!!account&&(done.length>0||tripEarned>0)} onClick={() => go('swap', { i })}>Rewrite chapter</button>
-        </div>
+        <div className="active-utilities"><button onClick={() => setMoment(true)}><Icon name="plus" size={18}/>Add a moment</button><button onClick={() => setPreview(true)}><Icon name="info" size={18}/>This stop</button><button aria-label="More stop options" onClick={()=>setMore(true)}><Icon name="more"/></button></div>
       </div>
 
+      {more && <Sheet label="Stop options" onClose={()=>setMore(false)}><h2 className="h1 h-s">A different turn?</h2><p className="body muted" style={{margin:'12px 0 20px'}}>Find another stop for this chapter.</p><Btn kind="soft" disabled={!!account&&(done.length>0||tripEarned>0)} onClick={()=>{setMore(false);go('swap',{i})}}>Rewrite chapter</Btn><button className="text-action" onClick={()=>setMore(false)}>Keep this stop</button></Sheet>}
       {preview && recovery.ready && !arrived && !tasks && (
         <Sheet label={`About ${c.place}`} onClose={() => setPreview(false)}>
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -256,8 +251,7 @@ export function Active() {
             <div className="wiggle"><Persona spec={flock(c.persona, 'Orange')} size={70} /></div>
           </div>
           <p className="body" style={{ margin: '14px 0 12px' }}>{placeInfo(c.place, c.desc).about}</p>
-          {story.source&&<><p className="small">{hoursLabel(c.hours)}{c.hours?.mapsURL&&<> · <a href={c.hours.mapsURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Check venue</a></>}</p><VenueEntry hours={c.hours}/><GoogleAttribution hours={[c.hours]}/>{[...new Set([...(story.walking?.warnings??[]),...(nav.route?.warnings??[])])].map(w=><p key={w} className="small" style={{marginBottom:8}}>{w}</p>)}</>}
-          <p className="small" style={{ margin: '-4px 0 12px', fontWeight: 500 }}>Earn XP toward demo partner rewards in You. Demo offers have no cash value.</p>
+          {story.source&&<><GoogleAttribution hours={[c.hours]} onMap/>{[...new Set([...(story.walking?.warnings??[]),...(nav.route?.warnings??[])])].map(w=><p key={w} className="small" style={{marginBottom:8}}>{w}</p>)}</>}
           <div className="kicker" style={{ marginBottom: 8 }}>Sidequests here · earn “{meta.badge}”</div>
           <div className="col" style={{ gap: 8, marginBottom: 16 }}>
             {meta.tasks.map((t) => (
@@ -338,7 +332,7 @@ export function Active() {
             <button className={`task${tr.mode === 'demo' ? ' on' : ''}`} onClick={() => tr.setMode('demo')}><span className="box">{tr.mode === 'demo' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>Demo walk</b><span className="small muted">Fast-forwards a walker along your route. Great for demos. Choose this explicitly to simulate movement.</span></span></button>
             <button className={`task${tr.mode === 'live' ? ' on' : ''}`} onClick={() => tr.setMode('live')}><span className="box">{tr.mode === 'live' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>My location</b><span className="small muted">Uses your phone’s GPS. Tasks unlock within {ARRIVE_RADIUS} m of a stop.</span></span></button>
           </div>
-          <p className="small muted" style={{ marginBottom: 12 }}>GPS runs while Quavi is open. Locking your phone or leaving the app pauses tracking and spoken directions. Return to refresh your position, walking route and reported hours. No background arrival notifications are sent.</p>
+          <p className="small muted" style={{ marginBottom: 12 }}>GPS runs while Quavi is open. Locking your phone or leaving the app pauses tracking and spoken directions. Return to refresh your position and walking route. No background arrival notifications are sent.</p>
           {tr.mode==='live'&&<><p role="status" className="small" style={{marginBottom:12}}>{tr.ready?`GPS accuracy: about ${Math.round(tr.accuracy??0)} m.`:tr.locationError||'Waiting for a fresh, precise location.'}</p><Btn kind="soft" onClick={tr.retryLocation}>Retry GPS</Btn></>}
           {tr.mode === 'demo' && <Btn kind="soft" onClick={() => { tr.teleport({ lat: meta.lat + 0.0002, lng: meta.lng }); setGps(false) }}>Teleport next to {c.place}</Btn>}
         </Sheet>

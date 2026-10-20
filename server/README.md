@@ -151,18 +151,22 @@ against the isolated local Auth emulator and PostgreSQL. Both production depende
 audits are clean; existing Capacitor/Firebase CLI development-tool advisories are
 separate from shipped runtime dependencies.
 
-## Next slice
+## Operations and remaining acceptance
 
-Verify email recovery/verification delivery, improve sync/photo retry UX, add app attestation,
-and configure deployment CI, alerting/budgets and a backup restore drill. Offline
-account edits are cached, but uncached private photos need a connection. Conflict
-resolution currently offers an explicit cloud-copy replacement; merging divergent
-local edits is not implemented. Initial cloud reads and token refresh need internet.
+The tested GitHub dev deployment, alerting/budget configuration, recovery checks and
+incident procedures are documented in [OPERATIONS.md](OPERATIONS.md). The verified
+workflow passed 97 isolated backend tests and deployed revision `quavi-api-00022-9gq`.
+Five monitoring policies and a project-scoped $100/month budget excluding credits
+are configured. Alert policy creation does not prove email delivery.
 
-Friends/circle remain local demo data, captions remain scripted,
-background location is unimplemented, and XP/rewards are client-controlled demo
-values. These are separate roadmap stages, not services supplied by this deploy.
-
+The point-in-time SQL restore drill verified eight migrations, constraints and
+restricted runtime permissions; its temporary instance was deleted. Remaining
+operations work includes email branding, operational alert inbox acceptance,
+app attestation,
+production isolation and richer sync/photo retry UX. Physical outing/offline/lock
+and push receipt tests remain deferred acceptance work. Friends/private sharing,
+server-owned demo rewards and independent outing records are already implemented;
+background location and real merchant redemption remain later work.
 
 ## Account deletion and data guards (October 18)
 
@@ -480,3 +484,81 @@ Details/entry links and Start also pass. No physical admission is claimed.
 Production entry validation and physical multi-region acceptance remain
 separate work. Reference: [Google Place resource](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places)
 and [Overture Places](https://docs.overturemaps.org/guides/places/).
+
+## Social delivery and moderation
+
+Migration 008 adds an account-cascading inbox, per-request identity, staff audit,
+restriction and hidden-outing records, APNs devices and a bounded delivery journal.
+GET `/v1/me/social/notifications` and `/social/feed` accept opaque keyset cursors;
+POST `/social/notifications/read` accepts up to 100 owned notice IDs. The social
+summary includes unread count. Stale/blocked/unshared/deleting content is filtered
+on every page. Writes enqueue notices transactionally; event keys deduplicate.
+
+`/social/moderation` list/decide and reported-content/photo reads require a
+verified Firebase `quaviModerator: true` claim. No ordinary-client route can set
+it. Staff cannot decide reports involving their own account. Decisions require
+private notes and audit; hide_story adds an outing tombstone to prevent republish;
+restrict_user lasts seven days and excludes social content while keeping safety
+and private outing controls. Duplicate open reports are coalesced, publication is
+bounded to 20 requests/day, and existing request/search/report quotas remain.
+
+PUT/DELETE `/social/devices` binds/detaches a bounded APNs token. Rebinding removes
+old pending sends, limits an account to five devices and pushes only events newer
+than registration. The worker rechecks account/content access and recipient/token
+ownership, locks deliveries, retries at most five attempts and prunes invalid
+tokens. A crash after Apple's acknowledgement can duplicate an alert; collapse IDs
+reduce this, and the inbox stays deduplicated. No names, content or locations go
+into APNs alert payloads. Run `node dist/push-worker.js` as a private Cloud Run job.
+
+`configure-push-dev.sh` configures the approved production key, a one-minute job
+scheduler, a dedicated quavi-push identity and a non-secret API availability flag.
+Its prerequisites grant that identity only Cloud SQL client plus access to the
+runtime database and APNs secrets; the public API never receives the signing key.
+Subsequent deploys preserve the flag and update the worker image after migrations.
+Monitor job failures; APNs auth/configuration failures never mark delivery sent.
+
+90 backend and 37 client tests pass, including real PostgreSQL/API authorization,
+timestamp-tie pages, revocation, restrictions, replay and push failure adapters.
+Tests used a fresh isolated localhost database because the older development test
+DB had a pre-existing migration-007 checksum mismatch; applied migrations were not
+rewritten or bypassed. Real-device push and operations review remain acceptance
+work until verified. Provider references: [Capacitor push](https://capacitorjs.com/docs/apis/push-notifications)
+and [Apple APNs](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+Live dev verification: source `7281a63`, serving revision `quavi-api-00018-65z`
+(includes push availability flag). Migration 008 and runtime bootstrap grants are
+applied. The dedicated quavi-push job runs every minute; only that identity has
+access to the APNs secret. The approved production signer was authenticated with
+a deliberately invalid synthetic token, which APNs rejected without targeting a
+real phone. Three-account API/native checks verify delivery deduplication, staff
+separation, report coalescing, removal revocation, private record retention and
+republish prevention. TestFlight 1.0 (14) is Testing in the existing internal group.
+Actual phone receipt, notification permission/account lifecycle and operational
+moderation response/appeal processes remain acceptance work.
+
+
+## Venue photos
+
+`POST /v1/me/venue-photo` accepts a bounded venue name, coordinates, optional
+Google place ID, kind and aliases. It uses the existing conservative identity
+matcher before fetching one current Places photo. The response contains a
+temporary Google media URL, author credits and source/report links; it never
+creates a private media upload or persists Google photo content. Deleted users
+are rechecked after the provider call, and per-account/project lookup quotas
+apply. Returning `{photo:null}` is an honest no-photo result.
+
+Deployed to Quavi dev revision `quavi-api-00020-nb4` (source `336b0bb`).
+Live acceptance verified image delivery with author/source credits for two
+real outing stops and Caffe Reggio, an honest no-photo result for an unmatched
+gallery, and a three-leg Google walking route with 37 geometry points.
+All 93 backend tests pass against an isolated migrated test database.
+
+
+### Authentication email delivery check
+
+On October 18, one verification email was sent through the signed-in app and one
+password-reset email through the same Firebase endpoint used by the client. Both
+were authorized and confirmed in Gmail INBOX, rather than spam. No action links
+were opened and the password was not changed. Subjects currently use the dev
+project ID; sender/application branding remains follow-up work. Operational alert
+receipt is a separate check and is not established by this authentication test.

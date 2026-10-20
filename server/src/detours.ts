@@ -33,6 +33,8 @@ export const detourInput = z
       .union([z.literal(30), z.literal(60), z.literal(120)])
       .default(60),
     age21: z.boolean().optional(),
+    variant: z.string().regex(/^[a-zA-Z0-9-]{1,64}$/).optional(),
+    avoidRoutes: z.array(z.array(z.string().max(200)).length(3)).max(6).optional(),
   })
   .strict();
 export const kinds: Record<string, { label: string; interest: string }> = {
@@ -138,21 +140,41 @@ export function planDetours(
       bg: "ink",
     },
   ] as const;
+  // Seeded variation is reproducible for repairs/tests, while each fresh request
+  // can sample a different mix. Distance, age and time gates still apply.
+  const noise = (key: string) => {
+    let hash = 2166136261;
+    for (const char of `${input.variant ?? ''}:${key}`) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+    return (hash >>> 0) / 4294967296;
+  };
+  const extraThemes = [
+    {id:'taste',title:'A taste of the neighborhood',interest:'food',persona:'Biscuit',color:'Orange',bg:'paper'},
+    {id:'pages',title:'The slow chapter',interest:'cozy',persona:'Luna',color:'Orange',bg:'orange'},
+    {id:'gallery',title:'A change of scene',interest:'art',persona:'Juno',color:'Yellow',bg:'paper'},
+    {id:'fresh',title:'The fresh-air chapter',interest:'air',persona:'Rex',color:'Yellow',bg:'ink'},
+    {id:'play',title:'Something a little unexpected',interest:'fun',persona:'Pip',color:'Orange',bg:'orange'},
+  ] as const;
+  const selectedThemes = input.variant ? [...themes,...extraThemes].filter(theme=>venues.some(v=>kinds[v.kind].interest===theme.interest)).sort((a,b)=>noise(`theme:${a.id}`)-noise(`theme:${b.id}`)).slice(0,3) : themes;
   const routes = new Set<string>();
-  const openings = themes.flatMap((theme) => {
+  const avoided = new Set((input.avoidRoutes ?? []).map(route=>route.join('|')));
+  const openings = selectedThemes.flatMap((theme) => {
     let prev = input.origin,
       totalWalk = 0;
     const chosen: Venue[] = [];
     for (let i = 0; i < 3; i++) {
-      const candidates = venues.filter(
+      let candidates = venues.filter(
         (v) =>
           !chosen.includes(v) && !chosen.some((c) => meters(c.ll, v.ll) < 40),
       );
+      if(input.variant && i===0){
+        const themed=candidates.filter(v=>kinds[v.kind].interest===theme.interest);
+        if(themed.length)candidates=themed;
+      }
       candidates.sort((a, b) => {
         const score = (v: Venue) => {
           const interest = kinds[v.kind].interest;
           return (
-            meters(prev, v.ll) / 140 +
+            meters(prev, v.ll) / 140 + (input.variant ? noise(`${theme.id}:${i}:${v.id}`) * 7 : 0) +
             (chosen.some((c) => kinds[c.kind].label === kinds[v.kind].label)
               ? 12
               : 0) -
@@ -180,7 +202,7 @@ export function planDetours(
     }
     if (chosen.length < 3) return [];
     const key = chosen.map((v) => v.id).join("|");
-    if (routes.has(key)) return [];
+    if (routes.has(key) || avoided.has(key)) return [];
     routes.add(key);
     let from = input.origin;
     const stay = Math.max(
@@ -195,7 +217,7 @@ export function planDetours(
         place: v.name,
         meta: `${kinds[v.kind].label} · hours unverified`,
         mins: stay,
-        desc: `A ${kinds[v.kind].label.toLowerCase()} near ${input.label}. Check opening hours, access and prices before heading over.`,
+        desc: `A ${kinds[v.kind].label.toLowerCase()} near ${input.label}. A stop to make your own.`,
         walk: `Approx. ${walk} min walk`,
         persona: ["Pip", "Juno", "Maple"][i],
         color: "Orange",
@@ -204,7 +226,9 @@ export function planDetours(
         kind: kinds[v.kind].label,
         placeId: v.id,
         aliases:v.aliases?.slice(0,8),
-        alts: [],
+        alts: venues.filter(other=>!chosen.some(stop=>stop.id===other.id || meters(stop.ll,other.ll)<40))
+          .sort((a,b)=>meters(v.ll,a.ll)-meters(v.ll,b.ll) || a.id.localeCompare(b.id)).slice(0,6)
+          .map(other=>({place:other.name,placeId:other.id,aliases:other.aliases?.slice(0,8),meta:`${kinds[other.kind].label} · check route and hours`,persona:'Juno',color:'Orange',ll:other.ll,kind:kinds[other.kind].label})),
       };
     });
     return [
@@ -232,7 +256,7 @@ export function planDetours(
     openings,
     notes: openings.length
       ? [
-          "Opening hours, admission and prices are unverified. Walking times are estimates; check the street route before starting.",
+          "Walking times are estimates. Save your plan and go when it suits you.",
         ]
       : [
           "We couldn’t find three suitable nearby stops within your time limit. Try another area or allow more time.",

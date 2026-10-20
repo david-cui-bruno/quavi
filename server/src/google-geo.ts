@@ -1,3 +1,4 @@
+import {providerSession} from './provider-session.js';
 import type { PlaceIdentity, PlaceRejection } from "./place-identity.js";
 import { GoogleAuth } from "google-auth-library";
 import type pg from "pg";
@@ -8,7 +9,7 @@ import {
   type WalkingProvider,
   type WalkingCheck,
 } from "./walking.js";
-import { assessPlace, googlePlace, type GooglePlace } from "./google-hours.js";
+import { assessPlace, assessPhotoPlace, googlePlace, type GooglePlace } from "./google-hours.js";
 export const WALKING_WARNING =
   "Walking directions may be missing sidewalks or pedestrian paths. Check local signs and conditions.";
 export type GoogleNavigation = WalkingCheck & {
@@ -22,7 +23,20 @@ export type GoogleNavigation = WalkingCheck & {
   }[];
   warnings: string[];
 };
+export type VenuePhoto = {
+  url: string;
+  placeName: string;
+  mapsUrl: string;
+  flagUrl?: string;
+  authors: { name: string; url?: string; avatar?: string }[];
+};
 export interface LiveGeo extends WalkingProvider {
+  photo?(
+    name: string,
+    ll: Point,
+    id?: string,
+    context?: PlaceIdentity,
+  ): Promise<VenuePhoto | null>;
   place(
     name: string,
     ll: Point,
@@ -191,23 +205,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
   const auth = new GoogleAuth({
     scopes: ["https://www.googleapis.com/auth/cloud-platform"],
   });
-  const request = async (
-    url: string,
-    body: unknown,
-    mask: string,
-    kind: "places" | "routes",
-  ) => {
-    // Calendar-month caps include failed attempts, shared by every API instance. No paid-service retry loop.
-    const {
-      rows: [q],
-    } = await pool.query(
-      `INSERT INTO request_quotas(owner_hash,category,window_at,used) VALUES('project',$1,date_trunc('month',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC',1) ON CONFLICT(owner_hash,category,window_at) DO UPDATE SET used=request_quotas.used+1 RETURNING used`,
-      ["google-" + kind],
-    );
-    if (q.used > 500)
-      throw Object.assign(new Error("Monthly map lookup cap reached"), {
-        statusCode: 429,
-      });
+  const request = providerSession(pool, async (url, body, mask) => {
     try {
       const token = await auth.getAccessToken();
       const r = await fetch(url, {
@@ -215,7 +213,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
         headers: {
           Authorization: "Bearer " + token,
           "X-Goog-User-Project": projectId,
-          "X-Goog-FieldMask": mask,
+          ...(mask ? { "X-Goog-FieldMask": mask } : {}),
           "Content-Type": "application/json",
         },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -232,7 +230,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
         statusCode: 503,
       });
     }
-  };
+  });
   const navigate = async (points: Point[]) => {
     walkingInput.parse({ points });
     const waypoint = (p: Point) => ({
@@ -254,7 +252,46 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
     return parseGoogleRoute(data, points);
   };
   const fields =
-    "id,displayName,location,businessStatus,currentOpeningHours,attributions,googleMapsUri,primaryType,types,pureServiceAreaBusiness,websiteUri";
+    "id,displayName,location,attributions,googleMapsUri,primaryType,types,pureServiceAreaBusiness,websiteUri";
+  async function lookup(
+    name: string,
+    ll: Point,
+    id?: string,
+    context?: PlaceIdentity,
+    photos = false,
+  ): Promise<GooglePlace | PlaceRejection | undefined> {
+    if (id) {
+      const raw = await request(
+        "https://places.googleapis.com/v1/places/" + encodeURIComponent(id),
+        undefined,
+        photos ? fields + ",photos" : fields,
+        "places",
+      );
+      const parsed = googlePlace.safeParse(raw);
+      if (parsed.success) return (photos ? assessPhotoPlace : assessPlace)([parsed.data], name, ll, context);
+      return undefined;
+    }
+    const raw = await request(
+      "https://places.googleapis.com/v1/places:searchText",
+      {
+        textQuery: name,
+        locationBias: {
+          circle: {
+            center: { latitude: ll.lat, longitude: ll.lng },
+            radius: 150,
+          },
+        },
+        maxResultCount: 3,
+        languageCode: "en",
+      },
+      (photos ? fields + ",photos" : fields)
+        .split(",")
+        .map((s) => "places." + s)
+        .join(","),
+      "places",
+    );
+    return (photos ? assessPhotoPlace : assessPlace)(raw.places ?? [], name, ll, context);
+  }
   return {
     navigate,
     async check(points) {
@@ -263,39 +300,68 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
       const { legs, duration, distance, provider, checkedAt } = r;
       return { legs, duration, distance, provider, checkedAt };
     },
-    async place(name, ll, id, context) {
-      if (id) {
-        const raw = await request(
-          "https://places.googleapis.com/v1/places/" + encodeURIComponent(id),
-          undefined,
-          fields,
-          "places",
-        );
-        const parsed = googlePlace.safeParse(raw);
-        if (parsed.success)
-          return assessPlace([parsed.data], name, ll, context);
-        return undefined;
-      }
+    place: lookup,
+    async photo(name, ll, id, context) {
+      const p = await lookup(name, ll, id, context, true);
+      if (!p || "rejected" in p) return null;
+      const photo = p.photos?.find(
+        (p) =>
+          /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(p.name) &&
+          !!safeLink(p.googleMapsUri),
+      );
+      if (!photo) return null;
       const raw = await request(
-        "https://places.googleapis.com/v1/places:searchText",
-        {
-          textQuery: name,
-          locationBias: {
-            circle: {
-              center: { latitude: ll.lat, longitude: ll.lng },
-              radius: 150,
-            },
-          },
-          maxResultCount: 3,
-          languageCode: "en",
-        },
-        fields
-          .split(",")
-          .map((s) => "places." + s)
-          .join(","),
+        "https://places.googleapis.com/v1/" +
+          photo.name +
+          "/media?maxWidthPx=960&maxHeightPx=960&skipHttpRedirect=true",
+        undefined,
+        "",
         "places",
       );
-      return assessPlace(raw.places ?? [], name, ll, context);
+      return photoResult(p, photo, raw);
     },
+  };
+}
+
+function safeLink(value?: string) {
+  if (!value) return undefined;
+  try {
+    const u = new URL(value.startsWith("//") ? "https:" + value : value);
+    return u.protocol === "https:" && !u.username && !u.password
+      ? u.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+/** Provider media URLs and credits remain transient, never user-owned story uploads. */
+export function photoResult(
+  place: GooglePlace,
+  photo: NonNullable<GooglePlace["photos"]>[number],
+  raw: unknown,
+): VenuePhoto | null {
+  const url = safeLink((raw as { photoUri?: string })?.photoUri),
+    mapsUrl = safeLink(photo.googleMapsUri);
+  if (!url || !mapsUrl) return null;
+  const host = new URL(url).hostname;
+  if (
+    !(
+      host === "googleusercontent.com" ||
+      host.endsWith(".googleusercontent.com") ||
+      host === "ggpht.com" ||
+      host.endsWith(".ggpht.com")
+    )
+  )
+    return null;
+  return {
+    url,
+    mapsUrl,
+    flagUrl: safeLink(photo.flagContentUri),
+    placeName: place.displayName.text,
+    authors: photo.authorAttributions.map((a) => ({
+      name: a.displayName,
+      url: safeLink(a.uri),
+      avatar: safeLink(a.photoUri),
+    })),
   };
 }

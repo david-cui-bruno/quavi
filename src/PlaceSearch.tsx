@@ -11,6 +11,7 @@ export function PlaceSearch({
   near,
   onBack,
   explore = false,
+  inline = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -18,6 +19,7 @@ export function PlaceSearch({
   near: LatLng;
   onBack?: () => void;
   explore?: boolean;
+  inline?: boolean;
 }) {
   const id = useId(),
     box = useRef<HTMLFormElement>(null),
@@ -82,7 +84,6 @@ export function PlaceSearch({
   return (
     <form
       ref={box}
-      data-map-top-obstruction
       className="place-search abs"
       onSubmit={(e) => {
         e.preventDefault();
@@ -90,13 +91,12 @@ export function PlaceSearch({
         else if (value.trim().length >= 2) void lookup(value.trim());
       }}
       style={{
-        left: 24,
-        right: 24,
-        top: explore
-          ? "calc(var(--screen-top, 54px) + 60px)"
-          : "var(--screen-top, 54px)",
+        position: inline ? 'relative' : 'absolute',
+        left: inline ? 0 : 24,
+        right: inline ? 0 : 24,
+        top: inline ? 0 : "var(--screen-top, 54px)",
         zIndex: 50,
-        bottom: shown ? 16 : undefined,
+        bottom: !inline && shown ? 16 : undefined,
         display: "flex",
         flexDirection: "column",
         pointerEvents: "none",
@@ -106,6 +106,7 @@ export function PlaceSearch({
       }}
     >
       <div
+        data-map-top-obstruction
         className="row"
         style={{
           height: explore ? 64 : 56,
@@ -149,7 +150,7 @@ export function PlaceSearch({
           {explore && (
             <label
               htmlFor={id}
-              style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em" }}
+              style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em" }}
             >
               WHERE TO?
             </label>
@@ -222,6 +223,7 @@ export function PlaceSearch({
       </div>
       {shown && (
         <div
+          data-map-top-obstruction
           className="place-suggestions"
           style={{
             background: "var(--white)",

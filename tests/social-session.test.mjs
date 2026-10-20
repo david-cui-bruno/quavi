@@ -21,6 +21,9 @@ async function load() {
     },
   ).outputText;
   const adapters = {
+    "./push": url("export const restorePush=async()=>{}"),
+    "@capacitor/push-notifications":url("export const PushNotifications={}"),
+    "@capacitor/core":url("export const Capacitor={getPlatform:()=> 'web'}"),
     "./cloud": url(
       "export const api=(...x)=>globalThis.__socialApi(...x);export const clearPhotoCache=()=>{}",
     ),
@@ -164,4 +167,26 @@ test("publishing waits for outing sync; failed saves cannot publish and commands
     await act(async () => r?.unmount());
     await cleanup();
   }
+});
+
+test('older feed responses cannot overwrite a newer refresh or a switched account',async()=>{
+ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+ globalThis.window={setInterval:()=>1,clearInterval:()=>{}};
+ globalThis.__socialLife={active:true,online:true};
+ globalThis.__socialStore={account:{uid:'page-alice'},route:{name:'circle'},saveForSharing:async()=>{}};
+ const pending=[];globalThis.__socialApi=(u,path)=>new Promise(resolve=>pending.push({uid:u.uid,path,resolve}));
+ const {SocialProvider,useSocial,cleanup}=await load();let value,r;
+ function Probe(){value=useSocial();return null}const tree=()=>React.createElement(SocialProvider,null,React.createElement(Probe));
+ try{
+  await act(async()=>{r=create(tree())});
+  await act(async()=>pending.at(-1).resolve({...summary('page-alice'),feedCursor:'cursor-one'}));
+  let page;await act(async()=>{page=value.loadMore()});
+  const older=pending.at(-1);assert.ok(older.path.includes('cursor-one'));
+  let refresh;await act(async()=>{refresh=value.refresh()});
+  await act(async()=>pending.at(-1).resolve({...summary('page-alice'),feed:[],feedCursor:null}));await refresh;
+  await act(async()=>older.resolve({feed:[{id:'revoked-old-story'}],nextCursor:null}));await page;
+  assert.equal(value.data.feed.length,0);
+  await act(async()=>{globalThis.__socialStore={...globalThis.__socialStore,account:{uid:'page-bob'}};r.update(tree())});
+  assert.equal(value.data,null);
+ }finally{await act(async()=>r.unmount());await cleanup()}
 });

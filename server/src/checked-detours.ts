@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import { planDetours, type detourInput, type VenueResult } from "./detours.js";
 import type { LiveGeo } from "./google-geo.js";
-import { checkHours } from "./live-detours.js";
+import { checkVenues } from "./live-detours.js";
 import type { WalkingProvider } from "./walking.js";
 import type { PlaceIdentity } from "./place-identity.js";
 
@@ -82,7 +82,7 @@ export async function checkedDetours(
         Math.min(20, Math.floor((input.minutes - walkMinutes) / 3)),
       );
       const hours = scoped
-        ? await checkHours(
+        ? await checkVenues(
             scoped,
             opening.chapters.map((c) => ({
               name: c.place,
@@ -91,17 +91,15 @@ export async function checkedDetours(
               kind: c.kind,
               aliases: c.aliases,
             })),
-            route,
           )
         : undefined;
       if (
         hours?.some(
-          (h) => h.status === "closed" || h.venueStatus === "unsuitable",
+          (h) => h.venueStatus === "unsuitable",
         )
       ) {
         opening.chapters.forEach((c, i) => {
           if (
-            hours[i].status === "closed" ||
             hours[i].venueStatus === "unsuitable"
           )
             blocked.add(c.placeId);
@@ -115,7 +113,7 @@ export async function checkedDetours(
         estimatedMinutes: walkMinutes + stay * 3,
         timeBudgetMinutes: input.minutes,
         walking: route,
-        tags: `Nearby · approx. ${walkMinutes + stay * 3} min · ${!hours ? "hours unverified" : hours.every((h) => h.status === "open") ? "reported open for your visit" : "some hours unknown"}`,
+        tags: `Nearby · approx. ${walkMinutes + stay * 3} min`,
         chapters: opening.chapters.map((c, i) => ({
           ...c,
           mins: stay,
@@ -124,7 +122,7 @@ export async function checkedDetours(
                 hours: hours[i],
                 googlePlaceId: hours[i].googlePlaceId,
                 googleRoute: true,
-                meta: `${c.kind} · ${hours[i].status === "open" ? "reported open for your visit" : "hours unknown"}`,
+                meta: `${c.kind} · ${stay} min`,
               }
             : {}),
           walk: `${Math.max(1, Math.ceil(route.legs[i].duration / 60))} min walk`,
@@ -142,7 +140,7 @@ export async function checkedDetours(
     openings,
     notes: openings.length
       ? [
-          "Pedestrian routes checked against the mapped path network. Reported hours cover arrival and your planned stay when available. Entry, tickets, accessibility and current street conditions still need checking.",
+          "Walking routes checked. Save this plan for whenever you want to go.",
           ...(limited
             ? [
                 "Some additional checks were unavailable. Showing only routes checked in this request.",
@@ -150,7 +148,7 @@ export async function checkedDetours(
             : []),
         ]
       : [
-          "No three-stop outing fits the available venues, reported hours and walking time here. Try another area, more time or a different time of day.",
+          "No three-stop outing fits the available venues and walking time here. Try another area or more time.",
         ],
   };
 }

@@ -21,9 +21,11 @@ const photos = new Map<string, Promise<string>>()
 export function clearPhotoCache() { photos.clear() }
 export function resolvePhoto(src: string): Promise<string> {
   const shared=/^quavi-shared:([0-9a-f-]{36}):([0-9a-f-]{36})$/.exec(src)
-  if (!src.startsWith('quavi-media:') && !shared) return Promise.resolve(src)
+  const moderation=/^quavi-moderation:([0-9a-f-]{36}):([0-9a-f-]{36})$/.exec(src)
+  if (!src.startsWith('quavi-media:') && !shared && !moderation) return Promise.resolve(src)
   const user = auth.currentUser
   if (!user) return Promise.reject(new Error('Sign in to see this photo.'))
+  if(moderation)return api<{url:string}>(user,`/social/moderation/${moderation[1]}/media/${moderation[2]}`).then(({url})=>url)
   if(shared)return api<{url:string}>(user,`/social/posts/${shared[1]}/media/${shared[2]}`).then(({url})=>url)
   const key = user.uid + ':' + src
   if (!photos.has(key)) {

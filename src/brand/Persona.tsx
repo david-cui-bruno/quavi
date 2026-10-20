@@ -105,6 +105,7 @@ export function Persona({
       style={{ display: 'block', overflow: 'visible', ...style }}
       role="img"
       aria-label={title ?? 'Quavi character'}
+      data-color={way}
       data-colors={usedColors(spec).join(',')}
     >
       <Part id={backOf(spec.hair)} way={way} />

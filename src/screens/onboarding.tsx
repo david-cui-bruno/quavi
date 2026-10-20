@@ -1,10 +1,11 @@
+import { Icon } from '../Icons'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth, accountError } from '../cloud'
 import { useEffect, useMemo, useState } from 'react'
 import { Logo, Persona, flock, randomSpec, safePair, safeSurface, type AvatarSpec, type Colorway } from '../brand/Persona'
 import { SLOT_OPTIONS, type Slot } from '../brand/partsData'
 import { INTERESTS, INTEREST_SPEC, MOODS } from '../data'
-import { useStore } from '../store'
+import { accountEntry, useStore } from '../store'
 import { Arrow, Badge, BackBtn, BG, Btn, Check, Chip, Round, SURFACE, Screen$, onDark, type Bg } from '../ui'
 
 export function Splash() {
@@ -25,7 +26,7 @@ export function Splash() {
 }
 
 export function Welcome() {
-  const { go } = useStore()
+  const { go, account, s } = useStore()
   // a fresh, random flock every visit; Yellow is left out because it vanishes on the yellow screen
   const crew = useMemo(() => Array.from({ length: 8 }, () => randomSpec(['Ink', 'Orange'])), [])
   return (
@@ -43,8 +44,7 @@ export function Welcome() {
           ))}
         </div>
       </div>
-      <Btn kind="secondary" onClick={() => go('login')}>Log in or create an account</Btn>
-      <button className="center small" style={{ fontWeight: 700, fontSize: 14, marginTop: 10, minHeight: 44 }} onClick={() => go('about')}>Explore the demo</button>
+      <Btn kind="secondary" onClick={() => go(account ? accountEntry(s.user) : 'login')}>{account ? `Continue${s.user.name.trim() ? ` as ${s.user.name.trim()}` : ''}` : 'Log in or create an account'}</Btn>
     </Screen$>
   )
 }
@@ -217,8 +217,8 @@ export function Customize() {
       <div className="clip" style={{ background: BG[(stageName === 'paper' ? 'soft' : stageName) as Bg], borderRadius: 36, height: 290, position: 'relative', flex: 'none', display: 'grid', placeItems: 'center', transition: 'background var(--motion-t3)' }}>
         <div className="abs" style={{ width: 196, height: 196, borderRadius: '50%', background: BG[discName as Bg], top: 50, transition: 'background var(--motion-t3)' }} />
         <div key={JSON.stringify(spec)} className="pop" style={{ position: 'relative', left: 11, marginTop: 8 }}><Persona spec={spec} size={196} /></div>
-        <span className="pill abs" style={{ left: 20, top: 20, background: 'var(--paper)' }}>{s.user.name} · you</span>
-        <button className="pill abs" style={{ right: 20, top: 20, background: 'var(--paper)' }} onClick={() => set({ ...flock(['Pip', 'Juno', 'Luna', 'Rex', 'Coco', 'Zed', 'Poppy', 'Dax'][Math.floor(Math.random() * 8)]), color: (['Yellow', 'Ink', 'Orange'] as Colorway[])[Math.floor(Math.random() * 3)] })}>🎲 Surprise me</button>
+        <div className="customize-topline"><span className="pill customize-name" style={{ background: 'var(--paper)' }}>{s.user.name} · you</span>
+        <button className="pill customize-surprise" style={{ background: 'var(--paper)' }} onClick={() => set({ ...flock(['Pip', 'Juno', 'Luna', 'Rex', 'Coco', 'Zed', 'Poppy', 'Dax'][Math.floor(Math.random() * 8)]), color: (['Yellow', 'Ink', 'Orange'] as Colorway[])[Math.floor(Math.random() * 3)] })}><Icon name="spark" size={16}/> Surprise me</button></div>
       </div>
       <div className="chips scroll" style={{ marginTop: 12 }}>
         {SLOTS.map((x) => <Chip key={x.id} on={slot === x.id} onClick={() => setSlot(x.id)}>{x.label}</Chip>)}
@@ -233,7 +233,7 @@ export function Customize() {
             <button key={o.id ?? 'none'} className="tile" aria-pressed={on} onClick={() => set(prev)} style={{ flex: 'none', width: 88, height: 104, borderRadius: 22, padding: 0, background: BG[name], transform: on ? 'scale(1.06)' : undefined, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', transition: 'background var(--motion-t3), transform var(--motion-t2) var(--ease-spring)' }}>
               <div style={{ position: 'absolute', top: 10, left: 14 }}><Persona spec={prev} size={60} /></div>
               {on && <span className="tick" style={{ left: 'auto', right: 6, top: 6, bottom: 'auto', width: 20, height: 20, background: dark ? 'var(--yellow)' : 'var(--ink)', color: dark ? 'var(--ink)' : 'var(--yellow)' }}><Check size={11} /></span>}
-              <span style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, padding: '0 6px', color: dark ? 'var(--paper)' : 'var(--ink)', position: 'relative' }}>{o.label}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, padding: '0 6px', color: dark ? 'var(--paper)' : 'var(--ink)', position: 'relative' }}>{o.label}</span>
             </button>
           )
         })}

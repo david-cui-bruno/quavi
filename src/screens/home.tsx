@@ -1,9 +1,9 @@
+import {homeTone} from '../review-home'
 import {useSocial} from '../social'
 import {CircleStatus,PrivateStory} from '../PrivateCircle'
 import {OutingSaveStatus} from '../OutingSaveStatus'
-import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
 import {useRuntime} from '../runtime'
-import { CityPicker } from '../CityPicker'
+import { CityPicker, type PlannerStage } from '../CityPicker'
 import { useTracking } from '../tracking'
 import { useEffect, useState } from 'react'
 import { BODY_PLAIN, Persona, flock, safeSurface, type Colorway } from '../brand/Persona'
@@ -65,17 +65,19 @@ export function Home() {
   const life=useRuntime()
   const { s, go, update, say, syncStatus, account } = useStore()
   const social=useSocial()
+  const tone=homeTone(s.user.homeColor)
   const [ending, setEnding] = useState(false)
   const live = s.story?.status === 'active' ? s.story : undefined
   const at = live ? Math.min(s.chapter, live.chapters.length - 1) : 0
   const mine = s.shelf.find((x) => x.shared)
   const feed = account ? (social.data?.feed??[]).slice(0,4) : [...(mine ? [{ ...mine, author: 'You' }] : []), ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))].slice(0, 4)
   return (
-    <Screen$ tabs="home" scroll>
+    <Screen$ bg={tone} tabs="home" scroll>
       <div className="row" style={{ gap: 10 }}>
         <Badge size={40} />
         <span className="wordmark" style={{ fontSize: 24 }}>Quavi</span>
         <div style={{ flex: 1 }} />
+        {account&&<button className="chip" aria-label={`Notifications${social.data?.notificationsUnread?`, ${social.data.notificationsUnread} unread`:''}`} onClick={()=>go('notifications')} style={{position:'relative',width:44,padding:0,justifyContent:'center'}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 8H3c0-1 3-1 3-8Z"/><path d="M10 21h4"/></svg>{!!social.data?.notificationsUnread&&<span style={{position:'absolute',right:3,top:2,width:8,height:8,borderRadius:'50%',background:'var(--orange)'}}/>}</button>}
         <span className="pill">📍 {s.user.neighborhood}</span>
       </div>
       {syncStatus==='storage-full'&&<p role="alert" className="small" style={{marginBottom:12}}>Device storage is full. Keep Quavi open and free up space before leaving; your latest changes may not be saved.</p>}
@@ -91,12 +93,12 @@ export function Home() {
           aria-label={live ? 'Continue your unfinished detour' : 'Take a detour'}
           style={{ position: 'absolute', left: '50%', top: 4, width: 156, height: 222, marginLeft: -78, transition: 'transform var(--motion-t1) var(--ease-default)' }}
         >
-          <svg viewBox="0 24 144 205" width="156" height="222" aria-hidden="true" style={{ position: 'absolute', inset: 0 }}><path className="shape" d={BODY_PLAIN} /></svg>
-          <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 206, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <svg viewBox="0 24 144 205" width="156" height="222" aria-hidden="true" style={{ position: 'absolute', inset: 0 }}><path className="shape" d={BODY_PLAIN} style={{fill:tone==='yellow'?'var(--ink)':undefined}} /></svg>
+          <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 206, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color:tone==='yellow'?'var(--yellow)':undefined }}>
             {live
               ? <span className="h1" style={{ fontSize: 28, lineHeight: 1 }}>Continue<br />detour</span>
               : <span className="h1" style={{ fontSize: 34, lineHeight: 1 }}>Take a<br />detour</span>}
-            <span className="go" style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--ink)', color: 'var(--yellow)', display: 'grid', placeItems: 'center' }}>
+            <span className="go" style={{ width: 42, height: 42, borderRadius: '50%', background: tone==='yellow'?'var(--yellow)':'var(--ink)', color: tone==='yellow'?'var(--ink)':'var(--yellow)', display: 'grid', placeItems: 'center' }}>
               {live ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg> : <Arrow size={20} />}
             </span>
           </span>
@@ -150,60 +152,34 @@ export function Home() {
   )
 }
 
-const MOOD_TO_OPENING: Record<string, string> = { bailed: 'cozy', closed: 'lucky', mood: 'lucky', weather: 'cozy', late: 'bold' }
 
 export function Openings() {
-  useLiveHoursClock()
-  const { s, update, go, account } = useStore()
-  const tracking = useTracking()
-  const [choices,setChoices] = useState<Opening[]>(account ? [] : OPENINGS)
-  const [liveOrigin,setLiveOrigin] = useState(false)
-  const [notice,setNotice] = useState('')
-  const [sel, setSel] = useState(OPENINGS.findIndex((o) => o.id === MOOD_TO_OPENING[s.mood ?? 'bailed']))
-  const [order, setOrder] = useState([0, 1, 2])
-  const start = (idx: number) => {
-    const o = choices[idx]
-    if(!o)return
-    if(o.origin){tracking.setMode(liveOrigin?'live':'demo');tracking.teleport(o.origin)}
-    update((st) => ({ ...st, story: startStory(o, st.user), chapter: 0 }))
-    go('writing')
-  }
-  return (
-    <Screen$ bg="yellow">
-      <div className="col" style={{flex:1,minHeight:0,overflowY:'auto',paddingBottom:4}}>
-      <BackBtn />
-      <div className="kicker" style={{ marginTop: 14 }}>{account ? 'A few ways tonight could go' : 'Three ways tonight could go'}</div>
-      <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Pick your<br />opening.</h1>
-      {account ? <CityPicker onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}} /> : <p className="small" style={{marginBottom:14}}>These are demo openings in West Village. <button style={{textDecoration:'underline',minHeight:44}} onClick={()=>go('login')}>Log in for nearby places</button></p>}
-      <div className="col stagger" style={{ gap: 14 }}>
-        {order.filter(i=>choices[i]).map((oi) => {
-          const o = choices[oi]
-          const bg = safeSurface(flock(o.persona, o.color), SURFACE[o.bg] as 'paper') as Bg
-          const dark = onDark(bg)
-          const on = sel === oi
-          return (
-            <button key={o.id} onClick={() => setSel(oi)} className={`tile opening-tile fade-in${o.source ? " live-opening" : ""}`} style={{ background: BG[bg], minHeight: o.source ? 150 : 112, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
-              <div className="h1 opening-title" style={{ fontSize: 25 }}>{o.title}</div>
-              <div className="small" style={{ fontWeight: 500 }}>{o.walking?.provider==='Google Maps'?`~${o.estimatedMinutes} min · ${o.chapters.every(c=>hoursLabel(c.hours)==='Reported open for your visit')?'reported open':'some hours unknown'}`:o.tags}</div>
-              <div className="small" style={{ fontWeight: 700, maxWidth:o.source?'calc(100% - 70px)':undefined, overflowWrap:'anywhere', color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
-              <div className="pcs" style={{ right: 14, bottom: o.source?-14:-26 }}><Persona spec={flock(o.persona, o.color)} size={96} /></div>
-              {on && <span className="tick" style={{ left: 'auto', right: 14, top: 14, bottom: 'auto' }}><Check /></span>}
-            </button>
-          )
-        })}
-      </div>
-      {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p><p>Check prices, entrances and local conditions before you go.</p></details>}
-      {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
-      <div className="grow" />
-      {choices[0]?.source&&<p className="small" style={{margin:'12px 0'}}>Places: <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a> · snapshot {new Date(choices[0].source.updatedAt).toLocaleDateString()}. Venue catalog only.</p>}
-      <Btn kind="secondary" disabled={!choices.length} onClick={() => start(sel)}>Go with this one</Btn>
-      <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
-        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} disabled={!choices.length} onClick={() => start(Math.floor(Math.random() * choices.length))}>Pick for me</button>
-        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} onClick={() => { setOrder((o) => o.length ? [...o.slice(1),o[0]] : o); }}>Show me different openings</button>
-      </div>
-      </div>
-    </Screen$>
-  )
+  const {update,go,back,account}=useStore(),tracking=useTracking()
+  const [choices,setChoices]=useState<Opening[]>(account?[]:OPENINGS)
+  const [stage,setStage]=useState<PlannerStage>(account?'location':'options')
+  const [backKey,setBackKey]=useState(0),[refreshKey,setRefreshKey]=useState(0),[refreshing,setRefreshing]=useState(false)
+  const [liveOrigin,setLiveOrigin]=useState(false),[notice,setNotice]=useState(''),[sel,setSel]=useState(0)
+  const [order,setOrder]=useState([0,1,2])
+  const start=()=>{const o=choices[sel];if(!o)return;if(o.origin){tracking.setMode(liveOrigin?'live':'demo');tracking.teleport(o.origin)}update(st=>({...st,story:startStory(o,st.user),chapter:0}));go('writing')}
+  const options=stage==='options'
+  return <Screen$ bg="yellow">
+    <div className="planner-layout">
+      <BackBtn onClick={()=>{if(account&&stage!=='location')setBackKey(n=>n+1);else back()}}/>
+      <h1 className="h1 h-l planner-title">{stage==='location'?<>Where shall<br/>we wander?</>:stage==='time'?<>How long<br/>do you have?</>:<>Pick your<br/>opening.</>}</h1>
+      {account&&<CityPicker onStage={setStage} backKey={backKey} refreshKey={refreshKey} onBusy={setRefreshing} onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}}/>}
+      {options&&<>
+        <div className="planner-options" role="group" aria-label="Route openings">
+          {order.filter(i=>choices[i]).map(oi=>{const o=choices[oi],bg=safeSurface(flock(o.persona,o.color),SURFACE[o.bg] as 'paper') as Bg,dark=onDark(bg),on=sel===oi;return <button key={o.id} onClick={()=>setSel(oi)} aria-pressed={on} className="tile planner-opening" style={{background:BG[bg],color:dark?'var(--paper)':'var(--ink)'}}>
+            <div className="planner-opening-copy"><h2 className="h1">{o.title}</h2><p className="small">{o.estimatedMinutes?`~${o.estimatedMinutes} min · ${o.chapters.length} stops`:o.tags}</p><p className="small planner-route">{o.chapters.map(c=>c.place).join(' → ')}</p></div>
+            <div className="planner-opening-duck"><Persona spec={flock(o.persona,o.color)} size={76}/></div>{on&&<span className="tick"><Check/></span>}
+          </button>})}
+          {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p></details>}
+          {choices[0]?.source&&<details className="route-notes"><summary>Venue data</summary><p>Venue catalog: <a href={choices[0].source.attributionURL} target="_blank" rel="noreferrer">Overture Maps</a>.</p></details>}
+        </div>
+        <div className="planner-footer"><Btn kind="secondary" disabled={refreshing||!choices.length} onClick={start}>Continue <Arrow size={20}/></Btn><button className="text-action" disabled={refreshing||!choices.length} onClick={()=>account?setRefreshKey(n=>n+1):setOrder(o=>[...o.slice(1),o[0]])}>{refreshing?'Finding new openings…':'Shuffle openings'}</button></div>
+      </>}
+    </div>
+  </Screen$>
 }
 
 export function Writing() {
@@ -301,7 +277,7 @@ export function Friend() {
 }
 
 export function Circle() {
-  const { s, go, account } = useStore()
+  const { s, go, account, say } = useStore()
   const social=useSocial()
   const mine = s.shelf.filter((x) => x.shared).map((x) => ({ ...x, author: 'You' }))
   const all = account ? social.data?.feed??[] : [...mine, ...FRIEND_STORIES.filter((f) => s.friends.some((x) => x.name.toLowerCase() === f.author?.toLowerCase()))]
@@ -311,7 +287,6 @@ export function Circle() {
       <div className="kicker" style={{ marginTop: 14 }}>Your circle</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Stories from<br />your circle.</h1>
       {account&&<CircleStatus/>}
-      {account&&<p className="small muted">Friends only · latest 50 shared stories. Refreshing checks your current access.</p>}
       {all.length === 0 && (
         <div className="col" style={{ gap: 12 }}>
           <div className="card" style={{ background: 'var(--soft)', padding: '20px 24px', borderRadius: 24 }}>
@@ -321,14 +296,14 @@ export function Circle() {
           </div>
         </div>
       )}
-      <div className="col stagger" style={{ gap: 12 }}>
+      <div className="circle-feed stagger">
         {all.map((f, i) => {
           const isMine = account ? 'outingId' in f && !!f.outingId : f.author === 'You'
           const sp = isMine ? s.user.avatar : flock(['Zed', 'Maple', 'Juno', 'Rex'][i % 4], 'Yellow')
           const bgn = safeSurface(sp, (['orange-p', 'ink-p', 'yellow-p'] as const)[i % 3]) as Bg
           const dark = onDark(bgn)
           return (
-            <button key={f.id + i} className="tile" onClick={() => (isMine ? go('read', { id: account && 'outingId' in f ? f.outingId : f.id }) : go('friend', { id: f.id }))} style={{ height: isMine && 'rating' in f && f.rating ? 150 : 112, background: BG[bgn], color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+            <button key={f.id + i} className="tile" onClick={() => (isMine ? go('read', { id: account && 'outingId' in f ? f.outingId : f.id }) : go('friend', { id: f.id }))} style={{ height: isMine && 'rating' in f && f.rating ? 176 : 148, background: BG[bgn], color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
               <div className="h1" style={{ fontSize: 20, lineHeight: 1.05, maxWidth: 200 }}>{f.title}</div>
               <div className="small" style={{ fontWeight: 500 }}>{isMine ? 'You' : f.author} · {f.chapters.length} stops · {f.date}</div>
               {isMine && 'rating' in f && f.rating && <div style={{ marginTop: 8 }}><RatingDucks rating={f.rating} /></div>}
@@ -337,6 +312,7 @@ export function Circle() {
           )
         })}
       </div>
+      {account&&social.data?.feedCursor&&<button className="btn soft" onClick={()=>void social.loadMore().catch(()=>say('Could not load older stories. Try again.'))}>Load older stories</button>}
     </Screen$>
   )
 }

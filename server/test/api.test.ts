@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { initializeApp, deleteApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { createApp } from "../src/app.js";
+import {LookupLimitError} from '../src/provider-session.js';
 import { ownerHash, processDeletions } from "../src/account.js";
 import { createPool } from "../src/db.js";
 import { readConfig } from "../src/config.js";
@@ -85,7 +86,7 @@ const headers = (user: number) => ({
 
 before(async () => {
   await app.ready();
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     const response = await fetch(
       `http://${config.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local-test`,
       {
@@ -479,7 +480,7 @@ test('city routes require identity and a configured provider and never return de
   assert.equal((await app.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:input})).statusCode,503)
   const real=await createApp({pool,auth,origins:[],detours:{async nearby(origin){return{updatedAt:new Date().toISOString(),venues:['coffee_shop','bookstore','park','museum'].map((kind,i)=>({id:String(i),name:'Place '+i,kind,ll:{lat:origin.lat+i*.001,lng:origin.lng},confidence:.95,status:'open'}))}}}})
   try{
-    const r=await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:input});assert.equal(r.statusCode,200);assert.ok(r.json().openings.length);assert.match(r.json().notes[0],/unverified/)
+    const r=await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:input});assert.equal(r.statusCode,200);assert.ok(r.json().openings.length);assert.match(r.json().notes[0],/Save your plan/)
     assert.equal((await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(1),payload:{...input,origin:{lat:999,lng:0}}})).statusCode,400)
   }finally{await real.close()}
 })
@@ -513,7 +514,7 @@ test('provider admission spaces concurrent instances and counts daily failures g
  }
 });
 
-test('Google preflight authenticates, checks visit hours and stores only independent data and place identifiers',async()=>{
+test('Google preflight authenticates, checks walking routes without opening-hours restrictions and stores only independent data and place identifiers',async()=>{
  const {googlePlace}=await import('../src/google-hours.js');
  let closed=false;
  const geo={async check(){return {legs:[{distance:200,duration:160}],distance:200,duration:160,checkedAt:new Date().toISOString(),provider:'Google Maps'}},async navigate(){return {...await this.check(),geometry:[{lat:40.73,lng:-74},{lat:40.731,lng:-74}],steps:[{maneuver:{type:'depart'},name:'',distance:200,duration:160,start:0}],warnings:['Check local signs']}},async place(){return googlePlace.parse({id:'test-place',displayName:{text:'Test Cafe'},location:{latitude:40.731,longitude:-74},businessStatus:closed?'CLOSED_TEMPORARILY':'OPERATIONAL',currentOpeningHours:{periods:[{open:{day:0,hour:0,minute:0}}]}})}};
@@ -521,8 +522,8 @@ test('Google preflight authenticates, checks visit hours and stores only indepen
  const payload={points:[{lat:40.73,lng:-74},{lat:40.731,lng:-74}],stops:[{name:'Test Cafe',ll:{lat:40.731,lng:-74},mins:20}]};
  try{
   assert.equal((await live.inject({method:'POST',url:'/v1/me/detour-check',payload})).statusCode,401);
-  const valid=await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload});assert.equal(valid.statusCode,200);assert.equal(valid.json().hours[0].status,'open');
-  closed=true;assert.equal((await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload})).statusCode,422);
+  const valid=await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload});assert.equal(valid.statusCode,200);assert.equal(valid.json().hours[0].status,'unknown');
+  closed=true;assert.equal((await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload})).statusCode,200);
   assert.equal((await live.inject({method:'POST',url:'/v1/me/detour-check',headers:headers(1),payload:{...payload,stops:[{...payload.stops[0],ll:{lat:41,lng:-74}}]}})).statusCode,400);
   const {buildStory,OPENINGS}=await import('../../src/data.ts');const story=buildStory(OPENINGS[0]);story.walking=valid.json();story.chapters[0]={...story.chapters[0],googleRoute:true,googlePlaceId:'test-place',hours:valid.json().hours[0],meta:'reported open for your visit'};
   const remote=await live.inject({url:'/v1/me/state',headers:headers(1)});const saved=await live.inject({method:'PUT',url:'/v1/me/state',headers:headers(1),payload:{state:{...state('QA'),story},revision:remote.json().revision}});assert.equal(saved.statusCode,200);
@@ -548,4 +549,45 @@ test('account onboarding progress accepts only known setup steps and keeps old s
   }
   const value=state('New');Object.assign(value.user,{onboarding:'skip-everything'})
   assert.throws(()=>appStateSchema.parse(value))
+})
+
+
+test('Home colour preferences accept the supported palette and retain compatibility with older profiles',async()=>{
+ const {appStateSchema}=await import('../src/state-schema.js');
+ for(const homeColor of ['orange-p','yellow','paper','ink'])assert.equal(appStateSchema.parse({...state('Palette'),user:{...state('Palette').user,homeColor}}).user.homeColor,homeColor);
+ assert.equal(appStateSchema.parse(state('Older')).user.homeColor,undefined);
+ assert.equal(appStateSchema.safeParse({...state('Invalid'),user:{...state('Invalid').user,homeColor:'blue'}}).success,false);
+});
+
+test('normal shuffle sessions allow more than twelve requests while burst limits remain explicit',async()=>{
+ const real=await createApp({pool,auth,origins:[],detours:{async nearby(origin){return{updatedAt:new Date().toISOString(),venues:['coffee_shop','bookstore','park','museum'].map((kind,i)=>({id:String(i),name:'Shuffle place '+i,kind,ll:{lat:origin.lat+i*.001,lng:origin.lng},confidence:.95,status:'open'}))}}}})
+ const payload={origin:{lat:48.8566,lng:2.3522},label:'Paris',interests:['cozy'],minutes:60}
+ try{
+  await pool.query("DELETE FROM request_quotas WHERE owner_hash=$1 AND category IN ('detours','detour-burst')",[ownerHash(users[6].uid)])
+  for(let i=0;i<20;i++){
+   const r=await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(6),payload:{...payload,variant:'shuffle-'+i}})
+   assert.equal(r.statusCode,200,`shuffle ${i+1}: ${r.body}`)
+  }
+  const limited=await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(6),payload})
+  assert.equal(limited.statusCode,429);assert.equal(limited.headers['retry-after'],'60');assert.match(limited.json().error,/in a minute/)
+ }finally{await real.close()}
+})
+
+test('map budget exhaustion returns an actionable message without exposing provider details',async()=>{
+ const real=await createApp({pool,auth,origins:[],walking:{async check(){throw new LookupLimitError('Map search capacity is used up for this month. Your current openings are still available.',3600)}}})
+ try{
+  const r=await real.inject({method:'POST',url:'/v1/me/walking-check',headers:headers(7),payload:{points:[{lat:40.73,lng:-74},{lat:40.731,lng:-74}]}})
+  assert.equal(r.statusCode,429);assert.equal(r.json().code,'map_capacity');assert.match(r.json().error,/current openings/);assert.equal(r.headers['retry-after'],'3600')
+ }finally{await real.close()}
+})
+
+
+test('browsing forty venue cards does not exhaust the hourly photo allowance',async()=>{
+ const real=await createApp({pool,auth,origins:[],liveGeo:{async photo(){return null},async place(){return undefined},async navigate(){return null},async check(){return null}}})
+ try{
+  for(let i=0;i<40;i++){
+   const r=await real.inject({method:'POST',url:'/v1/me/venue-photo',headers:headers(7),payload:{name:'Coffee '+i,ll:{lat:40.73,lng:-74}}})
+   assert.equal(r.statusCode,200,`photo ${i+1}: ${r.body}`)
+  }
+ }finally{await real.close()}
 })

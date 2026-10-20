@@ -1,3 +1,4 @@
+import {Notifications,Moderation} from './SocialInbox'
 import {SocialProvider} from './social'
 import { StoreProvider, useStore, type Screen } from './store'
 import { About, Customize, Interests, Login, Mood, Splash, Welcome } from './screens/onboarding'
@@ -12,13 +13,13 @@ import { observeRuntime } from './runtime'
 import { OPENINGS, buildStory } from './data'
 
 const SCREENS: Record<Screen, ComponentType> = {
-  splash: Splash, welcome: Welcome, login: Login, interests: Interests, customize: Customize, mood: Mood,
+  notifications: Notifications, moderation: Moderation, splash: Splash, welcome: Welcome, login: Login, interests: Interests, customize: Customize, mood: Mood,
   home: Home, openings: Openings, writing: Writing, details: Details, active: Active, swap: Swap, complete: Complete, tell: Tell,
   friend: Friend, explore: Explore, route: RouteScreen, stop: Stop, shelf: Shelf, profile: Profile, lists: Lists, read: Read, circle: Circle, about: About, friends: Friends,
 }
 
 const TITLES: Partial<Record<Screen, string>> = {
-  splash: 'Welcome', welcome: 'Welcome', login: 'Log in', interests: 'Interests', customize: 'Your Quavi', mood: 'What happened?',
+  notifications: 'Notifications', moderation: 'Moderation', splash: 'Welcome', welcome: 'Welcome', login: 'Log in', interests: 'Interests', customize: 'Your Quavi', mood: 'What happened?',
   home: 'Home', openings: 'Openings', writing: 'Writing', details: 'Detour', active: 'On your detour', swap: 'Swap a stop', complete: 'Detour complete',
   tell: 'Tell the story', friend: 'Friend’s story', explore: 'Explore', route: 'Route', stop: 'Stop', shelf: 'Story shelf', profile: 'You', lists: 'Your lists', read: 'Story', circle: 'Your circle', about: 'About you', friends: 'Friends',
 }

@@ -1,3 +1,5 @@
+import {LookupLimitError} from './provider-session.js';
+import * as delivery from './social-delivery.js';
 import * as social from './social.js';
 import {ensureRewards,rewardsActive,rewardState,redeem} from "./rewards.js";
 import { ensureOutings, listOutings, applyOutingOperation } from "./outings.js";
@@ -14,7 +16,7 @@ import { ownerHash, lockAccount, quota } from "./account.js";
 import { detourInput, planDetours, type VenueProvider } from "./detours.js";
 import { checkedDetours } from "./checked-detours.js";
 import { walkingInput, type WalkingProvider } from "./walking.js";
-import { liveCheckInput, checkHours } from "./live-detours.js";
+import { liveCheckInput, liveStop, checkVenues } from "./live-detours.js";
 import type { LiveGeo } from "./google-geo.js";
 import { scrubGoogleContent } from "./google-retention.js";
 import { appStateSchema, inspectState } from "./state-schema.js";
@@ -22,6 +24,7 @@ import { appStateSchema, inspectState } from "./state-schema.js";
 declare module "fastify" {
   interface FastifyRequest {
     uid: string;
+    moderator: boolean;
     authTime: number;
     db: pg.PoolClient | null;
   }
@@ -63,6 +66,7 @@ export async function createApp(options: {
       : false,
   });
   app.decorateRequest("uid", "");
+  app.decorateRequest("moderator",false);
   app.decorateRequest("authTime", 0);
   app.decorateRequest("db", null);
   await app.register(cors, {
@@ -75,6 +79,7 @@ export async function createApp(options: {
     reply.header("X-Content-Type-Options", "nosniff");
   });
   app.setErrorHandler((error, req, reply) => {
+    if(error instanceof LookupLimitError)return reply.header("Retry-After",error.retryAfterSeconds).code(429).send({error:error.message,code:"map_capacity"});
     if(error instanceof social.SocialError)return reply.code(error.statusCode).send({error:error.message});
     if (error instanceof ZodError)
       return reply.code(400).send({
@@ -124,6 +129,7 @@ export async function createApp(options: {
             false,
           );
           req.uid = token.uid;
+          req.moderator=token.quaviModerator===true;
           req.authTime = token.auth_time;
         } catch {
           return reply
@@ -229,10 +235,12 @@ export async function createApp(options: {
             error:
               "City-aware detours are not available. Try again later or use the separate demo.",
           });
-        if (!(await quota(req.db!, ownerHash(req.uid), "detours", 12, 86400)))
+        if (!(await quota(req.db!, ownerHash(req.uid), "detour-burst", 20, 60)))
+          return reply.header("Retry-After",60).code(429).send({error:"Give these openings a moment. You can shuffle again in a minute."});
+        if (!(await quota(req.db!, ownerHash(req.uid), "detours", 120, 86400)))
           return reply
             .code(429)
-            .send({ error: "Daily detour limit reached. Try again tomorrow." });
+            .send({ error: "You’ve explored a lot of openings today. Your current choices are still available; new searches reset tomorrow." });
         const db = req.db!;
         req.db = null;
         try {
@@ -265,6 +273,17 @@ export async function createApp(options: {
             .send({ error: "This account is being deleted." });
         return planned;
       });
+      api.post('/me/venue-photo',async(req,reply)=>{
+        const input=liveStop.omit({mins:true}).parse(req.body);
+        if(!options.liveGeo?.photo)return reply.code(503).send({error:'Venue photos are unavailable. Try again later.'});
+        if(!await quota(req.db!,ownerHash(req.uid),'venue-photo',240,3600))return reply.code(429).send({error:'Too many photo lookups. Try again later.'});
+        const db=req.db!;req.db=null;
+        try{await db.query('COMMIT')}finally{db.release()}
+        const photo=await options.liveGeo.photo(input.name,input.ll,input.googlePlaceId,{kind:input.kind,aliases:input.aliases});
+        req.db=await options.pool.connect();await req.db.query('BEGIN');await lockAccount(req.db,req.uid);
+        if((await req.db.query('SELECT 1 FROM account_deletions WHERE owner_hash=$1',[ownerHash(req.uid)])).rowCount)return reply.code(410).send({error:'This account is being deleted.'});
+        return {photo};
+      });
       api.post("/me/walking-check", async (req, reply) => {
         const { points } = walkingInput.parse(req.body);
         if (!options.walking)
@@ -272,7 +291,7 @@ export async function createApp(options: {
             error: "Walking checks are unavailable. Try again shortly.",
           });
         if (
-          !(await quota(req.db!, ownerHash(req.uid), "walking-check", 60, 3600))
+          !(await quota(req.db!, ownerHash(req.uid), "walking-check", 240, 3600))
         )
           return reply
             .code(429)
@@ -323,7 +342,7 @@ export async function createApp(options: {
               req.db!,
               ownerHash(req.uid),
               "google-check",
-              60,
+              240,
               3600,
             ))
           )
@@ -340,7 +359,7 @@ export async function createApp(options: {
           const walking = await options.liveGeo.navigate(input.points);
           const hours =
             walking && input.stops
-              ? await checkHours(options.liveGeo, input.stops, walking)
+              ? await checkVenues(options.liveGeo, input.stops)
               : undefined;
           req.db = await options.pool.connect();
           await req.db.query("BEGIN");
@@ -364,13 +383,6 @@ export async function createApp(options: {
                   "No suitable walking route connects these stops. Choose another detour.",
               });
           if(hours?.some(h=>h.venueStatus==='unsuitable'))return reply.code(422).send({error:'A stop no longer matches a suitable visit venue. Choose a replacement or another detour.'});
-          if (hours?.some((h) => h.status === "closed"))
-            return reply
-              .code(422)
-              .send({
-                error:
-                  "A stop is reported closed during your planned visit. Choose another detour.",
-              });
           if (kind === "walking-route") return walking;
           const { legs, distance, duration, provider, checkedAt, warnings } =
             walking;
@@ -500,11 +512,22 @@ export async function createApp(options: {
         );
         return { id, status: "uploaded" };
       });
-      api.get('/me/social',async req=>social.socialState(req.db!,req.uid));
+      api.get('/me/social',async req=>({...await social.socialState(req.db!,req.uid),canModerate:req.moderator}));
+      api.get('/me/social/feed',async req=>social.feedPage(req.db!,req.uid,(req.query as any).cursor));
+      api.get('/me/social/notifications',async req=>delivery.inbox(req.db!,req.uid,(req.query as any).cursor));
+      api.post('/me/social/notifications/read',async req=>delivery.markRead(req.db!,req.uid,req.body));
+      api.put('/me/social/devices',async req=>delivery.registerDevice(req.db!,req.uid,req.body));
+      api.delete('/me/social/devices',async req=>delivery.removeDevice(req.db!,req.uid,req.body));
+      api.get('/me/social/push-status',async()=>({configured:process.env.APNS_PUSH_ENABLED==='true'}));
+      const staff=(req:any)=>{if(!req.moderator)throw new social.SocialError(403,'Moderator access required.');};
+      api.get('/me/social/moderation',async req=>{staff(req);return delivery.moderationQueue(req.db!,(req.query as any).cursor)});
+      api.get('/me/social/moderation/:id',async req=>{staff(req);return delivery.moderationEvidence(req.db!,(req.params as any).id)});
+      api.get('/me/social/moderation/:id/media/:mediaId',async(req,reply)=>{staff(req);const p=req.params as any;const key=await delivery.moderationMedia(req.db!,p.id,p.mediaId);if(!options.media)return reply.code(503).send({error:'Photo storage unavailable'});return {url:await options.media.read(key),expiresInSeconds:300}});
+      api.post('/me/social/moderation',async req=>{staff(req);return delivery.moderate(req.db!,req.uid,req.body)});
       api.put('/me/social/profile',async req=>social.setHandle(req.db!,req.uid,req.body));
       api.post('/me/social/lookup',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-lookup',30,3600))return reply.code(429).send({error:'Too many searches. Try again later.'});return social.lookup(req.db!,req.uid,req.body)});
       api.post('/me/social/relationships',async(req,reply)=>{if((req.body as any)?.action==='request'&&!await quota(req.db!,ownerHash(req.uid),'social-request',30,3600))return reply.code(429).send({error:'Too many friend requests. Try again later.'});return social.relationship(req.db!,req.uid,req.body)});
-      api.post('/me/social/posts',async req=>social.publish(req.db!,req.uid,req.body));
+      api.post('/me/social/posts',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-publish',20,86400))return reply.code(429).send({error:'Sharing limit reached. Try again tomorrow.'});return social.publish(req.db!,req.uid,req.body)});
       api.get('/me/social/posts/:id',async req=>social.readPost(req.db!,req.uid,(req.params as any).id));
       api.delete('/me/social/posts/:id',async req=>social.unpublish(req.db!,req.uid,(req.params as any).id));
       api.post('/me/social/reports',async(req,reply)=>{if(!await quota(req.db!,ownerHash(req.uid),'social-report',10,86400))return reply.code(429).send({error:'Report limit reached. You can still block this person.'});return social.report(req.db!,req.uid,req.body)});

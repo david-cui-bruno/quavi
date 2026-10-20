@@ -40,6 +40,26 @@ export const googlePlace = z.object({
     latitude: z.number().min(-85).max(85),
     longitude: z.number().min(-180).max(180),
   }),
+  photos: z
+    .array(
+      z.object({
+        name: z.string().max(4096),
+        googleMapsUri: z.string().max(4096).optional(),
+        flagContentUri: z.string().max(4096).optional(),
+        authorAttributions: z
+          .array(
+            z.object({
+              displayName: z.string().max(300),
+              uri: z.string().max(4096).optional(),
+              photoUri: z.string().max(4096).optional(),
+            }),
+          )
+          .max(20)
+          .default([]),
+      }),
+    )
+    .max(10)
+    .optional(),
   businessStatus: z.string().optional(),
   primaryType: z.string().max(100).optional(),
   types: z.array(z.string().max(100)).max(100).default([]),
@@ -105,6 +125,28 @@ export function assessPlace(
   if (!place) return;
   if (place.pureServiceAreaBusiness) return { rejected: "service_area" };
   return categoryIssue(place.types, place.primaryType, context.kind) ?? place;
+}
+/** Photo-only name variants: exact nearby identity first; bounded catalogue naming differences second. */
+export function assessPhotoPlace(raw: unknown[], name: string, ll: Point, context: PlaceIdentity = {}): GooglePlace | undefined {
+  const exact = assessPlace(raw, name, ll, context);
+  if (exact) return "rejected" in exact ? undefined : exact;
+  if (!context.kind) return;
+  const variants = (value: string) => {
+    const labels = [value, value.replace(/\s*\([A-Z][A-Z0-9]{1,10}\)\s*$/, ""), ...value.split(/\s+\|\s+/)];
+    return new Set(labels.flatMap(v => {
+      const n = v.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim(), short = n.replace(/ (?:cafe|coffee shop|restaurant|bakery)$/, "");
+      return [n, ...(short.split(" ").length >= 2 ? [short] : [])];
+    }).filter(v => v.split(" ").length >= 2).map(normalizePlaceName));
+  };
+  const wanted = new Set([name, ...(context.aliases ?? [])].flatMap(n => [...variants(n)]));
+  const candidates = raw.flatMap(value => {
+    const p = googlePlace.safeParse(value);
+    if (!p.success || p.data.pureServiceAreaBusiness || categoryIssue(p.data.types, p.data.primaryType, context.kind)) return [];
+    if (meters(ll, {lat: p.data.location.latitude, lng: p.data.location.longitude}) > 80) return [];
+    return [...variants(p.data.displayName.text)].some(n => wanted.has(n)) ? [p.data] : [];
+  });
+  const unique = [...new Map(candidates.map(p => [p.id,p])).values()];
+  return unique.length === 1 ? unique[0] : undefined;
 }
 export function evaluateHours(
   place: GooglePlace | PlaceRejection | undefined,

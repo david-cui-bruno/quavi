@@ -1,3 +1,6 @@
+import { restorePush } from "./push";
+import { PushNotifications } from "@capacitor/push-notifications";
+import { Capacitor } from "@capacitor/core";
 import {
   createContext,
   useContext,
@@ -29,6 +32,9 @@ export type SocialState = {
   outgoing: Person[];
   blocked: Person[];
   feed: CircleEntry[];
+  notificationsUnread?: number;
+  canModerate?: boolean;
+  feedCursor?: string | null;
   myPosts: { id: string; outingId: string }[];
 };
 export type PrivatePost = { story: Story; owner: Person; mine: boolean };
@@ -38,13 +44,14 @@ type Context = {
   error: string;
   refresh: () => Promise<void>;
   command: (path: string, method: string, body?: unknown) => Promise<unknown>;
+  loadMore: () => Promise<void>;
   publish: (outingId: string) => Promise<void>;
   unpublish: (postId: string) => Promise<void>;
 };
 const Ctx = createContext<Context>(null!);
 export const useSocial = () => useContext(Ctx);
 export function SocialProvider({ children }: { children: ReactNode }) {
-  const { account, route, saveForSharing } = useStore(),
+  const { account, route, saveForSharing, go } = useStore(),
     life = useRuntime();
   const [state, setState] = useState<{
     uid: string;
@@ -52,6 +59,9 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     error: string;
     loading: boolean;
   }>({ uid: "", data: null, error: "", loading: false });
+  useEffect(() => {
+    void restorePush(account?.uid).catch(() => {});
+  }, [account?.uid]);
   const generation = useRef(0),
     sequence = useRef(0);
   const refresh = useCallback(async () => {
@@ -81,6 +91,27 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [account]);
+  useEffect(() => {
+    if (!account || Capacitor.getPlatform() !== "ios") return;
+    let closed = false;
+    let handle: { remove: () => Promise<void> } | undefined;
+    void PushNotifications.addListener(
+      "pushNotificationActionPerformed",
+      () => {
+        if (!closed) {
+          go("notifications");
+          void refresh();
+        }
+      },
+    ).then((h) => {
+      if (closed) void h.remove();
+      else handle = h;
+    });
+    return () => {
+      closed = true;
+      void handle?.remove();
+    };
+  }, [account, go, refresh]);
   useEffect(() => {
     generation.current++;
     sequence.current++;
@@ -117,12 +148,48 @@ export function SocialProvider({ children }: { children: ReactNode }) {
         throw new Error("Your session changed. Open your circle again.");
       if ("me" in result) {
         clearPhotoCache();
-        setState({ uid: account.uid, data: result, error: "", loading: false });
+        setState((old) => ({
+          uid: account.uid,
+          data: {
+            ...result,
+            canModerate:
+              old.uid === account.uid ? old.data?.canModerate : false,
+          },
+          error: "",
+          loading: false,
+        }));
       }
       return result;
     },
     [account],
   );
+  const loadMore = async () => {
+    const cursor = state.data?.feedCursor;
+    if (!account || !cursor || !runtime.get().online) return;
+    const gen = generation.current,
+      ticket = ++sequence.current;
+    const page = await api<{ feed: CircleEntry[]; nextCursor: string | null }>(
+      account,
+      "/social/feed?cursor=" + encodeURIComponent(cursor),
+    );
+    if (gen !== generation.current || ticket !== sequence.current) return;
+    setState((old) =>
+      old.uid !== account.uid || !old.data
+        ? old
+        : {
+            ...old,
+            data: {
+              ...old.data,
+              feed: [
+                ...new Map(
+                  [...old.data.feed, ...page.feed].map((p) => [p.id, p]),
+                ).values(),
+              ],
+              feedCursor: page.nextCursor,
+            },
+          },
+    );
+  };
   const publish = async (outingId: string) => {
     await saveForSharing();
     await command("/posts", "POST", { outingId });
@@ -144,6 +211,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
           : state.error,
         refresh,
         command,
+        loadMore,
         publish,
         unpublish,
       }}

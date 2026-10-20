@@ -7,7 +7,7 @@ try {
     REVOKE CREATE ON SCHEMA public FROM PUBLIC;
     GRANT CONNECT ON DATABASE quavi TO quavi_runtime;
     GRANT USAGE ON SCHEMA public TO quavi_runtime;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON user_state, media_objects, account_deletions, request_quotas, venue_cache, outing_accounts, outings, outing_operations, reward_accounts, social_profiles, social_relationships, social_blocks, social_posts, social_reports TO quavi_runtime;
-    GRANT SELECT, INSERT ON reward_ledger, reward_requests, reward_plans TO quavi_runtime;`)
+    GRANT SELECT, INSERT, UPDATE, DELETE ON user_state, media_objects, account_deletions, request_quotas, venue_cache, outing_accounts, outings, outing_operations, reward_accounts, social_profiles, social_relationships, social_blocks, social_posts, social_reports, social_notifications, social_restrictions, social_hidden_outings, push_devices, push_deliveries TO quavi_runtime;
+    GRANT SELECT, INSERT ON reward_ledger, reward_requests, reward_plans, moderation_actions TO quavi_runtime;`)
   console.log('Runtime database permissions applied')
 } finally { await pool.end() }

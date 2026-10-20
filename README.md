@@ -45,11 +45,11 @@ location and native notifications are not implemented by this shell.
 | Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA and richer photo retry/conflict resolution |
 | Friends and circle | Signed-in exact handles, requests, accepted friends, private feed, story/photo access controls, block/report; anonymous sample circle | Notifications, moderation tooling and wider-beta acceptance |
 | Mood-based plans and captions | Signed-in nearby openings use worldwide Overture venues through the server; anonymous openings and captions keep scripted demo behavior | Admission/access validation, grounded captions and stronger venue quality controls |
-| Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
+| Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Provider reliability, venue quality, quotas and error handling |
 | Location and arrival tasks | Native iPhone foreground GPS or browser GPS, explicit demo walking, accuracy/freshness gates and resume checks | Outdoor device acceptance; background tracking only if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
 | XP, coins and demo partner rewards | Signed-in server ledger, confirmed XP, offline commands and one-time fictional offers; anonymous local demo | Stronger participation evidence, real partners and funding are deferred |
-| Operations | Cloud Run dev deployment, Secret Manager, limited runtime DB privileges, Cloud SQL backups/PITR, private bucket | CI, production environment, alerts/budgets, restore drill, release/signing setup |
+| Operations | Cloud Run dev deployment, keyless tested GitHub CI/deploy, monitoring policies and pre-credit budget, Secret Manager, limited DB privileges, backups/PITR, private bucket | Restore/alert delivery drills, authentication email acceptance, app attestation and production isolation |
 
 Product direction: preserve all prototype features on iPhone and support any city.
 The user confirmed this repo is the full implementation: there is no separate
@@ -58,9 +58,10 @@ Background tracking during active detours is recommended but still needs a decis
 
 ## Demo partner rewards
 
-Open **You → Browse demo rewards**. Quavi Demo Café and Quavi Demo Bookshop are
-fictional partners, with no actual funding, merchant agreements or discounts.
-Every offer and redemption screen is labeled demo-only and non-redeemable.
+Open **You → Browse rewards**. Starbucks and Barnes & Noble names illustrate
+possible reward scenarios; neither is a Quavi partner. There is no funding,
+merchant agreement or actual discount. Offer and redemption views carry one
+compact **Preview · not redeemable** label.
 
 - Signed-in accounts receive XP and coins from a server ledger. Each 1,000
   confirmed XP unlocks one earned demo reward; café and bookshop each spend one.
@@ -82,7 +83,7 @@ GPS to generate a nearby detour. Follow its checked walking route and add notes
 and photos. Tracking pauses when the app is locked or backgrounded and checks
 again when you return. Availability and coverage can still be incomplete.
 
-**Explore the demo** remains available for the scripted West Village experience.
+Welcome now enters the real account experience; there is no separate demo entry button.
 Demo partners, discounts, coins, XP and social examples are not real merchant
 rewards or a completed social service. Do not navigate to invented demo venues.
 See **You** for the installed version/build number.
@@ -90,9 +91,10 @@ See **You** for the installed version/build number.
 App Store Connect: [Quavi: Take a Detour](https://appstoreconnect.apple.com/apps/6824241658/testflight),
 bundle `com.quavi.app`, internal group **Quavi Development**. The longer store
 name is necessary because Apple reported that “Quavi” is already in use.
-**1.0 (13)** is verified **Testing** in Quavi Development on October 18, 2026.
-Open TestFlight on the accepted tester's iPhone, tap **Update**, and confirm
-**1.0 (13)** in You. Update every device using a migrated account: old builds'
+**1.0 (20)** is verified **Testing** in Quavi Development on October 19, 2026.
+The existing internal tester has access, and What to Test notes are saved.
+Open TestFlight on the accepted tester’s iPhone, tap **Update**, then confirm
+**1.0 · Build 20** in You → Settings. Build 15 is assigned to **Quavi Friends** and now shows Testing on the build overview. Build 20 is currently enabled for the internal group only. Update every device using a migrated account: old builds'
 whole-document writes cannot replace independent outing records or server-owned rewards. Earlier builds
 remain listed as release history, not a safe persistence rollback. App Store
 publication and external tester review remain separate release steps.
@@ -209,10 +211,24 @@ photo/lock/relaunch acceptance remains a release check.
 
 ## Build roadmap
 
+**Current direction (October 19):** plan now, walk later. Opening hours no longer
+restrict generation, customization, start or resume, and are not requested from
+Google. Pedestrian connectivity, time budgets, age rules and venue identity/type
+checks remain. Save for later → Your lists → Open this route creates a new outing
+without overwriting the saved template. Spend is a deliberately rough USD range
+per person based on stop categories, not live prices; no paid LLM service was
+added for this first estimate. This supersedes the older hours-related milestones
+below.
+
+The visual review board has current-code iPhone-size browser previews, with old
+annotations preserved. Finish that review, then publish a new TestFlight build;
+physical outing/offline/lock-resume acceptance remains outstanding.
+
+
 Keep all prototype features and its visual identity; target iPhone first and
 support any city. Demo partners stay in the initial release. This is the build
-order. The account/save backend and first live detour checks are deployed; social and
-production partner verification and the reliability stages below still need implementation.
+order. The account/save, live detour and social foundations are deployed. Physical-device
+acceptance, operations hardening and real partner verification remain pending.
 
 | Order | Work | Completion check |
 | --- | --- | --- |
@@ -220,7 +236,11 @@ production partner verification and the reliability stages below still need impl
 | Done: dev accounts and cloud saves | Firebase Auth + Cloud Run API + Cloud SQL PostgreSQL + private Cloud Storage in `quavi-dev-dc824`; real sign-in, recovery/verification controls, account caches, revision conflicts, explicit demo import and private photo transfer | Live two-account isolation, concurrent-write conflicts and real photo round trip pass; simulator signs in, imports demo data and restores it after clearing local storage |
 | Done: account deletion and data guards | Recent-password confirmation, durable deletion requests, immediate access blocking, scheduled Auth/SQL/photo cleanup, immutable verified photos, validated saves and shared account quotas | Emulator/PostgreSQL tests cover deletion retries and races. Live checks verify private uploads and immediate deletion blocking; final scheduled cleanup is tested with disposable accounts |
 | Done: first city-aware slice | Search an area or use GPS; generate up to three nearby routes from recent Overture data, with duration/interest ranking and actual map coordinates; show unknown hours/prices explicitly | Live API returns grounded routes in NYC and SF; tests cover sparse coverage, age restrictions, coordinates, deduplication and strict categories |
-| Remaining data/operations hardening | Email delivery, richer sync conflict/photo retry UX, app attestation, deployment CI, budget/monitoring alerts and restore drill | Physical-device lifecycle checks and operational recovery/alert tests pass |
+| Done: deployment and monitoring foundation | GitHub PostgreSQL/Auth-emulator checks before dev deployment, branch/repository-bound keyless identity, source-tagged images, migration guards, post-deploy smoke checks and API traffic rollback; five monitoring policies and a $100/month pre-credit alert budget | GitHub passed 97 backend tests, including rollback/order failures, and deployed API/jobs successfully; readiness samples pass in two US locations |
+| Done: first point-in-time recovery drill | Restore into a separate temporary SQL instance; read-only migration, constraint, table and runtime-privilege checks; delete the temporary copy | Recovered to 2026-10-18 21:00 UTC, verified all 8 migrations and restricted runtime access; temporary instance deleted and source remains RUNNABLE |
+| Next: remaining operations acceptance | Verify operational alert receipt, finish auth-email branding, app attestation and production isolation | Record real notification receipt and physical-device lifecycle checks; SQL recovery alone does not prove cross-service recovery |
+| Done: focused client quality and recovery pass | Account-scoped photo rendering, retry and reconnect/resume recovery, modal focus/background isolation, meaningful save retry controls, conflict confirmation, long-name clipping and larger touch targets | 46 client tests, production build and native Debug build pass; iPhone 17 avatar fix verified; browser modal keyboard checks at 375×667 pass. See [quality record](QUALITY.md) for exact coverage and remaining acceptance |
+| Remaining: release quality acceptance | Finish small-phone scroll verification, large text/VoiceOver, Dark Mode, iPad/landscape and real-device outing/push checks; publish a new signed beta with these fixes | Native automation lost window/input access during the compact-screen scroll check. Build 17 containing this pass is verified Testing in Quavi Development on October 19; do not treat simulator screenshots or unit tests as physical acceptance |
 | Done: live provider foundation | Google Maps on iPhone/web; Google walking checks and reported hours for arrival/full stay at generation and Start; explicit unknown hours, closed-stop replacement, and transient Google responses kept out of durable saves | Live walking/open/closed checks pass; native Shibuya generation and Start/navigation pass; London generation and persistence exclusion pass; 42 server tests, 12 client tests and 26-step native smoke pass |
 | Done: detour reliability implementation pass | Category/service-area checks, catalog-localized name aliases, bounded walking/closed-stop replacements, rendered-path validation, whole-visit hours, entry links and note/arrival-grounded captions | 85 backend and 36 client tests cover mismatches, substitutions, provider failures, holiday/closing boundaries, geometry, authenticated Start checks, retention and caption evidence |
 | Remaining: real-world detour acceptance | Verify actual entrances, admission/tickets and accessibility; expand multilingual and sparse-area acceptance using real outings | Complete outings in multiple regions and record coverage, closed-stop replacement and access failures; entry is never inferred from open hours |
@@ -229,8 +249,10 @@ production partner verification and the reliability stages below still need impl
 | Deferred by user: physical outing acceptance before wider beta | Outdoor GPS/arrival checks on the user's iPhone; camera/native sharing; airplane-mode note/photo recovery; denied/approximate GPS; cold relaunch and small/large phone layouts | Finish a real outing, lock/resume, add content offline, reconnect and verify the same progress from a second session |
 | Planned: active-outing background tracking | Track only during an explicitly started outing, with a clear stop control; implement permission, battery, privacy and notification behavior | Current build remains foreground-only and explains that policy before using GPS |
 | Done: private circle foundation | Exact handle discovery, requests/acceptance/cancel/decline/remove, friends-only completed stories, stop sharing, private story/photo reads, block/unblock and private reports | API tests verify A→accepted B access and C denial, pending requests, races, removal/unshare/block and deletion; notification delivery and moderation operations remain below |
-| Next: social delivery and moderation operations | Push/in-app notifications, report-review workflow/tooling, stronger abuse controls and feed pagination | Request/share notices reach authorized recipients; reports can be triaged and resolved privately; access revocation remains enforced |
+| Done: social inbox and moderation implementation | Transactional request/accept/share notices, unread/read controls, keyset pagination, staff-only report evidence/review, audited story removal and seven-day social restrictions | 90 backend and 37 client tests cover recipient isolation, duplicate suppression, revocation, timestamp ties, role enforcement, hidden-story republish prevention, restrictions and push retries |
+| Remaining: physical push acceptance and moderation operations | Production APNs setup, worker scheduling and selected moderator role are configured; establish operational response/appeal practices | Verify actual TestFlight phone receipt, denial, off/logout/account switching and tap recovery; no real phone delivery is claimed by server/simulator checks |
 | Done: server-owned demo rewards | Deterministic task plans, append-only ledger, one-time redemptions, offline commands and legacy display-only XP | 63 backend and 30 client tests cover duplicate awards, concurrent spending, inflated balances and lost acknowledgements; partners remain fictional |
+| Done: real-account showcase and editable openings | Welcome on restored sign-in with explicit Continue, no anonymous demo entry on Welcome, profile-only setup restart, eight sampled opening themes, seeded route variations and recent-route exclusion; live stop suggestions plus place search with full walking/hours/time validation before applying swaps | 51 client tests, 18 targeted backend tests and 99 backend CI tests pass; Quavi dev deployment passed. Live browser generation, refresh, searched stop replacement and changed walking time verified; build 20 is verified Testing in Quavi Development with testing notes saved. Customization is for the three planned stops before Start; existing outings stay intact on failed checks |
 | Done: explicit Explore location selection | Address-bearing search suggestions, keyboard selection and stale-response cancellation | Searching never silently chooses the first hit; the selected result coordinates drive the route |
 | Done: map motion and scroll repair | Native projected artwork, stable zoom anchors and marker identity, pulse/coin motion, collision-aware labels, compact provider credit, vertical-only content scrolling and safe-area clipping | 23 client tests pass; native zoom, artwork taps, selected route and active walk checked; signed 1.0 (5) verified Testing in Quavi Development |
 | Done: first internal TestFlight beta | App Store Connect record, explicit app identifier, signed 1.0 (4), real-use onboarding, visible build label and beta instructions | Apple shows Testing in Quavi Development; owner is an accepted tester; installation on the physical phone is the next user step |
@@ -515,3 +537,415 @@ Signed **1.0 (13)** is verified **Testing** in Quavi Development on October 18,
 TestFlight → Update and confirm 1.0 (13) in You. The disposable QA account was
 blocked for deletion, private credential files removed, and native cold launch
 verified return to the welcome screen.
+
+### Social delivery and moderation — build 14
+
+The in-app inbox records friend requests, acceptances, new shared stories and
+private report-review updates in the same transaction as the social action.
+Retries do not create duplicate entries. Reads/counts recheck current friendship,
+block, sharing, moderation and deletion state. Notices contain references, not
+copied story text or GPS. Read controls affect only the signed-in recipient.
+The feed and inbox use bounded keyset pages with timestamp/ID tie handling.
+
+Staff review requires the server-verified `quaviModerator` Firebase claim; ordinary
+accounts cannot list reports or read reported story/photo evidence. Reviewers
+cannot adjudicate reports involving themselves. Decisions require a private note
+and an audit record. Removing a shared story retains its private outing and
+prevents unpublish/republish bypass. Seven-day restrictions pause requests and
+sharing while preserving private outings, blocking and reporting. Report details,
+reporter identity and staff notes never enter ordinary notifications. Reports and
+notices expire after 90 days; device registrations expire after 60 inactive days.
+
+Native push uses an optional permission action, account-bound APNs registrations,
+generic lock-screen copy and an authenticated inbox on tap. The durable delivery
+worker retries transient failures, removes invalid tokens and rechecks eligibility
+before sending. Push is at-least-once; the inbox is deduplicated. The worker alone
+receives the Quavi-only production APNs signing key from Secret Manager. Debug
+sandbox push requires a separate sandbox key/configuration; production key scope
+is deliberately not widened. Physical TestFlight push acceptance remains separate
+from deterministic delivery tests.
+
+The selected existing `davidcui824@gmail.com` account has the moderator claim;
+sign out/in to refresh it. No other real accounts are assigned staff access.
+90 backend / 37 client tests and both TypeScript builds pass. Native iPhone 17/SE
+builds pass. Backend source `7281a63` is deployed; revision `quavi-api-00018-65z` also
+sets the non-secret push-availability flag. Migration 008 and updated runtime
+bootstrap grants are applied. The dedicated push job and one-minute schedule are
+configured, with successful executions. The approved Quavi-only production signer
+was checked against APNs using a deliberately invalid token: signer authentication
+passed and the synthetic device was rejected; no real phone was targeted.
+
+Live three-account checks verify request/share deduplication, recipient isolation,
+ordinary-account staff denial, report coalescing, audited removal, shared-read and
+notice revocation, private-outing retention and republish prevention. Native SE
+checks cover Home unread badge → inbox → Friends → acceptance, story notice →
+private story/report, and staff queue → reported text/photo → removal → resolved
+queue. The 35-command onboarding/demo capture flow also passes. Disposable accounts
+are blocked for deletion; native cold launch returns to Welcome and private
+credential/flow files were removed.
+
+Signed **1.0 (14)** is verified **Testing** in Quavi Development, with beta notes
+saved. Physical push receipt/permission/tap/logout acceptance remains outstanding.
+A separate local review board contains 27 actual SE screenshots with pinned or
+general notes, local persistence and JSON export. It is a review artifact and is
+not bundled into the app. Physical outing/offline checks remain deferred. Physical outing/offline checks remain deferred.
+
+### Visual review pass — working preview
+
+The October 18 review keeps Quavi’s fonts, character artwork and palette while
+reworking inbox activity, friend requests and shared stories. Notification and
+account/legal controls now live in Settings. Friend requests emphasize Accept;
+report/block remain available in person/story menus.
+
+Explore puts search and the map first, without the game HUD, clearance count or
+repeated action bar. The active stop panel uses a compact facts row and named
+actions; an authored SVG replaces the streak emoji. Live maps draw fetched pedestrian geometry. Detour details use a noninteractive
+Google map of numbered stops with a fresh walking path when signed in and
+online. The second review adds attributed, authored sample pedestrian paths
+for the anonymous demo; it never invents straight connecting roads. Google
+provider data remains transient.
+
+This is a review preview, not a new TestFlight release. Review the updated
+standard iPhone screenshots before publishing the next beta. Physical offline,
+lock/resume and push-receipt acceptance remain pending as recorded above.
+
+### Annotated visual review — second round
+
+Details and active outings use numbered orange stops and a solid orange walking
+path. Live routes use fetched pedestrian geometry; the anonymous demo has a
+small, attributed OSM foot-network snapshot for its fixed stops (see
+ASSET-SOURCES.md). Coin dots and their invisible demo collection are removed
+from Active and Explore. Explore only draws fetched or authored sample paths,
+never straight lines between arbitrary searched coordinates.
+
+The redundant hours/directions badge is removed beside the details map, whose
+Google credit remains visible. Third-party venue credits remain when supplied.
+Completed outings show each place’s name and its recorded moment/task photo,
+or automatically request a current venue image. Missing or unverified imagery
+stays unavailable rather than using an unrelated character. The authenticated
+photo endpoint is deployed and live-verified in Quavi dev. Rewards & deals emphasizes each
+benefit, and Settings uses the same soft surfaces, display type and row controls
+as the other app flows. Report reasons use the app’s own field treatment.
+
+Home colour studies stay on the review board. Settings contains no colour-study
+controls in any build. VITE_REVIEW_HOME can select a colour only while building
+a screenshot variant. Prior annotations remain attached to their original screen IDs. This working preview is not a new TestFlight release.
+
+The route overview separates overlapping numbered artwork with short pointers
+that retain the true stop coordinates. Empty detour results now show the search
+explanation directly, with a prompt to change area or available time.
+
+
+### Automatic venue imagery and route verification
+
+Completion requests a current venue photo using independently sourced venue
+name/coordinates, an optional retained Google place ID, category and aliases.
+Identity mismatches and unavailable photos remain honest. Existing personal
+outing photos take precedence. Thumbnail images open author credits, Google
+Maps source links and the supplied reporting link. Provider photo references
+and image URLs remain in session memory and are stripped from durable state.
+
+Rewards use bundled merchant icons automatically refreshed from catalog domains
+with `npm run rewards:logos`; missing icons preserve the company name. These
+remain example offers without real merchant funding or redemption.
+
+The sample walker now follows the same authored foot-network geometry drawn in
+orange. Resuming clips to the nearest remaining street segment rather than
+restarting or cutting directly between stops. Live routing remains Google
+pedestrian geometry, with no invented straight-line fallback. Automated checks
+cover authored legs, mid-route resume, exact map coordinate order, curved
+geometry through zoom/autosave, invalid provider geometry and photo isolation.
+Physical iPhone GPS, offline/lock/resume and push-receipt checks remain pending.
+
+Live acceptance (18 October 2026): Cloud Run revision quavi-api-00020-nb4
+serves source 336b0bb. A Greenwich Village route returned three legs with
+37 street geometry points. Automatic images loaded for the nearby architecture
+centre and bakery, plus Caffe Reggio; the unrelated gallery result remained
+unavailable. Photo-only name reconciliation accepts bounded category suffixes
+and organisation labels only for a unique nearby candidate without a category
+conflict; hours keep their stricter identity contract. Backend tests: 93 passed;
+client tests: 39 passed. Native iPhone 17 review captures verify merchant logos,
+Settings without Home colour controls, completion imagery and photo credits.
+This working preview has not been uploaded as a new TestFlight release.
+
+### TestFlight 1.0 (15)
+
+The signed Release archive was verified as `com.quavi.app`, version 1.0, build
+15, with bundled web content matching the current production build. Apple’s
+upload tool reported “Upload succeeded” and that the package is processing.
+App Store Connect verification completed through Firefox after Chrome’s sign-in
+form failed to load. Build 15 is assigned to Quavi Development and shows Testing;
+What to Test notes are saved. External group Quavi Friends is created, but the
+external submission was completed with the user-authorized contact information
+and a dedicated ordinary test login. Apple shows Waiting for Review; no external
+approval or friend invitation is claimed.
+
+Includes the visual review changes, numbered orange walking routes, demo walker
+alignment, automatic verified venue photos and credits, illustrated category
+placeholders, merchant logos, quieter Explore and active-map controls, social
+screen styling and Settings without review-only colour controls.
+
+Next: external review approval, friend invitations, and a real outing on physical
+phones. GPS/arrival, offline recovery,
+lock/resume, saved outing/reward reconciliation and cross-phone push receipt
+remain acceptance work. Backgrounding pauses foreground tracking. Reward
+examples remain previews with no merchant redemption.
+
+External beta submission verified on October 18, 2026: Quavi Friends contains
+1.0 (15), Waiting for Review, with zero external testers. Review contact details
+and a dedicated login were supplied with explicit user authorization. The login
+was checked against authentication, state, outing, reward and social endpoints;
+it has no prior outings, no relationships and no moderator access. Its credentials
+are retained privately outside the repository while Apple reviews the build.
+The internal Quavi Development build remains available for the owner’s phone.
+
+### Explore search and nearby photo cards
+
+Explore now biases place search toward the current map location, removes duplicate
+OSM representations of the same place, rejects invalid coordinates and times out
+stalled requests after eight seconds with the existing retry control. Search
+focus hides both the nearby panel and navigation background; the map uses the
+full available height. Map controls measure the visible search row and results.
+
+Real nearby-stop cards automatically request verified Google venue photos using
+the same account-scoped, session-only imagery path as outing completion. Cards
+keep readable place/distance labels, expose photo credits and use category
+illustrations when no verified image is available. Demo venues do not trigger
+photo lookups. Provider imagery stays out of saved outing data.
+
+Validation: 42 client tests pass; production build and lint complete. Browser
+checks covered broad coffee suggestions, distinct local Brown University results,
+exact bookstore selection, clear/return, full-height search maps, photo cards,
+gallery fallback and author/source links. The review board has updated screen 15
+and a search-results screen, explicitly labelled browser previews at iPhone 17
+size. These changes are pushed source work, not part of TestFlight build 15.
+Next: include this pass in the next iPhone build and complete the deferred physical
+phone outing/offline/lock-resume acceptance checks.
+
+### TestFlight 1.0 (16)
+
+The Explore search fixes and automatic nearby venue-photo cards are included in
+signed build 16. The Release archive's bundle identifier/version and bundled web
+content were checked against the production build. Xcode reports Upload succeeded;
+Apple finished processing, testing notes are saved, and the build is assigned to
+Quavi Development. Source validation remains 42 passing client tests plus the
+successful production build and lint checks.
+
+Apple currently disables adding build 16 to external groups because build 15 from
+version 1.0 is already waiting for Beta App Review. Quavi Friends keeps that review
+submission; no external approval or build-16 friend access is claimed. After that
+review completes, add build 16 to Quavi Friends and submit it if Apple requires it.
+Physical-phone outing, offline and lock/resume acceptance remains outstanding.
+
+### Backend operations pass — October 18, 2026
+
+Keyless GitHub backend CI and dev deployment are live. Run
+[39192466879](https://github.com/david-cui-bruno/quavi/actions/runs/39192466879)
+passed 97 backend tests and deployed source `0d5d330` to revision
+`quavi-api-00022-9gq`, with readiness and anonymous-access rejection checks. All
+three migration/maintenance/push jobs use the same source image. Failure-path tests
+cover migration aborts and API traffic rollback before updating background workers.
+
+Five monitoring policies are enabled: readiness outage, API 5xx responses, failed
+jobs and sustained database disk/memory pressure. Real uptime-check samples passed
+in Oregon and Iowa. The approved $100 monthly budget applies only to Quavi dev,
+excludes credits and warns at 50/90/100 percent without shutting services down.
+The approved operational email is configured; actual incident-email receipt has
+not been tested.
+
+A separate point-in-time restore to 2026-10-18 21:00 UTC completed in about ten
+minutes. Read-only checks verified eight migration checksums, validated constraints,
+core app tables and the restricted runtime role. The proxy was stopped, the clone
+was deleted, and only the healthy source database remains. This is a development
+SQL recovery drill, not an Auth/media recovery or production recovery SLA.
+
+[server/OPERATIONS.md](server/OPERATIONS.md) documents setup, alert response,
+rollbacks and restoration. Firebase managed email templates and enumeration
+protection are configured. Verification and password-reset emails were sent once each with user authorization
+and confirmed in the recipient Gmail INBOX on October 18. Neither action link was
+opened and the password was not changed. Subjects still use the dev project name;
+email branding remains follow-up work. Remaining work is operational alert
+receipt, cross-service recovery/deletion reconciliation, app attestation and
+production isolation, followed by the deferred real-phone outing and push checks.
+No new iPhone installation is needed for these backend operations changes.
+
+### TestFlight 1.0 (17) — quality recovery update
+
+Signed Release archive and upload succeeded on October 19, 2026 at 6:14 PM EDT.
+Verified archive: `com.quavi.app`, version `1.0`, build `17`; bundled assets include
+photo retry/account isolation, sheet focus isolation and the long-name layout fix.
+All 46 client tests pass. Apple reported “Uploaded package is processing.”
+
+Processing completed and build 17 is verified **Testing** in **Quavi Development**,
+with the existing internal tester included. What to Test notes are saved. Open
+TestFlight → Update and confirm **1.0 · Build 17** in You → Settings. The tester
+record showed build 16 installed before this update. Build 15 now shows Testing
+on the iOS build overview with Quavi Friends assigned; build 17 has only been
+added to the internal group in this release step.
+The remaining native/physical checks in [QUALITY.md](QUALITY.md) still apply.
+
+### Real-account showcase and route customization — build 20
+
+Fresh launches now show Welcome even when sign-in is restored. Continue uses the
+account’s own saved setup progress; foreground resume keeps the current walk.
+Welcome has no “Explore the demo” button. Settings → Restart profile setup only
+changes the setup marker; it keeps stories, friends and rewards. The owner’s
+requested reset was applied and verified at step 1 after reloading.
+
+Opening generation samples from eight themes and varies nearby venues within a
+theme, while keeping age, distance, time, route and hours checks. Refresh requests
+new options and excludes the latest six offered sequences instead of reordering
+cards. Sparse coverage may return fewer options; if a refresh finds none, the
+previous choices remain available. Existing quotas still apply.
+
+Before Start, use Swap beside any of the three stops, or Adjust → Choose your
+stops. Pick a nearby suggestion or search by name and verify the address. The
+whole itinerary is checked before applying a replacement; old place IDs, timing
+and hours cannot follow the changed stop. Failed, closed, duplicate, unsuitable
+or over-budget choices preserve the current plan. Starting a search clears the
+previous selection so it cannot be applied accidentally. Already-started live
+walks are not rewritten through this pre-walk editor.
+
+Validation: 51 client tests, 18 focused server tests, 99 full backend CI tests and
+production/client/server/Release archive builds pass. GitHub deployed source
+`fd797461ad7797a922940a3f7927cd196b5a1add` to Quavi dev. In a separate review
+account, live Greenwich Village options changed on refresh; replacing a restaurant
+with the exact New York Washington Square Park search result rechecked the route
+and changed the estimate from about 72 to 78 minutes. This was browser/API QA,
+not physical GPS or locked-phone acceptance.
+
+Signed `com.quavi.app` 1.0 (20) uploaded successfully on October 19 at 8:10 PM EDT.
+Build 20 is verified **Testing** in **Quavi Development**, with the existing
+internal tester included and What to Test notes saved. The tester record showed
+build 17 installed before this update. Open TestFlight → Update, then confirm
+**Build 20** in You → Settings. Builds 18/19 were intermediate uploads and were
+not added to the internal tester group in these steps. Build 20 has not been
+assigned to the external Quavi Friends group in this release step.
+
+### Visual review, flexible planning and spend estimates — working changes
+
+Removed hour-based eligibility from generation, replacement and start/resume.
+Google identity/category checks still prevent mismatched venues. The API retains
+its legacy `hours` result field with `unknown` status for client compatibility;
+it contains identity/attribution metadata and never controls visit scheduling.
+A currently closed venue is allowed in a saved plan. Google place field masks no
+longer request opening hours or business status.
+
+Replaced “Check prices” with broad category-based spend ranges, explicitly USD
+per person. These are LLM-authored heuristics with a deterministic fallback for
+unknown categories; no live prices or real-time model estimates are claimed.
+Saved plans reopen as new independent outings; the saved template is unchanged.
+
+General supporting copy is 14 px; compact app labels are at least 13 px. Brand
+fonts, duck assets, colors and rounded silhouettes are preserved. Map SDK credits
+remain provider-controlled. Review board previews use synthetic accounts and
+browser maps at 402 × 874, not actual iPhone screenshots. TestFlight remains
+build 20 until a subsequent release is uploaded and verified.
+
+Validation: 53 client tests and 99 backend tests passed. The local test database
+had an older migration checksum, so the full backend suite ran against a newly
+created isolated development test database without altering existing data.
+
+### Annotation pass — location setup, Home colours and clean account settings
+
+Planning now has separate location, duration and opening-choice stages. Continue
+with my location invokes the existing native permission/GPS adapter; manual city
+search remains available after denial or for planning somewhere else. Duration
+uses 30 min / 1 hour / 2 hours buttons. Options have one Continue action and one
+Shuffle openings action. Returning to setup hides all result actions; refresh
+still avoids recent routes and rejects stale account responses.
+
+Home defaults to orange. Settings → Appearance persists orange, yellow, paper
+or ink as optional `user.homeColor`; older profiles stay valid. Settings first
+shows grouped navigation, while reset/deletion and detailed save controls are
+inside Account. Healthy save banners no longer occupy the Home header.
+
+Opening lists explicitly restrict overflow to the vertical axis. Completion
+cards use three bounded columns and fetch venue photos automatically. Walking
+lines are lighter, with the current leg emphasized and geographic paths intact.
+The story-shelf title/status collision was reproduced after animations completed
+and fixed with normal text flow. Programmatic sheet focus no longer draws a
+thick outline around its whole container; keyboard control focus stays visible.
+
+The old board captured some entrance animations and map loading too early. Its
+replacement waits for fonts, finite animations, map readiness and image loading.
+Real, session-only provider photo/route requests are used for the example venues;
+missing photos keep placeholders. Current source builds for the iPhone Simulator.
+Native input automation remained intermittent, so complete native flow acceptance
+and a fresh TestFlight release remain separate checks, not inferred from browser
+captures.
+
+### TestFlight 1.0 (21) — approved visual review
+
+Signed Release archive `com.quavi.app` 1.0 (21) uploaded successfully on
+October 19 at 10:18 PM EDT. This includes the approved planning stages
+(location → duration → openings), orange Home and saved colour choices,
+cleaner Settings, flexible planning without hours restrictions, rough spend
+estimates, reopening saved routes, and the four final duration/share/circle/photo
+viewer corrections. Browser review images remain layout previews.
+
+Validation: 53 client tests pass; the current production web bundle, Capacitor
+sync and signed Release archive pass. Backend changes were deployed separately
+to Quavi dev. Physical GPS, locked-phone navigation and push receipt still need
+a real iPhone outing; uploading does not establish those checks.
+
+Apple processing completed. Build 21 is verified **Testing** in the internal
+**Quavi Development** group with the existing tester included and What to Test
+notes saved. Open TestFlight → Quavi → Update and confirm **1.0 (21)**. The
+tester record still showed build 20 installed at verification time. Build 21 was
+not assigned to the external Quavi Friends group in this release step.
+
+### Nearby stop swaps, contrast and review reconciliation — build 22
+
+The pre-walk editor no longer treats every business within 40 metres of another
+stop as a duplicate, or rejects a distant branch merely for sharing its name.
+A shared catalog ID still identifies the same venue; without a shared ID, a
+matching normalized name/alias must also be nearby. Separate adjacent businesses
+and distant same-name branches now pass regression checks; actual repeated venues
+still fail. Walking, category, age and time-budget validation remain in place.
+
+Removed the extra Google Maps mark from the opening-list footer. The duration
+step uses an orange duck on yellow. Shared control styles invert matching
+background colours, and same-colour character silhouettes retain a fine outline
+without changing the chosen avatar. The review board now distinguishes the main
+flow (32 screens), other states (16), archived duplicates (4), and older colour
+references (3); all IDs and existing notes remain accessible.
+
+Validation: 56 client tests, production web build, Capacitor sync and signed
+Release archive pass. Browser checks cover the current planner at 402 × 874
+with no horizontal overflow, including the 430 × 932 iPhone 15 Plus viewport.
+TestFlight **1.0 (22)** uploaded on October 19 at 10:43 PM EDT and is verified
+**Testing** in **Quavi Development**, with test notes saved. Existing tester access
+is preserved; this release does not add the external Quavi Friends group.
+
+### Shuffle lookup recovery — backend update
+
+Route generation previously allowed only 12 calls per account per day; each
+shuffle also re-ran Google venue/route work against a shared 500-call monthly
+provider cap. Normal shuffle testing reproduced a hard failure at request 13.
+The backend now permits 120 generation calls per account per day with a separate
+20/minute burst limit. The existing project counters are preserved; the bounded
+Google cap is 2,000 requests per provider category per calendar month. The
+configured $100/month alert budget is unchanged. This is request admission,
+not a dollar guarantee for all project services.
+
+Identical Google requests, including in-flight calls, share a bounded three-minute
+in-memory result. Fields, geometry, request body and provider all participate in
+the key; errors are evicted, expired results are removed, and no provider content
+or precise route request is written to a durable cache. Different shuffle
+variants still generate new candidates. Capacity errors identify the actual
+limit and preserve existing choices rather than returning “Too many lookups.”
+
+Venue-photo and route-check allowances are 240/hour per signed-in account,
+so normal browsing and stop editing do not exhaust the old 30/60-hour limits.
+The shared provider cap and account/API burst protection remain in place.
+
+Validation: 106 backend tests pass, including 20 successful shuffles, explicit
+burst rejection, capacity messages, coalescing, expiry and failed-call recovery.
+No client change is required; installed TestFlight build 22 uses this backend.
+
+Deployment: both quota updates passed CI checks and Quavi dev deployment. Three
+sequential authenticated live shuffle requests using the Google path each returned
+HTTP 200 with two route choices (about one second each). No new TestFlight upload
+is needed. The owner's requested profile-only restart was applied separately and
+verified at setup step 1; stories, friends and rewards were not cleared.

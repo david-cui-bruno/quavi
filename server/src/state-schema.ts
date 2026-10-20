@@ -99,6 +99,7 @@ export const appStateSchema = z
   .object({
     user: z
       .object({
+        homeColor: z.enum(["orange-p", "yellow", "paper", "ink"]).optional(),
         onboarding: z.enum(["about", "interests", "customize", "complete"]).optional(),
         name: z.string().max(24),
         avatar,
