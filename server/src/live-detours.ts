@@ -70,3 +70,16 @@ export async function checkHours(
     ),
   );
 }
+
+/** Identity/category checks only. Legacy `hours` shape remains for older clients;
+ * route planning deliberately does not request or evaluate opening hours. */
+export async function checkVenues(geo: LiveGeo, stops: z.infer<typeof liveStop>[]): Promise<HoursCheck[]> {
+  const now = new Date().toISOString();
+  return Promise.all(stops.map(async s => {
+    const place = await geo.place(s.name,s.ll,s.googlePlaceId,{kind:s.kind,aliases:s.aliases});
+    const base: HoursCheck = {status:'unknown',checkedAt:now,arrivalAt:now,leaveAt:now,attributions:[],venueStatus:'unverified'};
+    if (!place) return base;
+    if ('rejected' in place) return {...base,venueStatus:'unsuitable',venueIssue:place.rejected};
+    return {...base,venueStatus:'matched',googlePlaceId:place.id,mapsURL:place.googleMapsUri,attributions:place.attributions.map(a=>({displayName:a.provider??'Data provider',uri:a.providerUri}))};
+  }));
+}

@@ -20,7 +20,15 @@ export function applyPlannedCheck(story: Story, check: WalkingCheck & {hours:Hou
   if(check.hours.length!==story.chapters.length || check.legs.length!==story.chapters.length) throw new Error('The route check is incomplete. Try again.')
   const estimatedMinutes=Math.ceil(check.duration/60)+story.chapters.reduce((sum,c)=>sum+c.mins,0)
   if(estimatedMinutes>(story.timeBudgetMinutes??120)) throw new Error('These stops need more time than your plan allows. Choose a closer place or generate a longer opening.')
-  if(check.hours.some(h=>h.status==='closed'||h.venueStatus==='unsuitable')) throw new Error('A stop is closed or unsuitable for this visit. Choose another place.')
+  if(check.hours.some(h=>h.venueStatus==='unsuitable')) throw new Error('A stop does not match a suitable visit venue. Choose another place.')
   const {hours,...walking}=check
   return {...story,walking,estimatedMinutes,chapters:story.chapters.map((c,i)=>({...c,hours:hours[i],googlePlaceId:hours[i].googlePlaceId,googleRoute:true,walk:`${Math.max(1,Math.ceil(walking.legs[i].duration/60))} min walk`}))}
+}
+
+/** A saved plan is a template; starting it again gets a separate outing journal. */
+export function reopenSavedPlan(plan: Story): Story {
+  return {...plan,id:crypto.randomUUID(),status:undefined,outingPhase:'planned',walking:undefined,
+    chapters:plan.chapters.map(c=>({...c,hours:undefined,googleRoute:undefined})),
+    moments:{},captions:[],taskNotes:{},taskPhotos:{},arrivedStops:[],rating:undefined,loved:undefined,shared:false,
+    date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})}
 }

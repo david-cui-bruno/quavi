@@ -150,7 +150,7 @@ export function PlaceSearch({
           {explore && (
             <label
               htmlFor={id}
-              style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em" }}
+              style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em" }}
             >
               WHERE TO?
             </label>

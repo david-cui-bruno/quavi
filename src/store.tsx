@@ -20,7 +20,7 @@ export type Route = { name: Screen; params?: Record<string, unknown> }
 export type Friend = { id: string; name: string }
 
 export type AppState = {
-  user: { onboarding?: 'about' | 'interests' | 'customize' | 'complete'; name: string; avatar: AvatarSpec; interests: string[]; neighborhood: string; authed: boolean; /** 21 or older? decides whether drink spots are suggested */ age21?: boolean; /** who you usually go out with */ who?: 'Solo' | 'With friends' }
+  user: { homeColor?: 'orange-p' | 'yellow' | 'paper' | 'ink'; onboarding?: 'about' | 'interests' | 'customize' | 'complete'; name: string; avatar: AvatarSpec; interests: string[]; neighborhood: string; authed: boolean; /** 21 or older? decides whether drink spots are suggested */ age21?: boolean; /** who you usually go out with */ who?: 'Solo' | 'With friends' }
   friends: Friend[]
   demoRedemptions: DemoRedemption[]
   mood?: string

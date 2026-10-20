@@ -38,5 +38,27 @@ test('route editing rejects duplicate, adult, invalid, started and over-budget c
  const next=replacePlannedStop(story(),1,choice,true)
  assert.throws(()=>applyPlannedCheck(next,{...check(),duration:4000}),/more time/)
  assert.throws(()=>applyPlannedCheck(next,{...check(),hours:[]}),/incomplete/)
- assert.throws(()=>applyPlannedCheck(next,{...check(),hours:check().hours.map(h=>({...h,status:'closed'}))}),/closed/)
+ assert.equal(applyPlannedCheck(next,{...check(),hours:check().hours.map(h=>({...h,status:'closed'}))}).chapters.length,3,'a plan for later accepts currently closed stops')
+ assert.throws(()=>applyPlannedCheck(next,{...check(),hours:check().hours.map(h=>({...h,venueStatus:'unsuitable'}))}),/suitable/)
+})
+
+test('reopening a saved route creates an independent planned outing without stale checks or progress',async()=>{
+ const {reopenSavedPlan}=await import(await compile('../src/route-edit.ts',{'./data':data,'./geo':geo}))
+ const saved={...story(),moments:{0:{note:'Original'}},taskNotes:{'0:x':'original'},arrivedStops:[0],rating:5}
+ const reopened=reopenSavedPlan(saved)
+ assert.notEqual(reopened.id,saved.id)
+ assert.equal(reopened.outingPhase,'planned')
+ assert.equal(reopened.walking,undefined)
+ assert.ok(reopened.chapters.every(c=>!c.hours))
+ assert.deepEqual(reopened.taskNotes,{})
+ assert.equal(saved.taskNotes['0:x'],'original')
+ assert.equal(saved.chapters[0].hours.status,'open')
+})
+
+test('rough spend ranges use stop categories, include free outings and remain explicitly USD',async()=>{
+ const {estimateSpend}=await import(await compile('../src/spend-estimate.ts'))
+ assert.deepEqual(estimateSpend({chapters:[{kind:'Park'},{kind:'Library'}]}),{low:0,high:0,currency:'USD',label:'Free'})
+ const cafeBook=estimateSpend({chapters:[{kind:'Café'},{kind:'Bookshop'},{kind:'Park'}]})
+ assert.deepEqual(cafeBook,{low:5,high:40,currency:'USD',label:'$5–40'})
+ assert.ok(estimateSpend({chapters:[{kind:'Unknown'}]}).high>0)
 })

@@ -217,7 +217,7 @@ export function planDetours(
         place: v.name,
         meta: `${kinds[v.kind].label} · hours unverified`,
         mins: stay,
-        desc: `A ${kinds[v.kind].label.toLowerCase()} near ${input.label}. Check opening hours, access and prices before heading over.`,
+        desc: `A ${kinds[v.kind].label.toLowerCase()} near ${input.label}. A stop to make your own.`,
         walk: `Approx. ${walk} min walk`,
         persona: ["Pip", "Juno", "Maple"][i],
         color: "Orange",
@@ -256,7 +256,7 @@ export function planDetours(
     openings,
     notes: openings.length
       ? [
-          "Opening hours, admission and prices are unverified. Walking times are estimates; check the street route before starting.",
+          "Walking times are estimates. Save your plan and go when it suits you.",
         ]
       : [
           "We couldn’t find three suitable nearby stops within your time limit. Try another area or allow more time.",

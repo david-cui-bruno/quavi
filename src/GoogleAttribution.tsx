@@ -1,26 +1,4 @@
-import { useEffect, useState } from "react";
 import type { HoursCheck } from "./data";
-export function hoursLabel(hours?: HoursCheck) {
-  if (
-    !hours ||
-    !Number.isFinite(Date.parse(hours.checkedAt)) ||
-    Date.now() - Date.parse(hours.checkedAt) > 300000
-  )
-    return "Hours not checked";
-  if (hours.venueStatus === "unsuitable") return "Venue needs replacing";
-  return hours.status === "open"
-    ? "Reported open for your visit"
-    : hours.status === "closed"
-      ? "Reported closed for your visit"
-      : "Hours unknown";
-}
-export function useLiveHoursClock() {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => tick((n) => n + 1), 30000);
-    return () => clearInterval(timer);
-  }, []);
-}
 export function GoogleAttribution({
   hours = [],
   dark = false,
@@ -81,30 +59,5 @@ export function GoogleAttribution({
         </span>
       ))}
     </div>
-  );
-}
-
-/** Reported opening hours do not establish admission, ticket availability or an accessible entrance. */
-export function VenueEntry({ hours }: { hours?: HoursCheck }) {
-  const fresh = hours && Date.now() - Date.parse(hours.checkedAt) <= 300000;
-  const href = fresh ? (hours?.websiteURL ?? hours?.mapsURL) : undefined;
-  return (
-    <p className="small muted" style={{ margin: "4px 0 10px" }}>
-      Entry &amp; tickets unverified
-      {href && (
-        <>
-          {" "}
-          ·{" "}
-          <a
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            style={{ textDecoration: "underline" }}
-          >
-            Check venue details
-          </a>
-        </>
-      )}
-    </p>
   );
 }

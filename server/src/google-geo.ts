@@ -267,7 +267,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
     return parseGoogleRoute(data, points);
   };
   const fields =
-    "id,displayName,location,businessStatus,currentOpeningHours,attributions,googleMapsUri,primaryType,types,pureServiceAreaBusiness,websiteUri";
+    "id,displayName,location,attributions,googleMapsUri,primaryType,types,pureServiceAreaBusiness,websiteUri";
   async function lookup(
     name: string,
     ll: Point,

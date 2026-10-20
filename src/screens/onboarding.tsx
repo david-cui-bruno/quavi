@@ -233,7 +233,7 @@ export function Customize() {
             <button key={o.id ?? 'none'} className="tile" aria-pressed={on} onClick={() => set(prev)} style={{ flex: 'none', width: 88, height: 104, borderRadius: 22, padding: 0, background: BG[name], transform: on ? 'scale(1.06)' : undefined, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', transition: 'background var(--motion-t3), transform var(--motion-t2) var(--ease-spring)' }}>
               <div style={{ position: 'absolute', top: 10, left: 14 }}><Persona spec={prev} size={60} /></div>
               {on && <span className="tick" style={{ left: 'auto', right: 6, top: 6, bottom: 'auto', width: 20, height: 20, background: dark ? 'var(--yellow)' : 'var(--ink)', color: dark ? 'var(--ink)' : 'var(--yellow)' }}><Check size={11} /></span>}
-              <span style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, padding: '0 6px', color: dark ? 'var(--paper)' : 'var(--ink)', position: 'relative' }}>{o.label}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, padding: '0 6px', color: dark ? 'var(--paper)' : 'var(--ink)', position: 'relative' }}>{o.label}</span>
             </button>
           )
         })}

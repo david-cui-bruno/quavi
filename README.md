@@ -45,7 +45,7 @@ location and native notifications are not implemented by this shell.
 | Stories, lists, profiles, photos | Deployed private PostgreSQL saves, revision-aware sync, separate account caches, explicit demo import and private GCS photos | Extended multi-device/offline QA and richer photo retry/conflict resolution |
 | Friends and circle | Signed-in exact handles, requests, accepted friends, private feed, story/photo access controls, block/report; anonymous sample circle | Notifications, moderation tooling and wider-beta acceptance |
 | Mood-based plans and captions | Signed-in nearby openings use worldwide Overture venues through the server; anonymous openings and captions keep scripted demo behavior | Admission/access validation, grounded captions and stronger venue quality controls |
-| Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Reliable provider setup, venue/hours validation, quotas and error handling |
+| Explore | Live Photon/Nominatim search, Google Maps and signed-in Google walking routes | Provider reliability, venue quality, quotas and error handling |
 | Location and arrival tasks | Native iPhone foreground GPS or browser GPS, explicit demo walking, accuracy/freshness gates and resume checks | Outdoor device acceptance; background tracking only if selected |
 | Sharing | Browser share/clipboard and local shared status | Native sharing validation and actual delivery to other accounts |
 | XP, coins and demo partner rewards | Signed-in server ledger, confirmed XP, offline commands and one-time fictional offers; anonymous local demo | Stronger participation evidence, real partners and funding are deferred |
@@ -83,7 +83,7 @@ GPS to generate a nearby detour. Follow its checked walking route and add notes
 and photos. Tracking pauses when the app is locked or backgrounded and checks
 again when you return. Availability and coverage can still be incomplete.
 
-**Explore the demo** remains available for the scripted West Village experience.
+Welcome now enters the real account experience; there is no separate demo entry button.
 Demo partners, discounts, coins, XP and social examples are not real merchant
 rewards or a completed social service. Do not navigate to invented demo venues.
 See **You** for the installed version/build number.
@@ -210,6 +210,20 @@ revision `quavi-api-00012-8jk` (source `fe25491`). Physical airplane-mode
 photo/lock/relaunch acceptance remains a release check.
 
 ## Build roadmap
+
+**Current direction (October 19):** plan now, walk later. Opening hours no longer
+restrict generation, customization, start or resume, and are not requested from
+Google. Pedestrian connectivity, time budgets, age rules and venue identity/type
+checks remain. Save for later → Your lists → Open this route creates a new outing
+without overwriting the saved template. Spend is a deliberately rough USD range
+per person based on stop categories, not live prices; no paid LLM service was
+added for this first estimate. This supersedes the older hours-related milestones
+below.
+
+The visual review board has current-code iPhone-size browser previews, with old
+annotations preserved. Finish that review, then publish a new TestFlight build;
+physical outing/offline/lock-resume acceptance remains outstanding.
+
 
 Keep all prototype features and its visual identity; target iPhone first and
 support any city. Demo partners stay in the initial release. This is the build
@@ -807,3 +821,56 @@ build 17 installed before this update. Open TestFlight → Update, then confirm
 **Build 20** in You → Settings. Builds 18/19 were intermediate uploads and were
 not added to the internal tester group in these steps. Build 20 has not been
 assigned to the external Quavi Friends group in this release step.
+
+### Visual review, flexible planning and spend estimates — working changes
+
+Removed hour-based eligibility from generation, replacement and start/resume.
+Google identity/category checks still prevent mismatched venues. The API retains
+its legacy `hours` result field with `unknown` status for client compatibility;
+it contains identity/attribution metadata and never controls visit scheduling.
+A currently closed venue is allowed in a saved plan. Google place field masks no
+longer request opening hours or business status.
+
+Replaced “Check prices” with broad category-based spend ranges, explicitly USD
+per person. These are LLM-authored heuristics with a deterministic fallback for
+unknown categories; no live prices or real-time model estimates are claimed.
+Saved plans reopen as new independent outings; the saved template is unchanged.
+
+General supporting copy is 14 px; compact app labels are at least 13 px. Brand
+fonts, duck assets, colors and rounded silhouettes are preserved. Map SDK credits
+remain provider-controlled. Review board previews use synthetic accounts and
+browser maps at 402 × 874, not actual iPhone screenshots. TestFlight remains
+build 20 until a subsequent release is uploaded and verified.
+
+Validation: 53 client tests and 99 backend tests passed. The local test database
+had an older migration checksum, so the full backend suite ran against a newly
+created isolated development test database without altering existing data.
+
+### Annotation pass — location setup, Home colours and clean account settings
+
+Planning now has separate location, duration and opening-choice stages. Continue
+with my location invokes the existing native permission/GPS adapter; manual city
+search remains available after denial or for planning somewhere else. Duration
+uses 30 min / 1 hour / 2 hours buttons. Options have one Continue action and one
+Shuffle openings action. Returning to setup hides all result actions; refresh
+still avoids recent routes and rejects stale account responses.
+
+Home defaults to orange. Settings → Appearance persists orange, yellow, paper
+or ink as optional `user.homeColor`; older profiles stay valid. Settings first
+shows grouped navigation, while reset/deletion and detailed save controls are
+inside Account. Healthy save banners no longer occupy the Home header.
+
+Opening lists explicitly restrict overflow to the vertical axis. Completion
+cards use three bounded columns and fetch venue photos automatically. Walking
+lines are lighter, with the current leg emphasized and geographic paths intact.
+The story-shelf title/status collision was reproduced after animations completed
+and fixed with normal text flow. Programmatic sheet focus no longer draws a
+thick outline around its whole container; keyboard control focus stays visible.
+
+The old board captured some entrance animations and map loading too early. Its
+replacement waits for fonts, finite animations, map readiness and image loading.
+Real, session-only provider photo/route requests are used for the example venues;
+missing photos keep placeholders. Current source builds for the iPhone Simulator.
+Native input automation remained intermittent, so complete native flow acceptance
+and a fresh TestFlight release remain separate checks, not inferred from browser
+captures.

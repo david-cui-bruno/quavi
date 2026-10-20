@@ -6,7 +6,7 @@ export function OutingSaveStatus({ controls = false }: { controls?: boolean }) {
   const [choice, setChoice] = useState<"cloud" | "local" | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  if (!account || outingStatus === "demo") return null;
+  if (!account || outingStatus === "demo" || outingStatus === "saved" || outingStatus === "empty") return null;
   const labels = {
     saved: "Outings saved",
     empty: "No saved outings yet",

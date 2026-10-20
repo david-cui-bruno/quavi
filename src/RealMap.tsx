@@ -330,15 +330,15 @@ export function RealMap({
           paths.push({
             path: route,
             strokeColor: "#EE6A2C",
-            strokeWeight: 5,
-            strokeOpacity: 0.75,
+            strokeWeight: 3,
+            strokeOpacity: 0.6,
           });
         if (highlightRoute && highlightRoute.length > 1)
           paths.push({
             path: highlightRoute,
             strokeColor: "#EE6A2C",
-            strokeWeight: 7,
-            strokeOpacity: 0.95,
+            strokeWeight: 5,
+            strokeOpacity: 0.9,
           });
         if (paths.length) lines.current = await map.addPolylines(paths);
 

@@ -1,4 +1,5 @@
 import {useSocial} from '../social'
+import {reopenSavedPlan} from '../route-edit'
 import {SocialFriends,PrivateShare} from '../PrivateCircle'
 import { SettingsSheet } from '../SettingsSheet'
 import {Icon} from '../Icons'
@@ -48,10 +49,9 @@ export function Shelf() {
                 const dark = bg === 'ink-p'
                 const extra = x.rating ? 40 : 0
                 return (
-                  <button key={x.id} className="tile fade-in" onClick={() => go('read', { id: x.id })} style={{ background: BG[bg], height: (tall ? 226 : 176) + extra, color: dark ? 'var(--paper)' : 'var(--ink)', padding: 14 }}>
+                  <button key={x.id} className="tile fade-in" onClick={() => go('read', { id: x.id })} style={{ background: BG[bg], height: (tall ? 226 : 194) + extra, color: dark ? 'var(--paper)' : 'var(--ink)', padding: 14 }}>
                     <div className="abs" style={{ left: '50%', top: tall ? 14 : 8, transform: 'translateX(-50%)' }}><Persona spec={flock(pn, pc)} size={tall ? 92 : 68} /></div>
-                    <div className="h1" style={{ position: 'absolute', left: 18, right: 18, bottom: 40 + extra, fontSize: 17, lineHeight: 1.05, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{x.title}</div>
-                    <div className="small" style={{ position: 'absolute', left: 18, right: 18, bottom: 18 + extra, fontWeight: 500 }}>{x.date} · {(account?social.data?.myPosts.some(p=>p.outingId===x.id):x.shared) ? 'Shared' : 'Not shared yet'}</div>
+                    <div className="shelf-card-copy" style={{bottom:18+extra}}><div className="h1">{x.title}</div><div className="small">{x.date} · {(account?social.data?.myPosts.some(p=>p.outingId===x.id):x.shared) ? 'Shared' : 'Not shared yet'}</div></div>
                     {x.rating && <div style={{ position: 'absolute', left: 14, bottom: 14 }}><RatingDucks rating={x.rating} size={12} compact /></div>}
                   </button>
                 )
@@ -155,7 +155,7 @@ export function Lists() {
 }
 
 export function Read() {
-  const { s, route, say, update, account } = useStore()
+  const { s, route, say, update, account, go } = useStore()
   const mine = s.shelf.find((x) => x.id === route.params?.id)
   const st = mine ?? s.library[String(route.params?.id)] ?? (account?undefined:FRIEND_STORIES[0])
   const [privateShare,setPrivateShare]=useState(false)
@@ -190,6 +190,7 @@ export function Read() {
         })}
       </div>
       <div className="grow" style={{ minHeight: 20 }} />
+      {!mine&&!st.status&&(!st.outingPhase||st.outingPhase==='planned')&&<Btn onClick={()=>{update(x=>({...x,story:reopenSavedPlan(st),chapter:0}));go('details')}}>Open this route</Btn>}
       {account&&mine&&<Btn onClick={()=>setPrivateShare(true)}>Share with friends</Btn>}
       <Btn kind={account?"soft":"primary"} onClick={share}>{account?"Export a copy":"Share this story"}</Btn>
       {privateShare&&<PrivateShare story={st} onClose={()=>setPrivateShare(false)}/>}

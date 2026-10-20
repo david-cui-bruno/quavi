@@ -122,7 +122,7 @@ test("start/resume checks reject unsuitable stops and validate category/alias in
   const good = await call(body);
   assert.equal(good.statusCode, 200, good.body);
   assert.equal(good.json().hours[0].venueStatus, "matched");
-  assert.equal(good.json().hours[0].status, "open");
+  assert.equal(good.json().hours[0].status, "unknown");
   assert.equal(
     (
       await call({

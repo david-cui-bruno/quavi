@@ -14,8 +14,9 @@ for(const[from,to]of Object.entries({
  './cloud':url('export const api=(...a)=>globalThis.__openings.api(...a);export const accountError=e=>e.message;export const auth={get currentUser(){return globalThis.__openings.account}}'),
  './store':url('export const useStore=()=>({account:globalThis.__openings.account,s:{user:{interests:["cozy"],age21:false}},update:fn=>globalThis.__openings.updates++})'),
  './tracking':url('export const START={lat:40.73,lng:-74};export const useTracking=()=>({locate:async()=>START})'),
- './places':url('export const searchPlace=async()=>[]'),
- './ui':url(`import React from ${JSON.stringify(pathToFileURL(require.resolve('react')).href)};export const Btn=props=>React.createElement('button',props)`),
+ './PlaceSearch':url('export const PlaceSearch=()=>null'),
+ './brand/Persona':url('export const Persona=()=>null;export const flock=()=>({})'),
+ './ui':url(`import React from ${JSON.stringify(pathToFileURL(require.resolve('react')).href)};export const Btn=props=>React.createElement('button',props);export const Chip=props=>React.createElement('button',props)`),
 }))code=code.replaceAll(`from '${from}'`,`from '${to}'`).replaceAll(`from "${from}"`,`from "${to}"`)
 const {CityPicker}=await import(url(code))
 const result=id=>({openings:id?[{chapters:[0,1,2].map(i=>({placeId:id+i,place:'Place '+i}))}]:[],notes:[]})
@@ -28,7 +29,11 @@ test('different openings makes a fresh request, avoids repeats, preserves curren
  const render=refreshKey=>React.createElement(CityPicker,{refreshKey,onResults,onBusy})
  try{
   await act(async()=>{view=create(render(0))})
-  await act(async()=>{void view.root.findAllByType('button').find(b=>b.props.children==='Use my location').props.onClick();await Promise.resolve()})
+  await act(async()=>{void view.root.findAllByType('button').find(b=>b.props.children==='Continue with my location').props.onClick();await Promise.resolve()})
+  assert.equal(requests.length,0,'location permission and duration selection are separate from generation')
+  await act(async()=>view.root.findAllByType('button').find(b=>b.props.children==='2 hours').props.onClick())
+  await act(async()=>view.root.findAllByType('button').find(b=>b.props.children==='Find my openings').props.onClick())
+  assert.equal(requests[0].minutes,120)
   await act(async()=>jobs[0](result('first')))
   assert.equal(results.length,1)
   await act(async()=>view.update(render(1)))
@@ -36,7 +41,7 @@ test('different openings makes a fresh request, avoids repeats, preserves curren
   assert.deepEqual(requests[1].avoidRoutes,[['first0','first1','first2']])
   await act(async()=>jobs[1](result(null)))
   assert.equal(results.length,1,'no fresh result must not clear current options')
-  assert.match(JSON.stringify(view.toJSON()),/current options are still available/)
+  assert.match(JSON.stringify(view.toJSON()),/current choices are still here/)
   await act(async()=>view.update(render(2)))
   globalThis.__openings.account={uid:'b'}
   await act(async()=>jobs[2](result('stale')))

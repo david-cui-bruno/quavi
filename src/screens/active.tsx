@@ -1,7 +1,7 @@
 import {resumeDemoWalk} from '../demo-route.mjs'
 import {demoWalk} from '../demo-walks'
 import {Icon} from '../Icons'
-import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
+import {GoogleAttribution} from '../GoogleAttribution'
 import { Photo } from '../CloudPhoto'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BODY_PLAIN, Persona, flock } from '../brand/Persona'
@@ -20,7 +20,6 @@ import { useOutingCheck } from '../use-outing-check'
 import { MomentSheet, useStory } from './story'
 
 export function Active() {
-  useLiveHoursClock()
   const { s, update, go, reset, say, syncStatus, outingStatus, account } = useStore()
   const tr = useTracking()
   const life = useRuntime()
@@ -67,7 +66,7 @@ export function Active() {
   type Banner = { kind: string; modifier?: string; big: string; text: string; sub?: string; link?: string }
   let banner: Banner | null = null
   if (!recovery.ready) {
-    banner={kind:'head',big:recovery.phase==='offline'?'You’re offline':recovery.phase==='location'?'Waiting for GPS':recovery.phase==='error'?'Check your detour':recovery.phase==='sign-in'?'Sign in to continue':'Checking your detour',text:recovery.phase==='offline'?'Directions and arrival checks are paused.':recovery.phase==='location'?(tr.perm==='denied'?'Allow location in Settings, then retry GPS.':'Waiting for a fresh, precise position.'):recovery.phase==='error'?'Review the message below, then retry.':'Refreshing the walk and reported hours.',sub:'Your plan, notes and progress stay on this device.'}
+    banner={kind:'head',big:recovery.phase==='offline'?'You’re offline':recovery.phase==='location'?'Waiting for GPS':recovery.phase==='error'?'Check your detour':recovery.phase==='sign-in'?'Sign in to continue':'Checking your detour',text:recovery.phase==='offline'?'Directions and arrival checks are paused.':recovery.phase==='location'?(tr.perm==='denied'?'Allow location in Settings, then retry GPS.':'Waiting for a fresh, precise position.'):recovery.phase==='error'?'Review the message below, then retry.':'Refreshing your walking route.',sub:'Your plan, notes and progress stay on this device.'}
   } else if (!arrived) {
     if(!story.source&&sampleLeg.length){banner={kind:'head',big:'Sample walking route',text:`Follow the orange path to ${c.place}`}} else if (farTransit) {
       const mins = Math.max(5, Math.round(dist / 250))
@@ -252,7 +251,7 @@ export function Active() {
             <div className="wiggle"><Persona spec={flock(c.persona, 'Orange')} size={70} /></div>
           </div>
           <p className="body" style={{ margin: '14px 0 12px' }}>{placeInfo(c.place, c.desc).about}</p>
-          {story.source&&<><p className="small">{hoursLabel(c.hours)}{c.hours?.mapsURL&&<> · <a href={c.hours.mapsURL} target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Check venue</a></>}</p><VenueEntry hours={c.hours}/><GoogleAttribution hours={[c.hours]}/>{[...new Set([...(story.walking?.warnings??[]),...(nav.route?.warnings??[])])].map(w=><p key={w} className="small" style={{marginBottom:8}}>{w}</p>)}</>}
+          {story.source&&<><GoogleAttribution hours={[c.hours]} onMap/>{[...new Set([...(story.walking?.warnings??[]),...(nav.route?.warnings??[])])].map(w=><p key={w} className="small" style={{marginBottom:8}}>{w}</p>)}</>}
           <div className="kicker" style={{ marginBottom: 8 }}>Sidequests here · earn “{meta.badge}”</div>
           <div className="col" style={{ gap: 8, marginBottom: 16 }}>
             {meta.tasks.map((t) => (
@@ -333,7 +332,7 @@ export function Active() {
             <button className={`task${tr.mode === 'demo' ? ' on' : ''}`} onClick={() => tr.setMode('demo')}><span className="box">{tr.mode === 'demo' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>Demo walk</b><span className="small muted">Fast-forwards a walker along your route. Great for demos. Choose this explicitly to simulate movement.</span></span></button>
             <button className={`task${tr.mode === 'live' ? ' on' : ''}`} onClick={() => tr.setMode('live')}><span className="box">{tr.mode === 'live' && <Check size={15} />}</span><span className="col" style={{ flex: 1 }}><b>My location</b><span className="small muted">Uses your phone’s GPS. Tasks unlock within {ARRIVE_RADIUS} m of a stop.</span></span></button>
           </div>
-          <p className="small muted" style={{ marginBottom: 12 }}>GPS runs while Quavi is open. Locking your phone or leaving the app pauses tracking and spoken directions. Return to refresh your position, walking route and reported hours. No background arrival notifications are sent.</p>
+          <p className="small muted" style={{ marginBottom: 12 }}>GPS runs while Quavi is open. Locking your phone or leaving the app pauses tracking and spoken directions. Return to refresh your position and walking route. No background arrival notifications are sent.</p>
           {tr.mode==='live'&&<><p role="status" className="small" style={{marginBottom:12}}>{tr.ready?`GPS accuracy: about ${Math.round(tr.accuracy??0)} m.`:tr.locationError||'Waiting for a fresh, precise location.'}</p><Btn kind="soft" onClick={tr.retryLocation}>Retry GPS</Btn></>}
           {tr.mode === 'demo' && <Btn kind="soft" onClick={() => { tr.teleport({ lat: meta.lat + 0.0002, lng: meta.lng }); setGps(false) }}>Teleport next to {c.place}</Btn>}
         </Sheet>

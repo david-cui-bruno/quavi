@@ -2,9 +2,9 @@ import {homeTone} from '../review-home'
 import {useSocial} from '../social'
 import {CircleStatus,PrivateStory} from '../PrivateCircle'
 import {OutingSaveStatus} from '../OutingSaveStatus'
-import {useLiveHoursClock,GoogleAttribution,hoursLabel} from '../GoogleAttribution'
+import {GoogleAttribution} from '../GoogleAttribution'
 import {useRuntime} from '../runtime'
-import { CityPicker } from '../CityPicker'
+import { CityPicker, type PlannerStage } from '../CityPicker'
 import { useTracking } from '../tracking'
 import { useEffect, useState } from 'react'
 import { BODY_PLAIN, Persona, flock, safeSurface, type Colorway } from '../brand/Persona'
@@ -66,7 +66,7 @@ export function Home() {
   const life=useRuntime()
   const { s, go, update, say, syncStatus, account } = useStore()
   const social=useSocial()
-  const tone=homeTone()
+  const tone=homeTone(s.user.homeColor)
   const [ending, setEnding] = useState(false)
   const live = s.story?.status === 'active' ? s.story : undefined
   const at = live ? Math.min(s.chapter, live.chapters.length - 1) : 0
@@ -153,61 +153,35 @@ export function Home() {
   )
 }
 
-const MOOD_TO_OPENING: Record<string, string> = { bailed: 'cozy', closed: 'lucky', mood: 'lucky', weather: 'cozy', late: 'bold' }
 
 export function Openings() {
-  useLiveHoursClock()
-  const { s, update, go, account } = useStore()
-  const tracking = useTracking()
-  const [choices,setChoices] = useState<Opening[]>(account ? [] : OPENINGS)
-  const [refreshKey,setRefreshKey]=useState(0),[refreshing,setRefreshing]=useState(false)
-  const [liveOrigin,setLiveOrigin] = useState(false)
-  const [notice,setNotice] = useState('')
-  const [sel, setSel] = useState(OPENINGS.findIndex((o) => o.id === MOOD_TO_OPENING[s.mood ?? 'bailed']))
-  const [order, setOrder] = useState([0, 1, 2])
-  const start = (idx: number) => {
-    const o = choices[idx]
-    if(!o)return
-    if(o.origin){tracking.setMode(liveOrigin?'live':'demo');tracking.teleport(o.origin)}
-    update((st) => ({ ...st, story: startStory(o, st.user), chapter: 0 }))
-    go('writing')
-  }
-  return (
-    <Screen$ bg="yellow">
-      <div className="col" style={{flex:1,minHeight:0,overflowY:'auto',paddingBottom:4}}>
-      <BackBtn />
-      <div className="kicker" style={{ marginTop: 14 }}>{account ? 'A few ways tonight could go' : 'Three ways tonight could go'}</div>
-      <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Pick your<br />opening.</h1>
-      {account ? <CityPicker refreshKey={refreshKey} onBusy={setRefreshing} onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}} /> : <p className="small" style={{marginBottom:14}}>These are demo openings in West Village. <button style={{textDecoration:'underline',minHeight:44}} onClick={()=>go('login')}>Log in for nearby places</button></p>}
-      <div className="col stagger" style={{ gap: 14 }}>
-        {order.filter(i=>choices[i]).map((oi) => {
-          const o = choices[oi]
-          const bg = safeSurface(flock(o.persona, o.color), SURFACE[o.bg] as 'paper') as Bg
-          const dark = onDark(bg)
-          const on = sel === oi
-          return (
-            <button key={o.id} onClick={() => setSel(oi)} className={`tile opening-tile fade-in${o.source ? " live-opening" : ""}`} style={{ background: BG[bg], minHeight: o.source ? 150 : 112, color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3, boxShadow: on ? 'inset 0 0 0 0 transparent' : 'none', transform: on ? 'scale(1.015)' : undefined }}>
-              <div className="h1 opening-title" style={{ fontSize: 25 }}>{o.title}</div>
-              <div className="small" style={{ fontWeight: 500 }}>{o.walking?.provider==='Google Maps'?`~${o.estimatedMinutes} min · ${o.chapters.every(c=>hoursLabel(c.hours)==='Reported open for your visit')?'reported open':'some hours unknown'}`:o.tags}</div>
-              <div className="small" style={{ fontWeight: 700, maxWidth:o.source?'calc(100% - 70px)':undefined, overflowWrap:'anywhere', color: dark ? 'var(--yellow)' : 'var(--ink)' }}>{o.route}</div>
-              <div className="pcs" style={{ right: 14, bottom: o.source?-14:-26 }}><Persona spec={flock(o.persona, o.color)} size={96} /></div>
-              {on && <span className="tick" style={{ left: 'auto', right: 14, top: 14, bottom: 'auto' }}><Check /></span>}
-            </button>
-          )
-        })}
-      </div>
-      {notice&&(choices.length?<details className="route-notes"><summary>About these routes</summary><p>{notice}</p><p>Check prices, entrances and local conditions before you go.</p></details>:<div className="card" role="status" style={{background:'var(--paper)',padding:20,margin:'12px 0'}}><h2 className="h1 h-xs">Try a different starting point.</h2><p className="small" style={{marginTop:8,lineHeight:1.5}}>{notice}</p><p className="small" style={{marginTop:8}}>Search another neighborhood or give yourself more time.</p></div>)}
-      {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
-      <div className="grow" />
-      {choices[0]?.source&&<p className="small" style={{margin:'12px 0'}}>Places: <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noreferrer" style={{textDecoration:'underline'}}>Overture Maps</a> · snapshot {new Date(choices[0].source.updatedAt).toLocaleDateString()}. Venue catalog only.</p>}
-      <Btn kind="secondary" disabled={refreshing||!choices.length} onClick={() => start(sel)}>Go with this one</Btn>
-      <div className="row" style={{ justifyContent: 'space-between', marginTop: 4 }}>
-        <button className="small" style={{ fontWeight: 700, fontSize: 14 }} disabled={refreshing||!choices.length} onClick={() => start(Math.floor(Math.random() * choices.length))}>Pick for me</button>
-        <button className="small hit44" style={{ fontWeight: 700, fontSize: 14 }} disabled={refreshing||!choices.length} onClick={() => { if(account)setRefreshKey(n=>n+1);else setOrder((o) => o.length ? [...o.slice(1),o[0]] : o); }}>{refreshing?'Finding new openings…':'Show me different openings'}</button>
-      </div>
-      </div>
-    </Screen$>
-  )
+  const {update,go,back,account}=useStore(),tracking=useTracking()
+  const [choices,setChoices]=useState<Opening[]>(account?[]:OPENINGS)
+  const [stage,setStage]=useState<PlannerStage>(account?'location':'options')
+  const [backKey,setBackKey]=useState(0),[refreshKey,setRefreshKey]=useState(0),[refreshing,setRefreshing]=useState(false)
+  const [liveOrigin,setLiveOrigin]=useState(false),[notice,setNotice]=useState(''),[sel,setSel]=useState(0)
+  const [order,setOrder]=useState([0,1,2])
+  const start=()=>{const o=choices[sel];if(!o)return;if(o.origin){tracking.setMode(liveOrigin?'live':'demo');tracking.teleport(o.origin)}update(st=>({...st,story:startStory(o,st.user),chapter:0}));go('writing')}
+  const options=stage==='options'
+  return <Screen$ bg="yellow">
+    <div className="planner-layout">
+      <BackBtn onClick={()=>{if(account&&stage!=='location')setBackKey(n=>n+1);else back()}}/>
+      <h1 className="h1 h-l planner-title">{stage==='location'?<>Where shall<br/>we wander?</>:stage==='time'?<>How long<br/>do you have?</>:<>Pick your<br/>opening.</>}</h1>
+      {account&&<CityPicker onStage={setStage} backKey={backKey} refreshKey={refreshKey} onBusy={setRefreshing} onResults={(result,live)=>{setChoices(result.openings);setOrder(result.openings.map((_,i)=>i));setSel(0);setLiveOrigin(live);setNotice(result.notes.join(' '))}}/>}
+      {options&&<>
+        <div className="planner-options" role="group" aria-label="Route openings">
+          {order.filter(i=>choices[i]).map(oi=>{const o=choices[oi],bg=safeSurface(flock(o.persona,o.color),SURFACE[o.bg] as 'paper') as Bg,dark=onDark(bg),on=sel===oi;return <button key={o.id} onClick={()=>setSel(oi)} aria-pressed={on} className="tile planner-opening" style={{background:BG[bg],color:dark?'var(--paper)':'var(--ink)'}}>
+            <div className="planner-opening-copy"><h2 className="h1">{o.title}</h2><p className="small">{o.estimatedMinutes?`~${o.estimatedMinutes} min · ${o.chapters.length} stops`:o.tags}</p><p className="small planner-route">{o.chapters.map(c=>c.place).join(' → ')}</p></div>
+            <div className="planner-opening-duck"><Persona spec={flock(o.persona,o.color)} size={76}/></div>{on&&<span className="tick"><Check/></span>}
+          </button>})}
+          {notice&&<details className="route-notes"><summary>About these routes</summary><p>{notice}</p></details>}
+          {choices.some(o=>o.walking?.provider==='Google Maps')&&<GoogleAttribution hours={choices.flatMap(o=>o.chapters.map(c=>c.hours))}/>}
+          {choices[0]?.source&&<details className="route-notes"><summary>Venue data</summary><p>Venue catalog: <a href={choices[0].source.attributionURL} target="_blank" rel="noreferrer">Overture Maps</a>.</p></details>}
+        </div>
+        <div className="planner-footer"><Btn kind="secondary" disabled={refreshing||!choices.length} onClick={start}>Continue <Arrow size={20}/></Btn><button className="text-action" disabled={refreshing||!choices.length} onClick={()=>account?setRefreshKey(n=>n+1):setOrder(o=>[...o.slice(1),o[0]])}>{refreshing?'Finding new openings…':'Shuffle openings'}</button></div>
+      </>}
+    </div>
+  </Screen$>
 }
 
 export function Writing() {

@@ -15,7 +15,7 @@ import { ownerHash, lockAccount, quota } from "./account.js";
 import { detourInput, planDetours, type VenueProvider } from "./detours.js";
 import { checkedDetours } from "./checked-detours.js";
 import { walkingInput, type WalkingProvider } from "./walking.js";
-import { liveCheckInput, liveStop, checkHours } from "./live-detours.js";
+import { liveCheckInput, liveStop, checkVenues } from "./live-detours.js";
 import type { LiveGeo } from "./google-geo.js";
 import { scrubGoogleContent } from "./google-retention.js";
 import { appStateSchema, inspectState } from "./state-schema.js";
@@ -355,7 +355,7 @@ export async function createApp(options: {
           const walking = await options.liveGeo.navigate(input.points);
           const hours =
             walking && input.stops
-              ? await checkHours(options.liveGeo, input.stops, walking)
+              ? await checkVenues(options.liveGeo, input.stops)
               : undefined;
           req.db = await options.pool.connect();
           await req.db.query("BEGIN");
@@ -379,13 +379,6 @@ export async function createApp(options: {
                   "No suitable walking route connects these stops. Choose another detour.",
               });
           if(hours?.some(h=>h.venueStatus==='unsuitable'))return reply.code(422).send({error:'A stop no longer matches a suitable visit venue. Choose a replacement or another detour.'});
-          if (hours?.some((h) => h.status === "closed"))
-            return reply
-              .code(422)
-              .send({
-                error:
-                  "A stop is reported closed during your planned visit. Choose another detour.",
-              });
           if (kind === "walking-route") return walking;
           const { legs, distance, duration, provider, checkedAt, warnings } =
             walking;

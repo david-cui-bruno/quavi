@@ -5,7 +5,8 @@ import {demoWalk} from '../demo-walks'
 import {RealMap,type RealPin} from '../RealMap'
 import {useWalkingRoute} from '../nav'
 import {PrivateShare} from '../PrivateCircle'
-import {useLiveHoursClock,GoogleAttribution,hoursLabel,VenueEntry} from '../GoogleAttribution'
+import {GoogleAttribution} from '../GoogleAttribution'
+import {estimateSpend} from '../spend-estimate'
 import type {HoursCheck} from '../data'
 import { api, accountError, auth } from '../cloud'
 import { useTracking } from '../tracking'
@@ -57,7 +58,6 @@ function RoutePreview({ story }: { story: Story }) {
 }
 
 export function Details() {
-  useLiveHoursClock()
   const { go, reset, say, account } = useStore()
   const tracking=useTracking()
   const mounted=useRef(true)
@@ -80,12 +80,12 @@ export function Details() {
         <BackBtn onClick={() => reset('home')} />
         <button className="chip" onClick={() => setSave(true)} aria-label="Save this plan to a list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>Save for later</button>
       </div>
-      <div className="kicker" style={{ marginTop: 14 }}>Your plan for tonight</div>
+      <div className="kicker" style={{ marginTop: 14 }}>Your next detour</div>
       <h1 className="h1 h-l details-title" style={{ margin: '6px 0 12px' }}>{story.title.split(' ').slice(0, 2).join(' ')}<br />{story.title.split(' ').slice(2).join(' ')}</h1>
       <div style={{ display: 'flex', margin: '4px 0 14px', padding: '12px 0', borderTop: '1px solid rgba(30,27,22,.14)', borderBottom: '1px solid rgba(30,27,22,.14)' }}>
         {([
           [story.source ? `~${story.estimatedMinutes ?? total(story)} min` : prefs.time === '60 min' ? `${total(story)} min` : prefs.time, 'Time'],
-          [story.source ? 'Check prices' : { Free: '$0–5', '$ Low': '$12–20', '$$ Treat myself': '$40+' }[story.prefs?.spend ?? 'Free'] ?? '$0–5', 'Spend'],
+          [story.source ? estimateSpend(story).label.replace('$','US$') : { Free: '$0–5', '$ Low': '$12–20', '$$ Treat myself': '$40+' }[story.prefs?.spend ?? 'Free'] ?? '$0–5', story.source ? 'Est. / person' : 'Spend'],
           [`${((story.walking?.distance ?? tripMeters(story)) / 1609).toFixed(1)} mi`, story.prefs?.move ?? 'Walking'],
         ] as const).map(([value, label], k) => (
           <div key={label} style={{ flex: 1, paddingLeft: k ? 16 : 0, borderLeft: k ? '1px solid rgba(30,27,22,.14)' : 'none' }}>
@@ -98,9 +98,8 @@ export function Details() {
       <p className="it" style={{ fontSize: 17, margin: '10px 2px' }}>“{story.premise}”</p>
       {story.source&&<>
         <GoogleAttribution hours={story.chapters.map(c=>c.hours)} onMap/>
-        <details className="route-notes"><summary>Hours, entry &amp; route details</summary>
-          <p>Reported hours are refreshed before starting. Entry, tickets and accessible entrances are not confirmed. Check each venue’s details.</p>
-          {story.chapters.map((c,i)=><div key={i}><b className="small">{c.place}</b><VenueEntry hours={c.hours}/></div>)}
+        <details className="route-notes"><summary>About this route</summary>
+          <p>Save this route for later or start when you’re ready. Spend is a rough estimate in USD per person, based on the kinds of stops—not a price quote.</p>
           <p>Walking directions may be missing sidewalks or pedestrian paths. Check local signs and conditions.</p>
           <p>Venue catalog: <a href={story.source.attributionURL} target="_blank" rel="noreferrer">Overture Maps</a>.</p>
         </details>
@@ -114,7 +113,7 @@ export function Details() {
               <div style={{ width: 52, height: 52, borderRadius: 18, background: BG[safeSurface(flock(c.persona, i === 0 ? 'Orange' : 'Yellow'), bg[i % 3] as 'paper') as Bg], overflow: 'hidden', position: 'relative', flex: 'none' }}>
                 <div style={{ position: 'absolute', left: 5, top: 8 }}><Persona spec={flock(c.persona, i === 0 ? 'Orange' : 'Yellow')} size={42} /></div>
               </div>
-              <div className="col" style={{ flex: 1, textAlign: 'left' }}><b className="h1" style={{ fontSize: 17 }}>{c.title}</b><span className="small muted">{story.source?`${c.kind??'Stop'} · ${hoursLabel(c.hours)}`:c.meta}</span></div>
+              <div className="col" style={{ flex: 1, textAlign: 'left' }}><b className="h1" style={{ fontSize: 17 }}>{c.title}</b><span className="small muted">{story.source?`${c.kind??'Stop'} · ${c.mins} min`:c.meta}</span></div>
               <button className="small muted hit44" aria-label={`Swap ${c.place}`} style={{ fontWeight: 700 }} onClick={() => go('swap', { i })}>Swap</button>
             </div>
           )
@@ -244,7 +243,7 @@ export function Swap() {
         })}
       </div>
       {selected&&!c.alts.some(a=>sameChoice(a,selected))&&<div className="card" style={{background:'var(--yellow-p)',padding:20,marginTop:12}}><span className="kicker">Your choice</span><h2 className="h1 h-xs">{selected.place}</h2><p className="small">{selected.meta}</p></div>}
-      {live&&<p className="small muted" style={{marginTop:12}}>We check the full walk and reported hours before applying your choice. Entry and prices still need checking.</p>}
+      {live&&<p className="small muted" style={{marginTop:12}}>We check the walking route before applying your choice. Save your plan for whenever you want to go.</p>}
       {error&&<p role="alert" className="small" style={{marginTop:12}}>{error}</p>}
       <div className="grow" style={{ minHeight: 16 }} />
       <div className="col" style={{ gap: 10 }}>
@@ -272,11 +271,11 @@ export function Complete() {
         <span className="kicker">One for the story shelf</span>
       </div>
       <h1 className="h1 h-xl pop" style={{ marginTop: 8, fontSize: 50 }}>The end…<br />for now.</h1>
-      <div className="row" style={{ gap: 10, margin: '16px 0' }}>
+      <div className="completion-places">
         {story.chapters.map((chapter, i) => {
           const img = chapterImg(story, i)
           return (
-            <div key={i} className="fade-in" style={{ flex: 1, background: 'var(--paper)', borderRadius: 22, padding: 10, animationDelay: `${i * 0.1}s` }}>
+            <div key={i} className="completion-place-card fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
               <VenuePhoto chapter={{...chapter,ll:{lat:chapterMeta(story,i).lat,lng:chapterMeta(story,i).lng}}} number={i+1} own={img} onProviderPhoto={()=>setProviderPhoto(true)} onOwnPhoto={()=>setPhotoChapter(i)}/>
               <b className="completion-place-name">{chapter.place}</b>
             </div>
