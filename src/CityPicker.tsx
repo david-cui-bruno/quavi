@@ -54,7 +54,7 @@ export function CityPicker({onResults,refreshKey=0,onBusy,onStage,backKey=0}:{
   {stage==='time'&&<>
    <button className="planner-area" disabled={busy} onClick={()=>change('location')} aria-label="Change starting point"><span>{origin?.label}</span><span>Change</span></button>
    <p className="body muted">Leave a little room for the unexpected.</p>
-   <div className="planner-time" role="group" aria-label="Time for your detour">{([30,60,120] as const).map(n=><Chip key={n} on={minutes===n} onClick={()=>setMinutes(n)}>{n===30?'30 min':n===60?'1 hour':'2 hours'}</Chip>)}</div>
+   <div className="planner-duration-choices" role="group" aria-label="Time for your detour">{([30,60,120] as const).map(n=><Chip key={n} on={minutes===n} onClick={()=>setMinutes(n)}>{n===30?'30 min':n===60?'1 hour':'2 hours'}</Chip>)}</div>
    <div className="planner-duck" aria-hidden="true"><Persona spec={flock('Maple','Yellow')} size={160}/></div>
    <Btn kind="secondary" disabled={busy||!origin} onClick={()=>origin&&void find(origin,minutes)}>{busy?'Finding your openings…':'Find my openings'}</Btn>
   </>}

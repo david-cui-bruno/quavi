@@ -289,7 +289,6 @@ export function Circle() {
       <div className="kicker" style={{ marginTop: 14 }}>Your circle</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 16px' }}>Stories from<br />your circle.</h1>
       {account&&<CircleStatus/>}
-      {account&&<p className="small muted">Friends only. Refreshing checks your current access.</p>}
       {all.length === 0 && (
         <div className="col" style={{ gap: 12 }}>
           <div className="card" style={{ background: 'var(--soft)', padding: '20px 24px', borderRadius: 24 }}>
@@ -299,14 +298,14 @@ export function Circle() {
           </div>
         </div>
       )}
-      <div className="col stagger" style={{ gap: 12 }}>
+      <div className="circle-feed stagger">
         {all.map((f, i) => {
           const isMine = account ? 'outingId' in f && !!f.outingId : f.author === 'You'
           const sp = isMine ? s.user.avatar : flock(['Zed', 'Maple', 'Juno', 'Rex'][i % 4], 'Yellow')
           const bgn = safeSurface(sp, (['orange-p', 'ink-p', 'yellow-p'] as const)[i % 3]) as Bg
           const dark = onDark(bgn)
           return (
-            <button key={f.id + i} className="tile" onClick={() => (isMine ? go('read', { id: account && 'outingId' in f ? f.outingId : f.id }) : go('friend', { id: f.id }))} style={{ height: isMine && 'rating' in f && f.rating ? 150 : 112, background: BG[bgn], color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+            <button key={f.id + i} className="tile" onClick={() => (isMine ? go('read', { id: account && 'outingId' in f ? f.outingId : f.id }) : go('friend', { id: f.id }))} style={{ height: isMine && 'rating' in f && f.rating ? 176 : 148, background: BG[bgn], color: dark ? 'var(--paper)' : 'var(--ink)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
               <div className="h1" style={{ fontSize: 20, lineHeight: 1.05, maxWidth: 200 }}>{f.title}</div>
               <div className="small" style={{ fontWeight: 500 }}>{isMine ? 'You' : f.author} · {f.chapters.length} stops · {f.date}</div>
               {isMine && 'rating' in f && f.rating && <div style={{ marginTop: 8 }}><RatingDucks rating={f.rating} /></div>}

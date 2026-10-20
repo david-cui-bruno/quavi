@@ -85,31 +85,6 @@ export function VenuePhotoSheet({photo,onClose}:{photo:Picture;onClose:()=>void}
             src={photo.url}
             alt={photo.placeName}
           />
-          <div className="venue-photo-credits">
-            <img src="/google-maps-dark.svg" alt="Google Maps" height="18" />
-            {photo.authors.map((a, i) => (
-              <div className="row" key={i}>
-                {a.avatar && (
-                  <img src={a.avatar} alt="" width="28" height="28" />
-                )}
-                {a.url ? (
-                  <a href={a.url} target="_blank" rel="noreferrer">
-                    Photo: {a.name}
-                  </a>
-                ) : (
-                  <span>Photo: {a.name}</span>
-                )}
-              </div>
-            ))}
-            <a href={photo.mapsUrl} target="_blank" rel="noreferrer">
-              View this photo on Google Maps
-            </a>
-            {photo.flagUrl && (
-              <a href={photo.flagUrl} target="_blank" rel="noreferrer">
-                Report a photo issue
-              </a>
-            )}
-          </div>
           <Btn kind="soft" onClick={() => onClose()}>
             Done
           </Btn>

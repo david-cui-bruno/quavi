@@ -419,17 +419,7 @@ export function PrivateShare({
         </>
       ) : (
         <>
-          <p className="body">
-            Only accepted friends can read this story. Your title, captions,
-            intro, task notes and task photos below will be visible. Your
-            starting location and GPS/arrival data stay private.
-          </p>
-          <p className="small muted">
-            New accepted friends can see shared stories too. Saved edits update
-            the shared story. Stop sharing whenever you want; already downloaded
-            content cannot be recalled. Photo links already issued can last up
-            to five minutes.
-          </p>
+          <p className="body" style={{margin:"12px 0 20px"}}>Friends only.</p>
           <CircleStatus />
           {story.intro && <p className="it">{story.intro}</p>}
           {story.chapters.map((c, i) => (

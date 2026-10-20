@@ -652,8 +652,8 @@ input,textarea { caret-color:var(--ink); }
 .planner-area{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--soft);color:var(--ink);border-radius:24px;padding:14px 18px;width:100%;min-height:52px;text-align:left;flex:none;}
 .planner-area>span:first-child{min-width:0;overflow-wrap:anywhere;font-weight:500;}
 .planner-area>span:last-child{flex:none;font-size:14px;font-weight:700;}
-.planner-time{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:none;}
-.planner-time .chip{width:100%;justify-content:center;min-height:54px;padding:10px;}
+.planner-duration-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;flex:none;}
+.planner-duration-choices .chip{width:100%;justify-content:center;min-height:54px;padding:10px;}
 .planner-options{display:flex;flex-direction:column;gap:12px;flex:1;min-width:0;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none;padding:0 0 4px;}
 .planner-opening{display:flex;align-items:center;position:relative;width:100%;min-width:0;min-height:116px;flex:none;overflow:hidden;text-align:left;padding:16px 20px;}
 .planner-opening-copy{position:relative;z-index:1;min-width:0;width:calc(100% - 64px);padding-right:8px;}
@@ -693,3 +693,8 @@ input,textarea { caret-color:var(--ink); }
 .shelf-card-copy .small{line-height:1.3;}
 /* Programmatic container focus stays in the accessibility tree without framing the whole sheet. */
 .sheet:focus-visible,.screen[tabindex="-1"]:focus-visible{outline:none;}
+
+/* Circle stories keep a deliberate gap below their heading and room for the duck. */
+.circle-feed{display:flex;flex-direction:column;gap:16px;margin-top:8px;}
+.circle-feed .tile{min-height:148px;padding:24px 88px 24px 24px;justify-content:center;gap:10px;}
+.circle-feed .tile .h1{font-size:26px!important;line-height:1.1!important;overflow-wrap:anywhere;}
