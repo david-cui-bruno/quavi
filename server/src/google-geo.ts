@@ -1,3 +1,4 @@
+import {providerSession} from './provider-session.js';
 import type { PlaceIdentity, PlaceRejection } from "./place-identity.js";
 import { GoogleAuth } from "google-auth-library";
 import type pg from "pg";
@@ -204,23 +205,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
   const auth = new GoogleAuth({
     scopes: ["https://www.googleapis.com/auth/cloud-platform"],
   });
-  const request = async (
-    url: string,
-    body: unknown,
-    mask: string,
-    kind: "places" | "routes",
-  ) => {
-    // Calendar-month caps include failed attempts, shared by every API instance. No paid-service retry loop.
-    const {
-      rows: [q],
-    } = await pool.query(
-      `INSERT INTO request_quotas(owner_hash,category,window_at,used) VALUES('project',$1,date_trunc('month',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC',1) ON CONFLICT(owner_hash,category,window_at) DO UPDATE SET used=request_quotas.used+1 RETURNING used`,
-      ["google-" + kind],
-    );
-    if (q.used > 500)
-      throw Object.assign(new Error("Monthly map lookup cap reached"), {
-        statusCode: 429,
-      });
+  const request = providerSession(pool, async (url, body, mask) => {
     try {
       const token = await auth.getAccessToken();
       const r = await fetch(url, {
@@ -245,7 +230,7 @@ export function googleGeo(projectId: string, pool: pg.Pool): LiveGeo {
         statusCode: 503,
       });
     }
-  };
+  });
   const navigate = async (points: Point[]) => {
     walkingInput.parse({ points });
     const waypoint = (p: Point) => ({

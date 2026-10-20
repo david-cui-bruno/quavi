@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { initializeApp, deleteApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { createApp } from "../src/app.js";
+import {LookupLimitError} from '../src/provider-session.js';
 import { ownerHash, processDeletions } from "../src/account.js";
 import { createPool } from "../src/db.js";
 import { readConfig } from "../src/config.js";
@@ -85,7 +86,7 @@ const headers = (user: number) => ({
 
 before(async () => {
   await app.ready();
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     const response = await fetch(
       `http://${config.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local-test`,
       {
@@ -557,3 +558,25 @@ test('Home colour preferences accept the supported palette and retain compatibil
  assert.equal(appStateSchema.parse(state('Older')).user.homeColor,undefined);
  assert.equal(appStateSchema.safeParse({...state('Invalid'),user:{...state('Invalid').user,homeColor:'blue'}}).success,false);
 });
+
+test('normal shuffle sessions allow more than twelve requests while burst limits remain explicit',async()=>{
+ const real=await createApp({pool,auth,origins:[],detours:{async nearby(origin){return{updatedAt:new Date().toISOString(),venues:['coffee_shop','bookstore','park','museum'].map((kind,i)=>({id:String(i),name:'Shuffle place '+i,kind,ll:{lat:origin.lat+i*.001,lng:origin.lng},confidence:.95,status:'open'}))}}}})
+ const payload={origin:{lat:48.8566,lng:2.3522},label:'Paris',interests:['cozy'],minutes:60}
+ try{
+  await pool.query("DELETE FROM request_quotas WHERE owner_hash=$1 AND category IN ('detours','detour-burst')",[ownerHash(users[6].uid)])
+  for(let i=0;i<20;i++){
+   const r=await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(6),payload:{...payload,variant:'shuffle-'+i}})
+   assert.equal(r.statusCode,200,`shuffle ${i+1}: ${r.body}`)
+  }
+  const limited=await real.inject({method:'POST',url:'/v1/me/detours',headers:headers(6),payload})
+  assert.equal(limited.statusCode,429);assert.equal(limited.headers['retry-after'],'60');assert.match(limited.json().error,/in a minute/)
+ }finally{await real.close()}
+})
+
+test('map budget exhaustion returns an actionable message without exposing provider details',async()=>{
+ const real=await createApp({pool,auth,origins:[],walking:{async check(){throw new LookupLimitError('Map search capacity is used up for this month. Your current openings are still available.',3600)}}})
+ try{
+  const r=await real.inject({method:'POST',url:'/v1/me/walking-check',headers:headers(7),payload:{points:[{lat:40.73,lng:-74},{lat:40.731,lng:-74}]}})
+  assert.equal(r.statusCode,429);assert.equal(r.json().code,'map_capacity');assert.match(r.json().error,/current openings/);assert.equal(r.headers['retry-after'],'3600')
+ }finally{await real.close()}
+})

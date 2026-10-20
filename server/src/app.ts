@@ -1,3 +1,4 @@
+import {LookupLimitError} from './provider-session.js';
 import * as delivery from './social-delivery.js';
 import * as social from './social.js';
 import {ensureRewards,rewardsActive,rewardState,redeem} from "./rewards.js";
@@ -78,6 +79,7 @@ export async function createApp(options: {
     reply.header("X-Content-Type-Options", "nosniff");
   });
   app.setErrorHandler((error, req, reply) => {
+    if(error instanceof LookupLimitError)return reply.header("Retry-After",error.retryAfterSeconds).code(429).send({error:error.message,code:"map_capacity"});
     if(error instanceof social.SocialError)return reply.code(error.statusCode).send({error:error.message});
     if (error instanceof ZodError)
       return reply.code(400).send({
@@ -233,10 +235,12 @@ export async function createApp(options: {
             error:
               "City-aware detours are not available. Try again later or use the separate demo.",
           });
-        if (!(await quota(req.db!, ownerHash(req.uid), "detours", 12, 86400)))
+        if (!(await quota(req.db!, ownerHash(req.uid), "detour-burst", 20, 60)))
+          return reply.header("Retry-After",60).code(429).send({error:"Give these openings a moment. You can shuffle again in a minute."});
+        if (!(await quota(req.db!, ownerHash(req.uid), "detours", 120, 86400)))
           return reply
             .code(429)
-            .send({ error: "Daily detour limit reached. Try again tomorrow." });
+            .send({ error: "You’ve explored a lot of openings today. Your current choices are still available; new searches reset tomorrow." });
         const db = req.db!;
         req.db = null;
         try {

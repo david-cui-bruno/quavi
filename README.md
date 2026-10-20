@@ -917,3 +917,25 @@ with no horizontal overflow, including the 430 × 932 iPhone 15 Plus viewport.
 TestFlight **1.0 (22)** uploaded on October 19 at 10:43 PM EDT and is verified
 **Testing** in **Quavi Development**, with test notes saved. Existing tester access
 is preserved; this release does not add the external Quavi Friends group.
+
+### Shuffle lookup recovery — backend update
+
+Route generation previously allowed only 12 calls per account per day; each
+shuffle also re-ran Google venue/route work against a shared 500-call monthly
+provider cap. Normal shuffle testing reproduced a hard failure at request 13.
+The backend now permits 120 generation calls per account per day with a separate
+20/minute burst limit. The existing project counters are preserved; the bounded
+Google cap is 2,000 requests per provider category per calendar month. The
+configured $100/month alert budget is unchanged. This is request admission,
+not a dollar guarantee for all project services.
+
+Identical Google requests, including in-flight calls, share a bounded three-minute
+in-memory result. Fields, geometry, request body and provider all participate in
+the key; errors are evicted, expired results are removed, and no provider content
+or precise route request is written to a durable cache. Different shuffle
+variants still generate new candidates. Capacity errors identify the actual
+limit and preserve existing choices rather than returning “Too many lookups.”
+
+Validation: 105 backend tests pass, including 20 successful shuffles, explicit
+burst rejection, capacity messages, coalescing, expiry and failed-call recovery.
+No client change is required; installed TestFlight build 22 uses this backend.
