@@ -149,7 +149,7 @@ export function planDetours(
   };
   const extraThemes = [
     {id:'taste',title:'A taste of the neighborhood',interest:'food',persona:'Biscuit',color:'Orange',bg:'paper'},
-    {id:'pages',title:'Between the pages',interest:'cozy',persona:'Luna',color:'Orange',bg:'orange'},
+    {id:'pages',title:'The slow chapter',interest:'cozy',persona:'Luna',color:'Orange',bg:'orange'},
     {id:'gallery',title:'A change of scene',interest:'art',persona:'Juno',color:'Yellow',bg:'paper'},
     {id:'fresh',title:'The fresh-air chapter',interest:'air',persona:'Rex',color:'Yellow',bg:'ink'},
     {id:'play',title:'Something a little unexpected',interest:'fun',persona:'Pip',color:'Orange',bg:'orange'},

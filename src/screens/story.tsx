@@ -197,6 +197,7 @@ export function Swap() {
   const mounted=useRef(true)
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false}},[])
   const live=!!story.source
+  const sameChoice=(a:Alt,b:Alt|null)=>!!b&&a.place===b.place&&a.ll?.lat===b.ll?.lat&&a.ll?.lng===b.ll?.lng
   const started=!!story.status || !!story.outingPhase && story.outingPhase!=='planned'
   const swap = async () => {
     if(!selected)return
@@ -226,11 +227,11 @@ export function Swap() {
       <div className="kicker" style={{ marginTop: 14 }}>Rewrite chapter {i + 1}</div>
       <h1 className="h1 h-l" style={{ margin: '6px 0 8px' }}>Another way<br />to go.</h1>
       <p className="body muted" style={{ marginBottom: 14 }}>Choose a nearby suggestion or search for a place you have in mind.</p>
-      {live&&!started&&<fieldset disabled={busy} style={{border:0,padding:0,margin:'0 0 18px',minWidth:0}}><PlaceSearch inline value={query} onChange={setQuery} near={c.ll??story.origin!} onChoose={hit=>{setSelected({place:hit.name,meta:hit.address??hit.kind,persona:'Juno',color:'Orange',ll:hit.ll,kind:hit.kind});setError('')}}/></fieldset>}
+      {live&&!started&&<fieldset disabled={busy} style={{border:0,padding:0,margin:'0 0 18px',minWidth:0}}><PlaceSearch inline value={query} onChange={value=>{setQuery(value);setSelected(null);setError('')}} near={c.ll??story.origin!} onChoose={hit=>{setSelected({place:hit.name,meta:hit.address??hit.kind,persona:'Juno',color:'Orange',ll:hit.ll,kind:hit.kind});setError('')}}/></fieldset>}
       {started&&live&&<p className="small" role="status">Choose your stops before starting the walk. Start a new plan to pick different places.</p>}
       <div className="col" style={{ gap: 10 }}>
         {c.alts.map((a) => {
-          const on = selected===a
+          const on = sameChoice(a,selected)
           return (
             <button key={a.place} disabled={busy||live&&started} aria-pressed={on} className="tile row" onClick={() => {setSelected(a);setError('')}} style={{ background: on ? 'var(--yellow-p)' : 'var(--soft)', padding: 16, gap: 14 }}>
               <div style={{ width: 76, height: 84, borderRadius: 22, background: BG[safeSurface(flock(a.persona, a.color), 'paper') as Bg], overflow: 'hidden', position: 'relative', flex: 'none' }}>
@@ -242,7 +243,7 @@ export function Swap() {
           )
         })}
       </div>
-      {selected&&!c.alts.includes(selected)&&<div className="card" style={{background:'var(--yellow-p)',padding:20,marginTop:12}}><span className="kicker">Your choice</span><h2 className="h1 h-xs">{selected.place}</h2><p className="small">{selected.meta}</p></div>}
+      {selected&&!c.alts.some(a=>sameChoice(a,selected))&&<div className="card" style={{background:'var(--yellow-p)',padding:20,marginTop:12}}><span className="kicker">Your choice</span><h2 className="h1 h-xs">{selected.place}</h2><p className="small">{selected.meta}</p></div>}
       {live&&<p className="small muted" style={{marginTop:12}}>We check the full walk and reported hours before applying your choice. Entry and prices still need checking.</p>}
       {error&&<p role="alert" className="small" style={{marginTop:12}}>{error}</p>}
       <div className="grow" style={{ minHeight: 16 }} />
